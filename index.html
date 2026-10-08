@@ -1,1 +1,126 @@
-<!-- AJ's Bakery storefront: menu and entry to the box builder. -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AJ's Bakery | Brown butter cookies, Metro Manila</title>
+  <meta name="description" content="Small-batch brown butter cookies, baked at home in Metro Manila. Order by Wednesday 9pm for Sunday pickup or delivery.">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Header: logo (left) + cart (right) -->
+  <header class="site-header">
+    <div class="container">
+      <a class="logo-link" href="index.html">
+        <!-- If assets/logo.png is missing, the image hides and the text name still shows -->
+        <img src="assets/logo.png" alt="" onerror="this.style.display='none'">
+        <span>AJ's Bakery</span>
+      </a>
+      <a class="cart-btn" href="box.html" aria-label="View your cart">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/>
+          <path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 7H6"/>
+        </svg>
+        <span class="cart-count" id="cart-count">0</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Which Sunday we're taking orders for (placeholder date lives in config.js) -->
+  <div class="order-banner">
+    Now ordering for <span data-ordering-date></span>
+    <small>Order by <span data-cutoff></span></small>
+  </div>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <h1>Warm cookies, made at home.</h1>
+        <p data-config="tagline"></p>
+        <a class="btn" href="#boxes">Pick a box</a>
+      </div>
+    </section>
+
+    <section id="menu">
+      <div class="container">
+        <h2>The Menu</h2>
+        <p class="section-sub">Three brown butter flavors. Every cookie ships with a nutrition label.</p>
+        <div class="card-grid" id="menu-grid"></div>
+      </div>
+    </section>
+
+    <section id="boxes">
+      <div class="container">
+        <h2>Boxes</h2>
+        <p class="section-sub">Mix your flavors however you like.</p>
+        <div class="card-grid" id="box-grid"></div>
+        <p class="box-note" id="box-note"></p>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="container">
+        <h2>How it works</h2>
+        <ol class="steps">
+          <li><strong>Order</strong>Pick your box and flavors, then check out.</li>
+          <li><strong>Pay via GCash</strong>Send payment and enter your reference number.</li>
+          <li><strong>We bake Sunday</strong>Everything is baked fresh for your Sunday.</li>
+          <li><strong>Pickup or delivery</strong>Sundays, <span data-config="pickupWindow"></span>.</li>
+        </ol>
+        <p class="cutoff-note">
+          🕘 Orders close every <span data-cutoff></span> (Manila time) for that Sunday.
+          Order after that and your cookies go out the <em>following</em> Sunday.
+          We bake <span data-cap></span> cookies per Sunday, so once they're gone, they're gone.
+        </p>
+      </div>
+    </section>
+
+    <section id="faq" class="faq">
+      <div class="container">
+        <h2>FAQ</h2>
+        <details>
+          <summary>When do I get my cookies?</summary>
+          <p>Every Sunday, 3-6pm. Order by Wednesday 9pm for that Sunday; later orders go to the next one.</p>
+        </details>
+        <details>
+          <summary>Pickup or delivery?</summary>
+          <p>Both. You choose at checkout. Delivery is booked by you for the same Sunday window. (Details coming soon.)</p>
+        </details>
+        <details>
+          <summary>How do I pay?</summary>
+          <p>GCash. After checkout you'll see our QR code. Pay, then enter your GCash reference number so we can match it.</p>
+        </details>
+        <details>
+          <summary>What if I don't pay right away?</summary>
+          <p>Unpaid orders are released after 24 hours so someone else can grab the spot.</p>
+        </details>
+        <details>
+          <summary>Do you have nutrition info?</summary>
+          <p>Yes. Every flavor will come with a nutrition label. They're on the way!</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p><strong>AJ's Bakery</strong> · Baked at home in Metro Manila</p>
+    <p>Follow us: <a data-instagram href="#">@ajsbakery</a></p>
+  </footer>
+
+  <!-- type="module" lets us import from config.js / ui.js (no build step needed) -->
+  <script type="module">
+    import { CONFIG } from "./js/config.js";
+    import { renderBanner, renderMenu, renderBoxes, renderConfigText } from "./js/ui.js";
+
+    renderBanner();
+    renderMenu(document.getElementById("menu-grid"));
+    renderBoxes(document.getElementById("box-grid"), document.getElementById("box-note"));
+    renderConfigText();
+
+    const ig = document.querySelector("[data-instagram]");
+    ig.href = CONFIG.instagramUrl;
+    ig.textContent = CONFIG.instagramHandle;
+  </script>
+</body>
+</html>

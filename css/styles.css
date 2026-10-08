@@ -1,1 +1,298 @@
-/* All site styles. Mobile first: base styles for phones, then min-width media queries. */
+/* ==========================================================
+   AJ's Bakery styles. Mobile first: base styles are for phones
+   (390px), then min-width media queries add space on bigger screens.
+   Change the look of the whole site by editing the tokens below.
+   ========================================================== */
+
+/* Fonts: Fredoka (rounded, playful) for headings, Nunito (clean) for body */
+@import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700&display=swap");
+
+:root {
+  /* --- Brand tokens: edit these --- */
+  --blue: #4f8fd6;          /* anchor color */
+  --blue-dark: #2d5f9e;     /* hover, headings on cream, footer */
+  --blue-soft: #dcebfa;     /* pale blue tint for backgrounds */
+  --cream: #fff8ec;         /* page background */
+  --cream-dark: #f5e8d0;    /* placeholders, borders */
+  --ink: #3a2e2a;           /* text (warm dark brown, softer than black) */
+  --accent: #e9a95b;        /* butter / cookie brown */
+  --accent-dark: #b9772b;
+
+  /* --- Font stacks --- */
+  --font-display: "Fredoka", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+  --font-body: "Nunito", "Segoe UI", system-ui, sans-serif;
+
+  /* --- Shape & shadow --- */
+  --radius: 22px;
+  --radius-sm: 14px;
+  --shadow: 0 6px 18px rgba(90, 60, 30, 0.12);
+  --shadow-lg: 0 10px 28px rgba(90, 60, 30, 0.18);
+
+  --gutter: 16px;
+}
+
+/* ---------- Base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+img { max-width: 100%; display: block; }
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  color: var(--blue-dark);
+  line-height: 1.15;
+  margin: 0 0 0.5rem;
+}
+h1 { font-size: 2rem; }
+h2 { font-size: 1.75rem; }
+h3 { font-size: 1.2rem; }
+
+p { margin: 0 0 0.75rem; }
+a { color: var(--blue-dark); }
+
+.container {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+section { padding: 2rem 0; }
+
+.section-sub { color: #7a665c; margin-bottom: 1.25rem; }
+
+/* ---------- Header ---------- */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--cream);
+  border-bottom: 3px dashed var(--cream-dark);
+}
+.site-header .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.logo-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--blue-dark);
+}
+.logo-link img { width: 48px; height: 48px; object-fit: contain; }
+
+.cart-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s;
+}
+.cart-btn:hover { background: var(--blue-dark); transform: rotate(-6deg); }
+.cart-btn svg { width: 24px; height: 24px; }
+.cart-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
+/* ---------- Ordering banner ---------- */
+.order-banner {
+  background: var(--accent);
+  color: var(--ink);
+  text-align: center;
+  font-weight: 700;
+  padding: 10px var(--gutter);
+  /* wavy-ish handmade bottom edge */
+  border-bottom-left-radius: 40px 14px;
+  border-bottom-right-radius: 40px 14px;
+}
+.order-banner small { display: block; font-weight: 600; opacity: 0.8; }
+
+/* ---------- Hero ---------- */
+.hero { text-align: center; padding: 2rem 0 1rem; }
+.hero p { font-size: 1.1rem; max-width: 30ch; margin: 0.5rem auto 1.25rem; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-block;
+  padding: 12px 26px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--blue);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  text-decoration: none;
+  box-shadow: 0 4px 0 var(--blue-dark);
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--blue-dark); }
+
+/* ---------- Cards (flavors + boxes) ---------- */
+.card-grid { display: grid; gap: 1.25rem; }
+
+.card {
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  border: 2px solid var(--cream-dark);
+}
+/* tiny alternating tilt so cards feel hand-placed */
+.card-grid > .card:nth-child(odd)  { transform: rotate(-0.6deg); }
+.card-grid > .card:nth-child(even) { transform: rotate(0.6deg); }
+
+.card-photo {
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  background: repeating-linear-gradient(45deg, var(--cream-dark), var(--cream-dark) 12px, var(--cream) 12px, var(--cream) 24px);
+  font-size: 3rem;
+}
+.card-body { padding: 1rem 1.1rem 1.2rem; }
+.card-body h3 { margin-bottom: 0.35rem; }
+
+.price {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: var(--accent-dark);
+}
+.price small { font-size: 0.85rem; font-weight: 500; color: #7a665c; }
+
+.tag {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1.5px dashed var(--blue);
+}
+
+/* Box cards sit on a soft blue so they stand apart from flavors */
+.box-card { background: var(--blue-soft); border-color: var(--blue); }
+.box-card .card-body { text-align: center; padding: 1.4rem 1.1rem; }
+.box-size { font-family: var(--font-display); font-size: 2.4rem; color: var(--blue-dark); line-height: 1; }
+.box-note {
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  border: 2px dashed var(--accent);
+  font-size: 0.95rem;
+}
+
+/* ---------- How it works ---------- */
+.steps { list-style: none; margin: 0 0 1.25rem; padding: 0; display: grid; gap: 0.9rem; counter-reset: step; }
+.steps li {
+  position: relative;
+  counter-increment: step;
+  background: #fff;
+  border-radius: var(--radius-sm);
+  padding: 0.9rem 1rem 0.9rem 3.6rem;
+  box-shadow: var(--shadow);
+}
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+.steps strong { font-family: var(--font-display); color: var(--blue-dark); display: block; }
+
+.cutoff-note {
+  background: var(--accent);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  font-weight: 600;
+}
+
+/* ---------- FAQ ---------- */
+.faq details {
+  background: #fff;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--cream-dark);
+  padding: 0.8rem 1rem;
+  margin-bottom: 0.7rem;
+}
+.faq summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; color: var(--blue-dark); }
+.faq details[open] { border-color: var(--blue); }
+.faq details p { margin: 0.6rem 0 0; }
+
+/* ---------- Footer ---------- */
+.site-footer {
+  margin-top: 2rem;
+  background: var(--blue-dark);
+  color: var(--cream);
+  text-align: center;
+  padding: 2rem var(--gutter);
+  border-top-left-radius: 40px 16px;
+  border-top-right-radius: 40px 16px;
+}
+.site-footer a { color: var(--accent); font-weight: 700; }
+.site-footer p { margin-bottom: 0.4rem; }
+
+/* ---------- Bigger screens ---------- */
+@media (min-width: 640px) {
+  h1 { font-size: 2.6rem; }
+  h2 { font-size: 2.1rem; }
+  .card-grid { grid-template-columns: repeat(2, 1fr); }
+  .steps { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 900px) {
+  #menu .card-grid { grid-template-columns: repeat(3, 1fr); }
+  .steps { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Respect people who turn animations off */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; scroll-behavior: auto !important; }
+}
