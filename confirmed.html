@@ -1,1 +1,239 @@
-<!-- Confirmation: order ref code, total, Sunday date, GCash instructions. -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Order placed | AJ's Bakery</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <a class="logo-link" href="index.html">
+        <img src="assets/logo.png" alt="" onerror="this.style.display='none'">
+        <span>AJ's Bakery</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="container confirmed" id="confirmed">
+    <p class="loading">Loading your order...</p>
+  </main>
+
+  <!--
+    This page only talks to the database through get_order_status and
+    submit_gcash_ref. Neither returns anyone's personal details, so even with
+    someone else's link you can only see a code, a date, an amount and a status.
+  -->
+  <script type="module">
+    import { CONFIG } from "./js/config.js";
+    import { getOrderStatus, submitGcashRef } from "./js/supabase.js";
+    import { formatSunday, peso, esc } from "./js/ui.js";
+
+    const root = document.getElementById("confirmed");
+    const POLL_MS = 15000;
+
+    // ---- Which order? -----------------------------------------------------------
+    let ref = (new URLSearchParams(location.search).get("ref") || "").trim().toUpperCase();
+    if (!ref) {
+      // Came back without the link: try the code we saved on this phone
+      try { ref = localStorage.getItem("ajs-last-ref") || ""; } catch (e) { /* storage blocked */ }
+    }
+    if (!/^AJ-[A-Z0-9]{6}$/.test(ref)) {
+      root.innerHTML = `<h1>We can't find that order</h1>
+        <p>That link doesn't look right. Your reference code looks like <strong>AJ-K7M2QX</strong>.
+        Message us on Instagram and we'll sort it out.</p>
+        <a class="btn" href="index.html">Back to the menu</a>`;
+      throw new Error("No valid reference code");   // stop here
+    }
+
+    // Remember on THIS phone that the GCash number was sent (the database never tells us)
+    const savedKey = `ajs-gcash-${ref}`;
+    const getSaved = () => { try { return localStorage.getItem(savedKey); } catch (e) { return null; } };
+    const setSaved = (v) => { try { localStorage.setItem(savedKey, v); } catch (e) { /* fine */ } };
+
+    let order = null;
+
+    // ---- Load once, then draw ---------------------------------------------------
+    try {
+      order = await getOrderStatus(ref);
+    } catch (err) {
+      console.error(err);
+      root.innerHTML = `<h1>Hmm, we couldn't load your order</h1>
+        <p>${err.isNetwork ? "Check your connection and refresh this page." : "Please refresh this page."}
+        Your order is safe. Your reference code is <strong>${esc(ref)}</strong>.</p>
+        <button class="btn" onclick="location.reload()">Refresh</button>`;
+      throw err;
+    }
+    if (!order) {
+      root.innerHTML = `<h1>We can't find that order</h1>
+        <p>We have no order with the code <strong>${esc(ref)}</strong>. Double-check the code, or message us on Instagram.</p>
+        <a class="btn" href="index.html">Back to the menu</a>`;
+      throw new Error("Order not found");
+    }
+
+    function draw() {
+      const amount = peso(order.total);
+      const sunday = formatSunday(order.sunday_date);
+      const saved = getSaved();
+
+      // Status banner + whether to show the "how to pay" part
+      let statusHtml = "", showPay = false;
+      if (order.status === "paid") {
+        statusHtml = `<div class="status status-paid"><strong>✅ Paid.</strong> Thank you! See you ${esc(sunday)}, ${esc(CONFIG.pickupWindow)}.</div>`;
+      } else if (order.status === "pending") {
+        statusHtml = `<div class="status status-pending">⏳ Waiting for payment</div>`;
+        showPay = true;
+      } else if (order.status === "expired") {
+        statusHtml = `<div class="status status-bad"><strong>This order expired</strong> because we didn't get payment in time. No worries: you can <a href="index.html#boxes">order again</a>.</div>`;
+      } else {
+        statusHtml = `<div class="status status-bad"><strong>This order was cancelled.</strong> Message us on Instagram if that's a surprise.</div>`;
+      }
+
+      root.innerHTML = `
+        <h1>${{ paid: "You're all set!", pending: "Order placed!", expired: "Order expired", cancelled: "Order cancelled" }[order.status] || "Your order"}</h1>
+        ${statusHtml}
+
+        <div class="ref-card">
+          <span class="ref-label">Your reference code</span>
+          <div class="ref-code" id="ref-code">${esc(order.ref_code)}</div>
+          <button type="button" class="btn btn-small" id="copy-btn">Copy code</button>
+          <p class="ref-sunday">Ready <strong>${esc(sunday)}</strong>, ${esc(CONFIG.pickupWindow)}</p>
+        </div>
+
+        ${showPay ? `
+        <section class="pay">
+          <p class="expiry-warning">⏰ Please pay within <strong>${CONFIG.unpaidExpiryHours} hours</strong>. After that we release your spot to someone else.</p>
+
+          <div class="qr-wrap">
+            <img src="assets/gcash-qr.png" alt="AJ's Bakery GCash QR code" class="qr"
+                 onerror="this.replaceWith(Object.assign(document.createElement('p'),{className:'qr-missing',textContent:'Our GCash QR code is coming soon. Message us on Instagram for payment details.'}))">
+          </div>
+
+          <ol class="pay-steps">
+            <li>Pay exactly <strong class="pay-amount">${esc(amount)}</strong> via GCash.</li>
+            <li>Type your GCash reference number below.</li>
+            <li>Your order is confirmed once we verify the payment.</li>
+          </ol>
+
+          <div id="gcash-area">${saved ? thanksHtml(saved) : formHtml()}</div>
+        </section>` : ""}
+
+        <p class="fine-print">Keep this page or save your code. It's the only way to look up your order. We'll message you on Instagram too.</p>`;
+
+      document.getElementById("copy-btn").addEventListener("click", copyCode);
+      if (showPay) wireGcash();
+    }
+
+    // ---- Copy button ------------------------------------------------------------
+    async function copyCode() {
+      const btn = document.getElementById("copy-btn");
+      try {
+        await navigator.clipboard.writeText(order.ref_code);
+      } catch (e) {
+        // Older browsers / blocked clipboard: select the text so they can copy by hand
+        const range = document.createRange();
+        range.selectNodeContents(document.getElementById("ref-code"));
+        const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+        btn.textContent = "Press and hold to copy";
+        return;
+      }
+      btn.textContent = "Copied ✓";
+      setTimeout(() => { btn.textContent = "Copy code"; }, 2000);
+    }
+
+    // ---- GCash reference form -------------------------------------------------------
+    function formHtml() {
+      return `
+        <form id="gcash-form" novalidate>
+          <label for="gcash-ref">GCash reference number</label>
+          <input id="gcash-ref" type="text" inputmode="numeric" autocomplete="off"
+                 placeholder="13-digit number from your GCash receipt" maxlength="24" aria-describedby="gcash-error">
+          <p class="field-error" id="gcash-error" role="alert"></p>
+          <button type="submit" class="btn btn-block" id="gcash-btn">Send reference number</button>
+        </form>`;
+    }
+
+    function thanksHtml(last4) {
+      return `
+        <div class="status status-pending thanks">
+          <strong>Thanks!</strong> We'll confirm on Instagram soon.
+          <small>Reference ending ${esc(last4)} received.</small>
+          <button type="button" class="link-btn" id="redo-btn">Typed it wrong? Enter it again</button>
+        </div>`;
+    }
+
+    function wireGcash() {
+      const area = document.getElementById("gcash-area");
+      const redo = document.getElementById("redo-btn");
+      if (redo) redo.addEventListener("click", () => {
+        try { localStorage.removeItem(savedKey); } catch (e) { /* fine */ }
+        area.innerHTML = formHtml(); wireGcash();
+      });
+
+      const form = document.getElementById("gcash-form");
+      if (!form) return;
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const input = document.getElementById("gcash-ref");
+        const errBox = document.getElementById("gcash-error");
+        const btn = document.getElementById("gcash-btn");
+        errBox.textContent = "";
+        input.setAttribute("aria-invalid", "false");
+
+        // GCash reference numbers are 10 to 15 digits. Allow spaces/dashes while typing.
+        const digits = input.value.replace(/[\s-]/g, "");
+        if (!/^\d{10,15}$/.test(digits)) {
+          errBox.textContent = /^\d+$/.test(digits)
+            ? `That's ${digits.length} digits. A GCash reference number has 10 to 15 digits. Please check it.`
+            : "Please use numbers only. It's the long number on your GCash receipt.";
+          input.setAttribute("aria-invalid", "true");
+          input.focus();
+          return;
+        }
+
+        btn.disabled = true; btn.textContent = "Sending...";
+        try {
+          await submitGcashRef(ref, digits);
+          setSaved(digits.slice(-4));
+          area.innerHTML = thanksHtml(digits.slice(-4));
+          wireGcash();
+        } catch (err) {
+          console.error(err);
+          errBox.textContent =
+            err.isNetwork ? "We couldn't reach our server. Check your connection and try again."
+            : err.hint === "gcash_ref_in_use" ? "That reference number is already used on another order. Please double-check the number on your receipt."
+            : err.hint === "invalid_gcash_ref" ? "A GCash reference number has 10 to 15 digits. Please check it."
+            : err.hint === "order_not_open" ? "This order is no longer open (it may have expired or already been paid)."
+            : "Something went wrong. Please try again, or message us on Instagram.";
+          input.setAttribute("aria-invalid", "true");
+          btn.disabled = false; btn.textContent = "Send reference number";
+        }
+      });
+    }
+
+    draw();
+
+    // ---- Poll for "Paid" ---------------------------------------------------------------
+    // Every 15s while the page is visible, until the order reaches a final status.
+    // We don't redraw unless the status changed, so typing in the form isn't interrupted.
+    async function check() {
+      if (document.hidden) return;
+      try {
+        const fresh = await getOrderStatus(ref);
+        if (fresh && fresh.status !== order.status) {
+          order = fresh;
+          draw();
+        }
+        if (fresh && fresh.status !== "pending") clearInterval(timer);
+      } catch (err) {
+        console.error(err);   // network blip: just try again next time
+      }
+    }
+    const timer = setInterval(check, POLL_MS);
+    // Coming back from the GCash app: check right away instead of waiting up to 15s
+    document.addEventListener("visibilitychange", check);
+  </script>
+</body>
+</html>

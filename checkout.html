@@ -1,1 +1,292 @@
-<!-- Checkout: customer details, pickup/delivery, submits the order. -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checkout | AJ's Bakery</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <a class="logo-link" href="index.html">
+        <img src="assets/logo.png" alt="" onerror="this.style.display='none'">
+        <span>AJ's Bakery</span>
+      </a>
+      <button type="button" class="cart-btn" data-open-cart aria-label="Open your cart">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/>
+          <path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 7H6"/>
+        </svg>
+        <span class="cart-count" id="cart-count">0</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="container checkout" id="checkout">
+    <h1>Checkout</h1>
+
+    <!-- Order summary: boxes, Sunday date, total. Drawn by the script below. -->
+    <section class="summary" id="summary" aria-live="polite"></section>
+
+    <!-- novalidate: we show our own friendly errors instead of the browser's pop-ups -->
+    <form id="order-form" novalidate hidden>
+      <div class="field" data-field="name">
+        <label for="name">Your name</label>
+        <input id="name" name="name" type="text" autocomplete="name" maxlength="100" required>
+        <p class="field-error" id="name-error" role="alert"></p>
+      </div>
+
+      <div class="field" data-field="phone">
+        <label for="phone">Mobile number</label>
+        <div class="phone-input">
+          <span class="phone-prefix" aria-hidden="true">+63</span>
+          <input id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national"
+                 placeholder="917 123 4567" maxlength="16" required aria-describedby="phone-error">
+        </div>
+        <p class="field-error" id="phone-error" role="alert"></p>
+      </div>
+
+      <div class="field" data-field="ig">
+        <label for="ig">Instagram handle</label>
+        <input id="ig" name="ig" type="text" autocomplete="off" autocapitalize="none" spellcheck="false"
+               placeholder="@yourhandle" maxlength="31" required aria-describedby="ig-hint ig-error">
+        <p class="field-hint" id="ig-hint">We confirm your order by Instagram message.</p>
+        <p class="field-error" id="ig-error" role="alert"></p>
+      </div>
+
+      <fieldset class="field" data-field="fulfillment">
+        <legend>Pickup or delivery?</legend>
+        <label class="choice"><input type="radio" name="fulfillment" value="pickup"> <span>Pickup</span></label>
+        <label class="choice"><input type="radio" name="fulfillment" value="delivery"> <span>Delivery</span></label>
+        <p class="field-error" id="fulfillment-error" role="alert"></p>
+      </fieldset>
+
+      <div class="note-box" id="pickup-note" hidden></div>
+
+      <div id="delivery-fields" hidden>
+        <div class="field" data-field="address">
+          <label for="address">Delivery address</label>
+          <textarea id="address" name="address" rows="3" maxlength="300" autocomplete="street-address"
+                    placeholder="Unit / street / barangay / city"></textarea>
+          <p class="field-error" id="address-error" role="alert"></p>
+        </div>
+        <div class="note-box" id="delivery-note"></div>
+      </div>
+
+      <div class="field" data-field="gift">
+        <label for="gift">Gift note <span class="optional">(optional)</span></label>
+        <textarea id="gift" name="gift" rows="2" maxlength="500" placeholder="Happy birthday, Tita!"></textarea>
+        <p class="field-hint">Goes on any box that doesn't already have its own note.</p>
+      </div>
+
+      <div class="form-error" id="form-error" role="alert" hidden></div>
+
+      <button type="submit" class="btn btn-block" id="submit-btn">Place order</button>
+      <p class="fine-print">Next you'll see how to pay by GCash.</p>
+    </form>
+  </main>
+
+  <script type="module">
+    import { CONFIG } from "./js/config.js";
+    import { fetchSundayInfo, placeOrder } from "./js/supabase.js";
+    import { orderingSunday, peso, esc } from "./js/ui.js";
+    import * as cart from "./js/cart.js";
+    import { initCartUI } from "./js/cart-ui.js";
+
+    initCartUI({ showBar: false });
+
+    const $ = (id) => document.getElementById(id);
+    const form = $("order-form");
+    const summary = $("summary");
+    let ordering = null;       // this Sunday's info from the database (display only)
+    let sending = false;       // true while the order request is in flight
+    let done = false;          // true once the order is placed (page is about to change)
+
+    // ---- Order summary ------------------------------------------------------
+    // All prices here are for display only: the database prices the real order.
+    function renderSummary() {
+      if (done) return;          // don't flash "cart is empty" while redirecting
+      const boxes = cart.getBoxes();
+      if (boxes.length === 0) {
+        summary.innerHTML = `
+          <p class="drawer-empty">Your cart is empty.</p>
+          <a class="btn btn-block" href="index.html#boxes">Pick a box</a>`;
+        form.hidden = true;
+        return;
+      }
+      form.hidden = false;
+
+      const cookies = boxes.reduce((n, b) => n + b.size, 0);
+      let sundayHtml = `<p class="summary-sunday">Checking your Sunday...</p>`;
+      if (ordering) {
+        sundayHtml = `<p class="summary-sunday">Ready <strong>${esc(ordering.label)}</strong></p>`;
+        if (cookies > ordering.remaining) {
+          // Won't fit in what's left: the database will move the whole order to the next Sunday
+          sundayHtml += `<p class="field-hint">That Sunday doesn't have room for all ${cookies} cookies, so your order may move to the following Sunday. We'll show the final date on the next screen.</p>`;
+        }
+      }
+
+      summary.innerHTML = `
+        ${sundayHtml}
+        ${boxes.map((b, i) => `
+          <div class="summary-box">
+            <div class="cart-box-head">
+              <strong>Box ${i + 1}: box of ${b.size}</strong>
+              <span class="price">${peso(b.price)}</span>
+            </div>
+            <p class="cart-box-items">${b.items.map((it) => `${it.qty} × ${esc(it.name)}`).join("<br>")}</p>
+            ${b.giftNote ? `<p class="cart-box-note">🎁 ${esc(b.giftNote)}</p>` : ""}
+          </div>`).join("")}
+        <div class="drawer-total"><span>Total</span><span class="price">${peso(cart.total())}</span></div>
+        <p class="field-hint">Final price is confirmed when you place your order.</p>`;
+    }
+
+    // Load the Sunday date, then draw. The page works even if this fails.
+    renderSummary();
+    fetchSundayInfo()
+      .then((info) => { ordering = orderingSunday(info); renderSummary(); })
+      .catch((err) => console.error(err));
+    window.addEventListener("cart:changed", renderSummary);
+
+    // ---- Pickup / delivery toggle ------------------------------------------
+    $("pickup-note").textContent = CONFIG.pickupArea;
+    $("delivery-note").textContent =
+      `You'll book Lalamove or Grab for the Sunday ${CONFIG.pickupWindow} window; delivery fee is paid by you.`;
+
+    function updateFulfillment() {
+      const v = form.fulfillment.value;
+      $("pickup-note").hidden = v !== "pickup";
+      $("delivery-fields").hidden = v !== "delivery";
+    }
+    form.querySelectorAll('input[name="fulfillment"]').forEach((r) => r.addEventListener("change", updateFulfillment));
+
+    // ---- Field cleaning + validation ---------------------------------------
+    // Mobile: accept 9171234567, 09171234567, 639171234567 or +63 917 123 4567.
+    // Returns the number in +639XXXXXXXXX form, or null if it doesn't look right.
+    function cleanPhone(raw) {
+      let d = raw.replace(/[\s\-().+]/g, "");
+      if (!/^\d+$/.test(d)) return null;
+      if (d.startsWith("63")) d = d.slice(2);
+      else if (d.startsWith("0")) d = d.slice(1);
+      return /^9\d{9}$/.test(d) ? "+63" + d : null;
+    }
+
+    // Instagram: add the @ if they forgot it. Letters, numbers, dots, underscores, up to 30.
+    function cleanIg(raw) {
+      const h = raw.trim().replace(/^@*/, "");
+      return /^[A-Za-z0-9._]{1,30}$/.test(h) ? "@" + h : null;
+    }
+
+    function setError(field, message) {
+      const input = form.querySelector(`[data-field="${field}"] input:not([type=radio]), [data-field="${field}"] textarea`);
+      $(`${field}-error`).textContent = message || "";
+      if (input) input.setAttribute("aria-invalid", message ? "true" : "false");
+    }
+
+    // Returns the cleaned values, or null after showing errors (and focusing the first bad field)
+    function validate() {
+      const v = {};
+      const problems = [];
+      const fail = (field, msg, focusSel) => { setError(field, msg); problems.push(focusSel); };
+
+      ["name", "phone", "ig", "fulfillment", "address"].forEach((f) => setError(f, ""));
+
+      v.name = $("name").value.trim();
+      if (!v.name) fail("name", "Please tell us your name.", "#name");
+
+      v.phone = cleanPhone($("phone").value);
+      if (!v.phone) fail("phone", "Please enter a Philippine mobile number, like 917 123 4567.", "#phone");
+
+      v.igHandle = cleanIg($("ig").value);
+      if (!v.igHandle) fail("ig", "Please enter your Instagram handle, like @yourhandle.", "#ig");
+
+      v.fulfillment = form.fulfillment.value;
+      if (!v.fulfillment) fail("fulfillment", "Please choose pickup or delivery.", 'input[name="fulfillment"]');
+
+      v.address = $("address").value.trim();
+      if (v.fulfillment === "delivery" && v.address.length < 8) {
+        fail("address", "Please enter your full delivery address.", "#address");
+      }
+      if (v.fulfillment !== "delivery") v.address = "";
+
+      if (problems.length) { form.querySelector(problems[0]).focus(); return null; }
+      return v;
+    }
+
+    // Tidy the Instagram box as they leave it, so they see the @ appear
+    $("ig").addEventListener("blur", () => { const h = cleanIg($("ig").value); if (h) $("ig").value = h; });
+
+    // ---- Friendly messages for database errors -------------------------------
+    function showFormError(html) {
+      const box = $("form-error");
+      box.innerHTML = html;
+      box.hidden = false;
+      box.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    function explain(err) {
+      if (err.isNetwork) {
+        return `We couldn't reach our server. Your cart is still saved. Check your connection and tap <strong>Try again</strong>.`;
+      }
+      switch (err.hint) {
+        case "sunday_full":
+          return `${esc(err.message)} Please message us on Instagram and we'll fit you in.`;
+        case "wrong_quantity":
+        case "unknown_flavor":
+        case "invalid_box":
+        case "invalid_items":
+          return `Something in your cart changed (${esc(err.message)}) <a href="index.html#boxes">Go back to the menu</a> to rebuild that box. Your other boxes are still saved.`;
+        case "invalid_name": setError("name", err.message); return "";
+        case "invalid_phone": setError("phone", err.message); return "";
+        case "address_required": setError("address", err.message); return "";
+        case "invalid_boxes":
+        case "note_too_long":
+          return esc(err.message);
+        default:
+          return `Something went wrong placing your order. Please try again, or message us on Instagram.`;
+      }
+    }
+
+    // ---- Submit ---------------------------------------------------------------
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (sending) return;                       // ignore double taps
+      $("form-error").hidden = true;
+
+      const values = validate();
+      if (!values) return;
+
+      const boxes = cart.getBoxes();
+      if (boxes.length === 0) return renderSummary();
+
+      // The checkout note goes on boxes that don't have their own note
+      const sharedNote = $("gift").value.trim();
+      const withNotes = boxes.map((b) => ({ ...b, giftNote: b.giftNote || sharedNote }));
+
+      sending = true;
+      const btn = $("submit-btn");
+      btn.disabled = true;                       // stops a second order being placed
+      btn.textContent = "Placing your order...";
+
+      try {
+        const order = await placeOrder({ ...values, boxes: withNotes });
+        done = true;
+        cart.clear();                            // only after the database accepted it
+        try { localStorage.setItem("ajs-last-ref", order.ref_code); } catch (e) { /* storage blocked: fine */ }
+        location.href = `confirmed.html?ref=${encodeURIComponent(order.ref_code)}`;
+        // (button stays disabled while the browser navigates)
+      } catch (err) {
+        console.error(err);
+        const html = explain(err);
+        if (html) showFormError(html);
+        else form.querySelector('[aria-invalid="true"]')?.focus();
+        sending = false;
+        btn.disabled = false;
+        btn.textContent = err.isNetwork ? "Try again" : "Place order";
+      }
+    });
+  </script>
+</body>
+</html>

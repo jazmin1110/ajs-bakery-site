@@ -11,11 +11,12 @@ const boxesWord = (n) => (n === 1 ? "1 box" : `${n} boxes`);
 // "2 × Brown Butter Choc Chip, 2 × Brown Butter Kinder Bueno"
 const breakdown = (box) => box.items.map((i) => `${i.qty} × ${esc(i.name)}`).join("<br>");
 
-function build() {
+function build(showBar) {
   // Sticky bar (hidden until the cart has items)
   bar = document.createElement("div");
   bar.className = "cart-bar";
   bar.hidden = true;
+  if (!showBar) bar.dataset.off = "1";
   bar.innerHTML = `
     <button type="button" class="cart-bar-summary" data-open-cart></button>
     <a class="btn cart-bar-checkout" href="checkout.html">Checkout</a>`;
@@ -76,8 +77,9 @@ function render() {
   if (badge) badge.textContent = n;
 
   // Sticky bar
-  bar.hidden = n === 0;
-  document.body.classList.toggle("has-cart-bar", n > 0);
+  const barOn = n > 0 && !bar.dataset.off;  // checkout page turns the bar off
+  bar.hidden = !barOn;
+  document.body.classList.toggle("has-cart-bar", barOn);
   bar.querySelector(".cart-bar-summary").textContent = `${boxesWord(n)} · ${peso(cart.total())}`;
 
   // Drawer body
@@ -128,8 +130,9 @@ export function closeCart() {
   if (lastFocus && lastFocus.focus) lastFocus.focus();
 }
 
-export function initCartUI() {
-  build();
+// showBar: false on the checkout page (the bar's Checkout button would point at itself)
+export function initCartUI({ showBar = true } = {}) {
+  build(showBar);
   render();
   window.addEventListener("cart:changed", render); // this tab
   window.addEventListener("storage", render);      // other tabs

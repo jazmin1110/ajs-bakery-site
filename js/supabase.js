@@ -53,3 +53,64 @@ export async function fetchSundayInfo() {
   if (!row) throw new Error("Couldn't load this Sunday's info.");
   return row; // { sunday_date, cutoff_at, cap, cookies_taken, remaining, is_full }
 }
+
+// ---- Ordering -----------------------------------------------------------------
+
+// Call a database function and turn any failure into an Error with:
+//   err.hint      short machine code from the database (e.g. "sunday_full"), or ""
+//   err.isNetwork true when we never got a real answer (offline, timeout...)
+// The messages the database raises are written for customers, so err.message
+// is safe to show for those.
+async function callFunction(name, args) {
+  let result;
+  try {
+    result = await getClient().rpc(name, args);
+  } catch (e) {
+    const err = new Error("Network problem");
+    err.isNetwork = true;
+    err.hint = "";
+    throw err;
+  }
+  if (result.error) {
+    const err = new Error(result.error.message || "Something went wrong");
+    err.hint = result.error.hint || "";
+    // Database errors always carry a code (P0001 for our messages). No code = never reached it.
+    err.isNetwork = !result.error.code;
+    throw err;
+  }
+  return result.data;
+}
+
+// Place an order from the cart. We send ONLY what the customer chose (sizes,
+// flavors, quantities, gift notes). No prices: the database prices everything.
+// Returns { ref_code, total, sunday_date } (the real Sunday, which can differ
+// from the banner if the order didn't fit and rolled over).
+export async function placeOrder({ name, igHandle, phone, fulfillment, address, boxes }) {
+  const data = await callFunction("place_order", {
+    p_name: name,
+    p_ig_handle: igHandle,
+    p_phone: phone,
+    p_fulfillment: fulfillment,
+    p_address: address || null,
+    p_boxes: boxes.map((b) => ({
+      size: b.size,
+      gift_note: b.giftNote || null,
+      items: b.items.map((i) => ({ flavor_slug: i.slug, qty: i.qty })),
+    })),
+  });
+  const row = Array.isArray(data) ? data[0] : data;
+  return { ref_code: row.ref_code, total: Number(row.total), sunday_date: row.sunday_date };
+}
+
+// Safe lookup by reference code: returns ONLY { ref_code, sunday_date, total, status },
+// or null if there's no such order. No personal data.
+export async function getOrderStatus(refCode) {
+  const data = await callFunction("get_order_status", { p_ref_code: refCode });
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ? { ...row, total: Number(row.total) } : null;
+}
+
+// Save the customer's GCash reference number on their pending order.
+export async function submitGcashRef(refCode, gcashRef) {
+  await callFunction("submit_gcash_ref", { p_ref_code: refCode, p_gcash_ref: gcashRef });
+}
