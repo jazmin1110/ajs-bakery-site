@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Secrets: never commit keys or env files
+.env
+.env.*
+*.key
+
+# Vercel local link + CLI output
+.vercel/
+
+# Editors / logs / deps
+.vscode/
+.idea/
+node_modules/
+*.log
