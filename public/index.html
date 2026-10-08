@@ -91,7 +91,7 @@
         <p class="cutoff-note">
           🕘 Orders close every <span data-cutoff></span> (Manila time) for that Sunday.
           Order after that and your cookies go out the <em>following</em> Sunday.
-          We bake <span data-cap></span> cookies per Sunday, so once they're gone, they're gone.
+          We bake <span data-weekly-cap></span> of each flavor per Sunday. Once they're gone, they're gone.
         </p>
       </div>
     </section>
@@ -116,6 +116,10 @@
           <p>Unpaid orders are released after 24 hours so someone else can grab the spot.</p>
         </details>
         <details>
+          <summary>How many cookies do you bake?</summary>
+          <p>We bake <span data-weekly-cap></span> of each flavor per Sunday. Once they're gone, they're gone. If a flavor sells out, the other flavors are still available, and if everything sells out we open the next Sunday.</p>
+        </details>
+        <details>
           <summary>Do you have nutrition info?</summary>
           <p>Yes. Every flavor will come with a nutrition label. They're on the way!</p>
         </details>
@@ -131,10 +135,10 @@
   <!-- type="module" lets us import from js/ files (no build step needed) -->
   <script type="module">
     import { CONFIG } from "./js/config.js";
-    import { fetchMenu, fetchSundayInfo } from "./js/supabase.js";
+    import { fetchMenu, fetchSundayInfo, fetchAvailability } from "./js/supabase.js";
     import {
       orderingSunday, renderBanner, renderBannerError,
-      renderMenu, renderBoxes, renderConfigText, renderClosed,
+      renderMenu, renderBoxes, renderConfigText, renderClosed, stockLabel,
     } from "./js/ui.js";
     import { initCartUI } from "./js/cart-ui.js";
     import * as cart from "./js/cart.js";
@@ -146,6 +150,41 @@
     ig.href = CONFIG.instagramUrl;
     ig.textContent = CONFIG.instagramHandle;
 
+    // How many of each flavor are left this Sunday (from the database). null = unknown (no limits shown).
+    let availability = null;
+
+    // How many MORE of this flavor can go in the cart: what's left, minus what's already in it
+    const limitFor = (slug) =>
+      availability && availability[slug] ? Math.max(0, availability[slug].remaining - cart.flavorQty(slug)) : CONFIG.maxCookiesInCart;
+
+    // Update every menu card: "3 left" / "Sold out", and stop the + at the limit.
+    function refreshStock() {
+      document.querySelectorAll("#menu-grid [data-slug]").forEach((card) => {
+        const slug = card.dataset.slug;
+        const info = availability && availability[slug];
+        const left = info ? info.remaining : null;
+        const limit = limitFor(slug);
+
+        const badge = card.querySelector("[data-stock]");
+        const label = stockLabel(left);
+        badge.textContent = label;
+        badge.hidden = !label;
+        badge.classList.toggle("stock-out", left !== null && left <= 0);
+
+        const out = card.querySelector("output");
+        const add = card.querySelector("[data-add-single]");
+        if (!out || !add) return;                       // a "box only" flavor has no single controls
+        if (Number(out.textContent) > Math.max(limit, 1)) out.textContent = Math.max(limit, 1);
+        const qty = Number(out.textContent);
+        card.querySelector('[data-single-step="-1"]').disabled = qty <= 1;
+        card.querySelector('[data-single-step="1"]').disabled = qty >= limit;
+        if (!add.dataset.busy) {                        // (don't overwrite the "Added ✓" flash)
+          add.disabled = limit <= 0;
+          add.textContent = left !== null && left <= 0 ? "Sold out" : limit <= 0 ? "All in your cart" : "Add to cart";
+        }
+      });
+    }
+
     // Stepper + "Add to cart" on each menu card (single cookies).
     // Quantities live in the page; the cart only changes when "Add to cart" is tapped.
     function wireSingles(grid, flavors) {
@@ -155,30 +194,45 @@
         const out = card.querySelector("output");
         const step = e.target.closest("[data-single-step]");
         if (step) {
-          out.textContent = Math.min(Math.max(Number(out.textContent) + Number(step.dataset.singleStep), 1), 45);
+          const next = Number(out.textContent) + Number(step.dataset.singleStep);
+          out.textContent = Math.min(Math.max(next, 1), Math.max(limitFor(card.dataset.slug), 1));
+          refreshStock();
           return;
         }
         const add = e.target.closest("[data-add-single]");
-        if (!add) return;
+        if (!add || add.disabled) return;
         const flavor = flavors.find((f) => f.slug === card.dataset.slug);
         const result = cart.addSingle(flavor, Number(out.textContent));
+        add.dataset.busy = "1";
         add.textContent = result.ok ? "Added ✓" : result.error;
         out.textContent = "1";
-        setTimeout(() => { add.textContent = "Add to cart"; }, 1800);
+        setTimeout(() => { delete add.dataset.busy; refreshStock(); }, 1800);
       });
+      window.addEventListener("cart:changed", refreshStock);   // the cart changed: limits move
     }
 
     // Banner, menu and boxes load separately so one failing doesn't hide the others
     fetchSundayInfo()
-      .then((info) => renderBanner(document.getElementById("order-banner"), orderingSunday(info)))
+      .then((info) => {
+        const ordering = orderingSunday(info);
+        renderBanner(document.getElementById("order-banner"), ordering);
+        cart.rememberSunday(ordering.date);   // so checkout can warn if the Sunday changes later
+      })
       .catch((err) => { console.error(err); renderBannerError(document.getElementById("order-banner")); });
 
-    fetchMenu()
-      .then(({ flavors, boxes }) => {
-        renderMenu(document.getElementById("menu-grid"), flavors, boxes);
+    // The availability call is optional: if it fails the menu still works (the database enforces the caps anyway)
+    Promise.all([fetchMenu(), fetchAvailability().catch((err) => { console.error(err); return null; })])
+      .then(([{ flavors, boxes }, stock]) => {
+        availability = stock ? stock.bySlug : null;
+        renderMenu(document.getElementById("menu-grid"), flavors, boxes, availability || {});
         wireSingles(document.getElementById("menu-grid"), flavors);
+        refreshStock();
         renderBoxes(document.getElementById("box-grid"), document.getElementById("box-note"), boxes, flavors);
-        cart.syncWithMenu({ flavors, boxes });   // keep the cart's names/prices in line with today's menu
+        cart.syncWithMenu({ flavors, boxes });   // keep the cart in line with today's menu (retired items are removed, with a notice)
+        if (availability) {                      // keep the "15 of each flavor" wording in step with the database
+          const cap = Math.max(...Object.values(availability).map((a) => a.cap));
+          document.querySelectorAll("[data-weekly-cap]").forEach((el) => { el.textContent = cap; });
+        }
       })
       .catch((err) => {
         // Can't reach the database: show "Ordering is closed" with the Instagram DM link

@@ -5,7 +5,8 @@
 -- run it. Each block says PASS (a NOTICE in the results panel) or fails with
 -- an error. Every block ends in ROLLBACK, so no test data is left behind.
 -- Run on a dev/empty project: tests (c)-(g) assume no real orders are booked
--- yet for the upcoming Sundays (real orders would eat into the 45-cookie cap).
+-- yet for the upcoming Sundays. (Tests that fill a flavor top it up adaptively, so a few
+-- real orders won't break them, but a lot of real orders could.)
 --
 -- "set local role anon" makes the block behave like a website visitor, which
 -- is what proves the rules hold for real customers (the SQL editor itself
@@ -93,83 +94,163 @@ rollback;
 
 
 -- ===========================================================================
--- (c) The cap and rollover. We pretend 41 cookies are already paid on the
--- upcoming Sunday:
---   * a box of 4 lands EXACTLY on 45 -> allowed, stays on that Sunday
---   * the next box of 4 would be the 46th+ cookie -> NOT rejected any more:
---     it rolls over to the following Sunday
---   * a 2-box order (8 cookies) that doesn't fit moves WHOLE to the next
---     Sunday (never split)
+-- (c) The per-flavor weekly cap (migration 007): 15 of each flavor per Sunday.
+-- Each test tops a flavor up to a known number of reserved cookies with a fixture
+-- (inserted as postgres, so it works even if real orders already exist), then
+-- orders as a website visitor.
+--   * under the cap: accepted. Over it: rejected, naming the flavor and how many are left.
+--   * a different flavor still works while one is full.
+--   * box cookies and single cookies share the same per-flavor count.
 -- ===========================================================================
 begin;
 do $$
 declare
-  v_sunday date := public.next_order_sunday();
+  v_sunday date := public.ordering_sunday();
+  v_choc   bigint := (select id from public.flavors where slug = 'choc-chip');
   v_order  bigint;
-  v_flavor bigint := (select id from public.flavors where slug = 'choc-chip');
-  v_box    bigint;
+  v_have   int := (select reserved from public.flavor_reserved(public.ordering_sunday()) where slug = 'choc-chip');
   r record;
-  box4 text := '{"size":4,"items":[{"flavor_slug":"choc-chip","qty":4}]}';
 begin
-  -- Fixture (runs as postgres, bypassing the rules): a paid order of 41 cookies.
+  -- Chimp Chips reserved = 13 (2 left)
   insert into public.orders (ref_code, sunday_date, name, phone, fulfillment, total, status)
-  values ('AJ-FIXTURE', v_sunday, 'Fixture', '09170000000', 'pickup', 0, 'paid')
-  returning id into v_order;
-  insert into public.order_boxes (order_id, position, size, price) values (v_order, 1, 6, 0)
-  returning id into v_box;
-  insert into public.order_items (order_id, order_box_id, flavor_id, qty) values (v_order, v_box, v_flavor, 41);
+  values ('AJ-FIXTURE', v_sunday, 'Fixture', '09170000000', 'pickup', 0, 'paid') returning id into v_order;
+  insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, v_choc, 13 - v_have, 105);
 
   set local role anon;
 
-  -- 41 + 4 = 45: allowed, stays on this Sunday.
-  select * into r from public.place_order('Test', null, '09171234567', 'pickup', null, ('[' || box4 || ']')::jsonb);
-  assert r.sunday_date = v_sunday, 'exactly 45 should stay on ' || v_sunday || ', got ' || r.sunday_date;
-  raise notice 'PASS (c): order reaching exactly 45 stays on % ', r.sunday_date;
-
-  -- 45 + 4 would be the 46th+ cookie: rolls over to next Sunday.
-  select * into r from public.place_order('Test2', null, '09171234567', 'pickup', null, ('[' || box4 || ']')::jsonb);
-  assert r.sunday_date = v_sunday + 7, 'should roll to ' || (v_sunday + 7) || ', got ' || r.sunday_date;
-  raise notice 'PASS (c): the 46th cookie rolls over to % (a week later)', r.sunday_date;
-
-  -- Banner function agrees: upcoming Sunday is full, ordering Sunday is the next one.
-  declare i record; begin
-    select * into i from public.current_sunday_info();
-    assert i.is_full and i.sunday_date = v_sunday and i.ordering_sunday = v_sunday + 7,
-      'current_sunday_info should say full and point to the next Sunday';
-    raise notice 'PASS (c): current_sunday_info says full, ordering for %', i.ordering_sunday;
+  -- 3 Chimp Chips when only 2 are left: rejected, and the message names the flavor and the number left
+  begin
+    perform 1 from public.place_order('Cap', null, '09176660001', 'pickup', null, '[]'::jsonb, null, '[{"flavor_slug":"choc-chip","qty":3}]'::jsonb);
+    raise exception 'FAIL (c): ordering past a flavor cap was accepted';
+  exception when others then
+    if sqlerrm not like '%only 2 Chimp Chips left%' then raise; end if;
+    raise notice 'PASS (c): over the cap is rejected -> %', sqlerrm;
   end;
 
+  -- A different flavor still works while Chimp Chips is nearly gone
+  select * into r from public.place_order('Cap', null, '09176660002', 'pickup', null, '[]'::jsonb, null, '[{"flavor_slug":"double-choc","qty":4}]'::jsonb);
+  assert r.sunday_date = v_sunday, 'a different flavor should still be orderable on ' || v_sunday;
+  raise notice 'PASS (c): a different flavor (Coco Loco) is still orderable';
+
+  -- Exactly the 2 that are left: accepted
+  select * into r from public.place_order('Cap', null, '09176660003', 'pickup', null, '[]'::jsonb, null, '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
+  raise notice 'PASS (c): taking exactly the last 2 is accepted';
+
+  -- Now Chimp Chips is sold out: the message says so
+  begin
+    perform 1 from public.place_order('Cap', null, '09176660004', 'pickup', null, '[]'::jsonb, null, '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
+    raise exception 'FAIL (c): a sold-out flavor was accepted';
+  exception when others then
+    if sqlerrm not like '%Chimp Chips is sold out%' then raise; end if;
+    raise notice 'PASS (c): sold-out flavor -> %', sqlerrm;
+  end;
+
+  -- Box cookies count against the same flavor: a box with 2 Chimp Chips + 2 Coco Loco is rejected too,
+  -- and nothing is partly saved
+  begin
+    perform 1 from public.place_order('Cap', null, '09176660005', 'pickup', null,
+      '[{"size":4,"items":[{"flavor_slug":"choc-chip","qty":2},{"flavor_slug":"double-choc","qty":2}]}]'::jsonb);
+    raise exception 'FAIL (c): a box with a sold-out flavor was accepted';
+  exception when others then
+    if sqlerrm not like '%Chimp Chips is sold out%' then raise; end if;
+    raise notice 'PASS (c): a box containing a sold-out flavor is rejected';
+  end;
+  reset role;
+  assert (select count(*) from public.orders where phone = '09176660005') = 0, 'a rejected order must save nothing';
+
+  -- flavor_availability reports it (as the website sees it)
+  set local role anon;
+  assert (select remaining from public.flavor_availability() where slug = 'choc-chip') = 0, 'availability: Chimp Chips 0 left';
+  assert (select remaining from public.flavor_availability() where slug = 'kinder-bueno') > 0, 'availability: Bueno Mucho still has some';
+  reset role;
+  raise notice 'PASS (c): flavor_availability shows Chimp Chips at 0';
+end $$;
+rollback;
+
+-- Singles and box cookies share the same flavor count
+begin;
+do $$
+declare
+  v_sunday date := public.ordering_sunday();
+  v_have int := (select reserved from public.flavor_reserved(public.ordering_sunday()) where slug = 'kinder-bueno');
+  v_bueno bigint := (select id from public.flavors where slug = 'kinder-bueno');
+  v_order bigint; r record;
+begin
+  insert into public.orders (ref_code, sunday_date, name, phone, fulfillment, total, status)
+  values ('AJ-FIXTURE', v_sunday, 'Fixture', '09170000000', 'pickup', 0, 'paid') returning id into v_order;
+  insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, v_bueno, 10 - v_have, 135);
+  set local role anon;
+  -- Bueno Mucho reserved = 10 (5 left). A box with 3 Bueno + 2 singles = 5: fits exactly.
+  select * into r from public.place_order('Mix', null, '09176660010', 'pickup', null,
+    '[{"size":4,"items":[{"flavor_slug":"kinder-bueno","qty":3},{"flavor_slug":"choc-chip","qty":1}]}]'::jsonb, null,
+    '[{"flavor_slug":"kinder-bueno","qty":2}]'::jsonb);
+  -- 1 more Bueno single: over the cap
+  begin
+    perform 1 from public.place_order('Mix', null, '09176660011', 'pickup', null, '[]'::jsonb, null, '[{"flavor_slug":"kinder-bueno","qty":2}]'::jsonb);
+    raise exception 'FAIL (c): box + singles went past the flavor cap';
+  exception when others then
+    if sqlerrm not like '%Bueno Mucho is sold out%' then raise; end if;
+    raise notice 'PASS (c): box cookies and single cookies share one per-flavor count';
+  end;
   reset role;
 end $$;
 rollback;
 
--- Whole-order rollover (never split a 2-box order across Sundays)
+-- Expired pending orders free their slots; cancelled ones too
 begin;
 do $$
 declare
-  v_sunday date := public.next_order_sunday();
-  v_order  bigint;
-  v_flavor bigint := (select id from public.flavors where slug = 'choc-chip');
-  v_box    bigint;
-  r record;
-  box4 text := '{"size":4,"items":[{"flavor_slug":"choc-chip","qty":4}]}';
+  boxes jsonb := '[{"size":6,"items":[{"flavor_slug":"double-choc","qty":6}]}]';
+  v_have int := (select reserved from public.flavor_reserved(public.ordering_sunday()) where slug = 'double-choc');
+  v_sunday date := public.ordering_sunday();
+  v_coco bigint := (select id from public.flavors where slug = 'double-choc');
+  v_order bigint; a record; r record;
 begin
   insert into public.orders (ref_code, sunday_date, name, phone, fulfillment, total, status)
-  values ('AJ-FIXTURE', v_sunday, 'Fixture', '09170000000', 'pickup', 0, 'paid')
-  returning id into v_order;
-  insert into public.order_boxes (order_id, position, size, price) values (v_order, 1, 6, 0)
-  returning id into v_box;
-  insert into public.order_items (order_id, order_box_id, flavor_id, qty) values (v_order, v_box, v_flavor, 41);
-
+  values ('AJ-FIXTURE', v_sunday, 'Fixture', '09170000000', 'pickup', 0, 'paid') returning id into v_order;
+  insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, v_coco, 9 - v_have, 110);
   set local role anon;
-  -- 41 + 8 = 49 > 45: the whole order moves to next Sunday.
-  select * into r from public.place_order('Test', null, '09171234567', 'pickup', null,
-    ('[' || box4 || ',' || box4 || ']')::jsonb);
-  assert r.sunday_date = v_sunday + 7, 'whole 2-box order should roll to ' || (v_sunday + 7);
+  -- Coco Loco: 9 reserved, 6 left. A pending order takes all 6.
+  select * into a from public.place_order('Pend', null, '09176660020', 'pickup', null, boxes);
+  begin
+    perform 1 from public.place_order('Next', null, '09176660021', 'pickup', null, '[]'::jsonb, null, '[{"flavor_slug":"double-choc","qty":2}]'::jsonb);
+    raise exception 'FAIL (c): pending order did not hold its slots';
+  exception when others then
+    if sqlerrm not like '%Coco Loco is sold out%' then raise; end if;
+  end;
+  -- 24 hours pass without payment...
   reset role;
-  assert (select count(*) from public.orders where sunday_date = v_sunday and ref_code <> 'AJ-FIXTURE') = 0,
-    'nothing should have been split onto the full Sunday';
-  raise notice 'PASS (c): 2-box order that does not fit moved whole to %', r.sunday_date;
+  update public.orders set expires_at = now() - interval '1 minute' where ref_code = a.ref_code;
+  set local role anon;
+  select * into r from public.place_order('Next', null, '09176660021', 'pickup', null, '[]'::jsonb, null, '[{"flavor_slug":"double-choc","qty":2}]'::jsonb);
+  raise notice 'PASS (c): an expired pending order frees its slots for the next customer';
+  reset role;
+end $$;
+rollback;
+
+-- When EVERY flavor is sold out, ordering moves to the next Sunday by itself
+begin;
+do $$
+declare
+  v_sunday date := public.ordering_sunday();
+  v_order bigint; f record; r record; i record; av record;
+begin
+  insert into public.orders (ref_code, sunday_date, name, phone, fulfillment, total, status)
+  values ('AJ-FIXTURE', v_sunday, 'Fixture', '09170000000', 'pickup', 0, 'paid') returning id into v_order;
+  for f in select flavor_id, remaining from public.flavor_reserved(v_sunday) loop
+    if f.remaining > 0 then
+      insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, f.flavor_id, f.remaining, 100);
+    end if;
+  end loop;
+  set local role anon;
+  select * into i from public.current_sunday_info();
+  assert i.is_full and i.remaining = 0 and i.ordering_sunday = v_sunday + 7, 'banner info: full, ordering the next Sunday';
+  select * into r from public.place_order('Roll', null, '09176660030', 'pickup', null, '[]'::jsonb, null, '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
+  assert r.sunday_date = v_sunday + 7, 'order should land on ' || (v_sunday + 7) || ', got ' || r.sunday_date;
+  select * into av from public.flavor_availability() where slug = 'choc-chip';
+  assert av.sunday_date = v_sunday + 7 and av.remaining = av.weekly_cap - 2, 'availability now describes the next Sunday';
+  reset role;
+  raise notice 'PASS (c): all flavors sold out -> ordering and availability move to the next Sunday (%)', r.sunday_date;
 end $$;
 rollback;
 
@@ -422,7 +503,7 @@ begin
   assert n = 1 and (select status from public.orders where ref_code = o.ref_code) = 'expired', 'should expire 1 order';
   raise notice 'PASS (i): admin_expire_stale_orders expired the overdue order';
 
-  -- Reopening needs room: fill the Sunday to 45 cookies, then try to bring the order back.
+  -- Reopening needs room in each flavor: sell out Chimp Chips, then try to bring the order back.
   reset role;
   insert into public.orders (ref_code, sunday_date, name, phone, fulfillment, total, status)
   values ('AJ-FIXTURE', v_sunday, 'Fixture', '09170000000', 'pickup', 0, 'paid') returning id into v_order;
@@ -469,12 +550,14 @@ begin;
 do $$
 declare
   boxes jsonb := '[{"size":4,"items":[{"flavor_slug":"choc-chip","qty":4}]}]';
+  boxes2 jsonb := '[{"size":4,"items":[{"flavor_slug":"double-choc","qty":4}]}]';
+  boxes3 jsonb := '[{"size":4,"items":[{"flavor_slug":"kinder-bueno","qty":4}]}]';
   admin_id uuid := gen_random_uuid(); r record; j jsonb;
 begin
   set local role anon;
   perform public.place_order('A', null, '+639171234567', 'pickup', null, boxes);
-  perform public.place_order('A', null, '09171234567',  'pickup', null, boxes);
-  perform public.place_order('A', null, '63 917 123 4567', 'pickup', null, boxes);
+  perform public.place_order('A', null, '09171234567',  'pickup', null, boxes2);
+  perform public.place_order('A', null, '63 917 123 4567', 'pickup', null, boxes3);
   begin
     perform public.place_order('A', null, '0917-123-4567', 'pickup', null, boxes);
     raise exception 'FAIL (j): a 4th open order from the same phone was accepted';
@@ -483,7 +566,7 @@ begin
     raise notice 'PASS (j): 4th open order from the same phone rejected -> %', sqlerrm;
   end;
   -- A different phone is unaffected.
-  perform public.place_order('B', null, '09179998888', 'pickup', null, boxes);
+  perform public.place_order('B', null, '09179998888', 'pickup', null, boxes2);
   reset role;
 
   -- Expired orders don't count against the limit.
@@ -590,10 +673,10 @@ begin
   begin
     perform 1 from public.place_order('Min', null, '09175550004', 'pickup', null, '[]'::jsonb, null,
       '[{"flavor_slug":"choc-chip","qty":46}]'::jsonb);
-    raise exception 'FAIL (k): 46 cookies in one order accepted';
+    raise exception 'FAIL (k): 46 Chimp Chips in one order accepted';
   exception when others then
-    if sqlerrm not like '%more than the 45%' then raise; end if;
-    raise notice 'PASS (k): an order bigger than the 45 cap is rejected';
+    if sqlerrm not like '%only 15 Chimp Chips left%' and sqlerrm not like '%Chimp Chips is sold out%' then raise; end if;
+    raise notice 'PASS (k): an order bigger than a flavor cap is rejected (%)', sqlerrm;
   end;
   begin
     perform 1 from public.place_order('Min', null, '09175550004', 'pickup', null, '[]'::jsonb, null,
@@ -607,36 +690,29 @@ begin
 end $$;
 rollback;
 
--- Singles count toward the 45 cap
+-- Singles count toward a flavor's weekly cap (the full per-flavor tests are in block (c))
 begin;
 do $$
 declare
-  v_sunday date := public.next_order_sunday();
-  v_order bigint; v_box bigint;
+  v_sunday date := public.ordering_sunday();
+  v_have int := (select reserved from public.flavor_reserved(public.ordering_sunday()) where slug = 'choc-chip');
   v_flavor bigint := (select id from public.flavors where slug = 'choc-chip');
-  v_existing int := public.cookies_taken(public.next_order_sunday());   -- real orders already booked that Sunday
-  r record; i record;
+  v_order bigint; r record;
 begin
-  -- top the Sunday up to exactly 43 cookies (a fixture, as postgres), whatever real orders are already there
   insert into public.orders (ref_code, sunday_date, name, phone, fulfillment, total, status)
   values ('AJ-FIXTURE', v_sunday, 'Fixture', '09170000000', 'pickup', 0, 'paid') returning id into v_order;
-  insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, v_flavor, 43 - v_existing, 105);
-
+  insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, v_flavor, 13 - v_have, 105);
   set local role anon;
-  -- 43 + 2 singles = 45: fits, stays on this Sunday
-  select * into r from public.place_order('Cap1', null, '09175550005', 'pickup', null, '[]'::jsonb, null,
-    '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
-  assert r.sunday_date = v_sunday, 'singles reaching exactly 45 should stay on ' || v_sunday;
-  -- now 45 are taken: even 2 more singles roll over to the next Sunday
-  select * into r from public.place_order('Cap2', null, '09175550006', 'pickup', null, '[]'::jsonb, null,
-    '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
-  assert r.sunday_date = v_sunday + 7, '2 more singles should roll to ' || (v_sunday + 7) || ', got ' || r.sunday_date;
-  -- and the banner function agrees (smallest possible order is now 2 cookies)
-  select * into i from public.current_sunday_info();
-  assert i.is_full and i.cookies_taken = 45 and i.ordering_sunday = v_sunday + 7, 'banner should say full';
+  select * into r from public.place_order('Cap1', null, '09175550005', 'pickup', null, '[]'::jsonb, null, '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
+  assert r.sunday_date = v_sunday, '2 singles that fit under the cap stay on ' || v_sunday;
+  begin
+    perform 1 from public.place_order('Cap2', null, '09175550006', 'pickup', null, '[]'::jsonb, null, '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
+    raise exception 'FAIL (k): singles went past the flavor cap';
+  exception when others then
+    if sqlerrm not like '%Chimp Chips is sold out%' then raise; end if;
+  end;
   reset role;
-  raise notice 'PASS (k): singles count toward the 45 cap and roll over like box cookies';
-
+  raise notice 'PASS (k): single cookies count toward the flavor cap';
 end $$;
 rollback;
 

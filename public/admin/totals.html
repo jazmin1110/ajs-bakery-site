@@ -33,8 +33,7 @@
       requireAdmin, renderNav, setupSundayPicker, selectedSunday, expireStale, loadOrders, loadFlavors,
       summarize, batchesFor, BATCH_SIZE,
     } from "../js/admin.js";
-    import { fetchSundayInfo } from "../js/supabase.js";
-    import { esc } from "../js/ui.js";
+        import { esc } from "../js/ui.js";
 
     await requireAdmin();
     renderNav("totals");
@@ -49,9 +48,9 @@
       $("out").innerHTML = `<p class="loading">Loading totals...</p>`;
       try {
         try { await expireStale(); } catch (e) { console.error("expire failed", e); }
-        // The 45-cap comes from the database too, so it's never out of sync
-        const [orders, flavors, info] = await Promise.all([loadOrders(sunday), loadFlavors(), fetchSundayInfo()]);
-        data = { summary: summarize(orders, flavors), cap: info.cap };
+        // Each flavor's weekly cap comes from the database too (flavors.weekly_cap), so it's never out of sync
+        const [orders, flavors] = await Promise.all([loadOrders(sunday), loadFlavors()]);
+        data = { summary: summarize(orders, flavors) };
         render();
       } catch (err) {
         console.error(err);
@@ -63,11 +62,8 @@
     }
 
     function render() {
-      const { summary, cap } = data;
-      const used = summary.paid + summary.pending;       // what holds cap space
-      const left = Math.max(cap - used, 0);
-      const pct = Math.min(100, Math.round((used / cap) * 100));
-
+      const { summary } = data;
+      const used = summary.paid + summary.pending;       // all reserved cookies, every flavor
       const flavors = Object.values(summary.perFlavor);
       const sizes = Object.keys(summary.boxes).map(Number).sort((a, b) => a - b);
 
@@ -82,20 +78,28 @@
 
       $("out").innerHTML = `
         <section class="t-card">
-          <h2>Cookies vs cap</h2>
-          <p class="t-big"><strong>${used}</strong> of ${cap} <span class="t-sub">(${left} left)</span></p>
-          <div class="progress" aria-hidden="true"><div style="width:${pct}%"></div></div>
-          <p class="t-sub">${summary.paid} paid + ${summary.pending} pending. Cancelled and expired orders don't count.</p>
+          <h2>Reserved vs weekly cap</h2>
+          <p class="t-sub">Each flavor has its own cap per Sunday. Paid and pending orders reserve cookies; cancelled and expired ones don't.</p>
+          ${flavors.map((f) => {
+            const reserved = f.paid + f.pending;
+            const pct = f.cap ? Math.min(100, Math.round((reserved / f.cap) * 100)) : 100;
+            const left = Math.max((f.cap ?? 0) - reserved, 0);
+            return `<div class="cap-row">
+              <div class="cap-head"><strong>${esc(f.name)}</strong>
+                <span>${reserved} of ${f.cap ?? "?"} <span class="t-sub">(${left === 0 ? "sold out" : left + " left"})</span></span></div>
+              <div class="progress${reserved >= f.cap ? " progress-full" : ""}" aria-hidden="true"><div style="width:${pct}%"></div></div>
+            </div>`;
+          }).join("")}
         </section>
 
         <section class="t-card">
           <h2>Cookies per flavor</h2>
           <p class="t-sub">Counts box cookies and single cookies together.</p>
           <table class="t-table">
-            <thead><tr><th></th><th>Paid</th><th>Pending</th><th>Total</th></tr></thead>
+            <thead><tr><th></th><th>Paid</th><th>Pending</th><th>Total</th><th>Cap</th></tr></thead>
             <tbody>
-              ${flavors.map((f) => `<tr><th scope="row">${esc(f.name)}</th><td>${f.paid}</td><td>${f.pending}</td><td><strong>${f.paid + f.pending}</strong></td></tr>`).join("")}
-              <tr class="t-sum"><th scope="row">All flavors</th><td>${summary.paid}</td><td>${summary.pending}</td><td><strong>${used}</strong></td></tr>
+              ${flavors.map((f) => `<tr><th scope="row">${esc(f.name)}</th><td>${f.paid}</td><td>${f.pending}</td><td><strong>${f.paid + f.pending}</strong></td><td>${f.cap ?? "?"}</td></tr>`).join("")}
+              <tr class="t-sum"><th scope="row">All flavors</th><td>${summary.paid}</td><td>${summary.pending}</td><td><strong>${used}</strong></td><td></td></tr>
             </tbody>
           </table>
         </section>

@@ -51,8 +51,12 @@ export const CONFIG = {
   maxBoxesPerOrder: 3, // cart limit (the checkout step must respect this too)
   minCookiesPerOrder: 2, // copy only: the database enforces the minimum (singles + boxes combined)
 
-  // Copy only: the real cap (45) and cutoff are enforced by the database.
-  capPerSunday: 45,
+  // Copy only: the real limit (weekly_cap on each flavor, 15 each) and the cutoff are enforced by the database.
+  // This number is just the fallback for the "15 of each flavor" wording until the live data loads.
+  weeklyCapPerFlavor: 15,
+  // A sanity limit on the cart's size (so nobody's cart grows forever). The database's
+  // per-flavor weekly caps are the real limit.
+  maxCookiesInCart: 90,
   cutoff: { label: "Wednesday 9pm" },
 
   pickupWindow: "3-6pm",

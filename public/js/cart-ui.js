@@ -25,6 +25,28 @@ export function minimumHtml() {
   return `<p class="min-msg" role="alert">Minimum order is ${cart.MIN_COOKIES} cookies. Add ${short} more to check out.</p>`;
 }
 
+// A small notice under the header: what changed in the cart while the customer was away.
+// Fed by cart.js ("cart:notice"). Stays until dismissed.
+let noticeBox;
+function showNotices() {
+  const messages = cart.takeNotices();
+  if (!messages.length) return;
+  if (!noticeBox) {
+    noticeBox = document.createElement("div");
+    noticeBox.className = "cart-notice";
+    noticeBox.setAttribute("role", "status");
+    const header = document.querySelector(".site-header");
+    if (header) header.after(noticeBox); else document.body.prepend(noticeBox);
+    noticeBox.addEventListener("click", (e) => { if (e.target.closest("[data-dismiss-notice]")) noticeBox.hidden = true; });
+  }
+  noticeBox.innerHTML = `
+    <div class="container cart-notice-inner">
+      <div><strong>Your cart was updated</strong><ul>${messages.map((m) => `<li>${esc(m)}</li>`).join("")}</ul></div>
+      <button type="button" class="link-btn" data-dismiss-notice aria-label="Dismiss this notice">OK</button>
+    </div>`;
+  noticeBox.hidden = false;
+}
+
 function build(showBar) {
   // Sticky bar (hidden until the cart has items)
   bar = document.createElement("div");
@@ -69,6 +91,10 @@ function build(showBar) {
     if (rm) return cart.remove(rm.dataset.removeBox);
     const rs = e.target.closest("[data-remove-single]");
     if (rs) return cart.removeSingle(rs.dataset.removeSingle);
+    if (e.target.closest("[data-clear-cart]")) {
+      if (confirm("Remove everything from your cart?")) cart.clear();
+      return;
+    }
     const step = e.target.closest("[data-single-step]");
     if (step) {
       const line = cart.getSingles().find((s) => s.slug === step.dataset.slug);
@@ -101,7 +127,6 @@ function boxesSection(boxes) {
         </div>
         <p class="cart-box-items">${breakdown(b)}</p>
         ${b.giftNote ? `<p class="cart-box-note">🎁 ${esc(b.giftNote)}</p>` : ""}
-        ${b.unavailable ? `<p class="cart-box-warn">⚠ ${esc(b.unavailable.join(", "))} isn't available anymore. Please remove this box.</p>` : ""}
         <button type="button" class="link-btn" data-remove-box="${esc(b.id)}">Remove</button>
       </article>`).join("")}
       <div class="subtotal"><span>Boxes subtotal</span><span>${peso(cart.boxesTotal())}</span></div>
@@ -127,7 +152,6 @@ function singlesSection(singles) {
           <span class="cart-line-each">${s.qty} × ${peso(s.unitPrice)}</span>
           <button type="button" class="link-btn" data-remove-single="${esc(s.slug)}">Remove</button>
         </div>
-        ${s.unavailable ? `<p class="cart-box-warn">⚠ ${esc(s.name)} isn't available as a single anymore. Please remove it.</p>` : ""}
       </article>`).join("")}
       <div class="subtotal"><span>Singles subtotal</span><span>${peso(cart.singlesTotal())}</span></div>
     </section>`;
@@ -138,7 +162,7 @@ function render() {
   const singles = cart.getSingles();
   const cookies = cart.cookieCount();
   const empty = cart.isEmpty();
-  const canCheckout = !empty && cart.meetsMinimum() && !cart.hasUnavailable();
+  const canCheckout = !empty && cart.meetsMinimum();
 
   // Header badge (if the page has one): total cookies in the cart
   const badge = document.getElementById("cart-count");
@@ -156,7 +180,7 @@ function render() {
   } else {
     // can't check out yet: show why, and make the button inert
     go.removeAttribute("href"); go.setAttribute("aria-disabled", "true"); go.classList.add("is-disabled");
-    go.textContent = cart.meetsMinimum() ? "Fix cart" : `Add ${cart.cookiesShort()} more`;
+    go.textContent = `Add ${cart.cookiesShort()} more`;
   }
 
   // Remember which stepper button had focus, so repeated taps on + or − keep working
@@ -185,6 +209,7 @@ function render() {
       ${canCheckout
         ? `<a class="btn btn-block" href="checkout.html">Checkout</a>`
         : `<button type="button" class="btn btn-block" disabled>Checkout</button>`}
+      <button type="button" class="link-btn drawer-clear" data-clear-cart>Clear cart</button>
       <small class="drawer-fine">Final price is confirmed when you place your order.</small>`;
   }
 
@@ -212,6 +237,8 @@ export function closeCart() {
 export function initCartUI({ showBar = true } = {}) {
   build(showBar);
   render();
+  showNotices();                                   // e.g. an old cart was cleared during render()
+  window.addEventListener("cart:notice", showNotices);
   window.addEventListener("cart:changed", render); // this tab
   window.addEventListener("storage", render);      // other tabs
 }

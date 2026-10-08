@@ -52,8 +52,8 @@
 
   <script type="module">
     import { CONFIG } from "./js/config.js";
-    import { fetchMenu, fetchSundayInfo } from "./js/supabase.js";
-    import { orderingSunday, renderBanner, renderBannerError, renderClosed, flavorPhoto, peso, esc } from "./js/ui.js";
+    import { fetchMenu, fetchSundayInfo, fetchAvailability } from "./js/supabase.js";
+    import { orderingSunday, renderBanner, renderBannerError, renderClosed, flavorPhoto, stockLabel, peso, esc } from "./js/ui.js";
     import * as cart from "./js/cart.js";
     import { initCartUI, openCart } from "./js/cart-ui.js";
 
@@ -62,15 +62,23 @@
 
     // Banner loads on its own; the builder doesn't depend on it
     fetchSundayInfo()
-      .then((info) => renderBanner(document.getElementById("order-banner"), orderingSunday(info)))
+      .then((info) => {
+        const ordering = orderingSunday(info);
+        renderBanner(document.getElementById("order-banner"), ordering);
+        cart.rememberSunday(ordering.date);   // so checkout can warn if the Sunday changes later
+      })
       .catch((err) => { console.error(err); renderBannerError(document.getElementById("order-banner")); });
 
     try {
-      const { flavors, boxes } = await fetchMenu();
+      // The availability call is optional: if it fails the builder still works (the database enforces the caps anyway)
+      const [{ flavors, boxes }, stock] = await Promise.all([
+        fetchMenu(),
+        fetchAvailability().catch((err) => { console.error(err); return null; }),
+      ]);
       cart.syncWithMenu({ flavors, boxes });   // keep the cart's names/prices in line with today's menu
       const size = Number(new URLSearchParams(location.search).get("size"));
       const box = boxes.find((b) => b.size === size);
-      if (!box) showSizePicker(boxes); else startBuilder(box, flavors);
+      if (!box) showSizePicker(boxes); else startBuilder(box, flavors, stock ? stock.bySlug : null);
     } catch (err) {
       console.error(err);
       renderClosed(root);   // can't reach the database: "Ordering is closed" + Instagram DM link
@@ -89,10 +97,15 @@
           </div></article>`).join("")}</div>`;
     }
 
-    function startBuilder(box, flavors) {
+    function startBuilder(box, flavors, availability) {
       document.title = `Build your box of ${box.size} | AJ's Bakery`;
       const qty = Object.fromEntries(flavors.map((f) => [f.slug, 0]));
       const chosen = () => Object.values(qty).reduce((a, b) => a + b, 0);
+
+      // How many of this flavor can go in THIS box: what's left this Sunday, minus what's
+      // already in the cart (other boxes and single cookies). null availability = unknown, no limit.
+      const limitFor = (slug) =>
+        availability && availability[slug] ? Math.max(0, availability[slug].remaining - cart.flavorQty(slug)) : box.size;
 
       root.innerHTML = `
         <a class="back-link" href="index.html#boxes">&larr; All boxes</a>
@@ -110,6 +123,7 @@
             <div class="flavor-emoji">${flavorPhoto(f.slug, f.name, "flavor-thumb")}</div>
             <div class="flavor-info">
               <strong>${esc(f.name)}</strong>
+              <span class="stock" data-stock hidden></span>
               ${f.surcharge > 0 ? `<span class="surcharge">+${peso(f.surcharge)} each</span>` : ""}
             </div>
             <div class="stepper">
@@ -147,20 +161,35 @@
         const extras = flavors.filter((f) => f.surcharge > 0 && qty[f.slug] > 0).map((f) => f.name);
         $("price-note").textContent = surcharge > 0 ? `includes ${peso(surcharge)} extra for ${extras.join(" + ")}` : "";
 
+        let available = 0;   // cookies still available across all flavors (for this box)
         root.querySelectorAll(".flavor-row").forEach((row) => {
-          const q = qty[row.dataset.slug];
+          const slug = row.dataset.slug;
+          const q = qty[slug];
+          const limit = limitFor(slug);
+          available += limit;
+          const left = availability && availability[slug] ? availability[slug].remaining : null;
+          const label = stockLabel(left);
+          const badge = row.querySelector("[data-stock]");
+          badge.textContent = label; badge.hidden = !label;
+          badge.classList.toggle("stock-out", left !== null && left <= 0);
+          row.classList.toggle("is-soldout", left !== null && left <= 0);
           row.querySelector("output").textContent = q;
           row.querySelector('[data-step="-1"]').disabled = q === 0;
-          row.querySelector('[data-step="1"]').disabled = full; // can't go past the box size
+          // + stops at the box size AND at the flavor's remaining limit
+          row.querySelector('[data-step="1"]').disabled = full || q >= limit;
         });
+        const notEnough = available < box.size;
 
         const addBtn = $("add-btn");
         const cartFull = cart.isFull();
-        addBtn.disabled = !full || cartFull;
+        addBtn.disabled = !full || cartFull || notEnough;
         addBtn.textContent = cartFull ? "Your cart is full"
+          : notEnough ? "Not enough left"
           : full ? `Add to cart · ${peso(cart.priceFor(box.price, items()))}`
           : `Pick ${box.size - n} more`;
-        $("builder-msg").textContent = cartFull
+        $("builder-msg").textContent = notEnough
+          ? `Only ${available} cookie${available === 1 ? "" : "s"} left for this Sunday, not enough for a box of ${box.size}.`
+          : cartFull
           ? `You can order up to ${CONFIG.maxBoxesPerOrder} boxes at a time. Remove one from your cart to add another.`
           : "";
       }
@@ -171,7 +200,7 @@
         if (!btn) return;
         const slug = btn.closest(".flavor-row").dataset.slug;
         const next = qty[slug] + Number(btn.dataset.step);
-        if (next < 0 || (next > qty[slug] && chosen() >= box.size)) return;
+        if (next < 0 || (next > qty[slug] && (chosen() >= box.size || next > limitFor(slug)))) return;
         qty[slug] = next;
         refresh();
       });

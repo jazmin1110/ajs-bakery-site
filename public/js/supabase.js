@@ -57,6 +57,17 @@ export async function fetchMenu() {
   };
 }
 
+// How many of each flavor are left for the current ordering Sunday (15 of each per Sunday).
+// Returns { sundayDate, bySlug: { "choc-chip": { cap, reserved, remaining }, ... } }.
+// When every flavor is sold out the database moves this to the NEXT Sunday by itself.
+export async function fetchAvailability() {
+  const { data, error } = await getClient().rpc("flavor_availability");
+  if (error) throw error;
+  const bySlug = {};
+  for (const r of data) bySlug[r.slug] = { cap: r.weekly_cap, reserved: r.reserved, remaining: r.remaining };
+  return { sundayDate: data.length ? data[0].sunday_date : null, bySlug };
+}
+
 // Which Sunday is open, when it closes, and how many cookies are left.
 // Calls the database function current_sunday_info() (it returns one row).
 export async function fetchSundayInfo() {

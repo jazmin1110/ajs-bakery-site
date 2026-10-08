@@ -95,8 +95,8 @@
 
   <script type="module">
     import { CONFIG } from "./js/config.js";
-    import { fetchSundayInfo, fetchMenu, placeOrder } from "./js/supabase.js";
-    import { orderingSunday, peso, esc } from "./js/ui.js";
+    import { fetchSundayInfo, fetchMenu, fetchAvailability, placeOrder } from "./js/supabase.js";
+    import { orderingSunday, formatSunday, peso, esc } from "./js/ui.js";
     import * as cart from "./js/cart.js";
     import { initCartUI, hintHtml, minimumHtml } from "./js/cart-ui.js";
 
@@ -108,7 +108,8 @@
     let ordering = null;       // this Sunday's info from the database (display only)
     let sending = false;       // true while the order request is in flight
     let done = false;          // true once the order is placed (page is about to change)
-    let pricesUpdated = false; // true if today's menu changed what's in the cart
+    let availability = null;   // how many of each flavor are left this Sunday (display only; the database decides)
+    let sundayNotice = "";     // set if the ordering Sunday changed since the cart was built
 
     // ---- Retry-safe order key --------------------------------------------------
     // If the connection drops after the database saved the order, the customer
@@ -164,8 +165,7 @@
             </div>
             <p class="cart-box-items">${b.items.map((it) => `${it.qty} × ${esc(it.name)}`).join("<br>")}</p>
             ${b.giftNote ? `<p class="cart-box-note">🎁 ${esc(b.giftNote)}</p>` : ""}
-            ${b.unavailable ? `<p class="cart-box-warn">⚠ ${esc(b.unavailable.join(", "))} isn't available anymore.
-              <button type="button" class="link-btn" data-remove-box="${esc(b.id)}">Remove this box</button></p>` : ""}
+
           </div>`).join("")}
         <div class="subtotal"><span>Boxes subtotal</span><span>${peso(cart.boxesTotal())}</span></div>` : "";
 
@@ -178,18 +178,17 @@
               <span class="price">${peso(s.unitPrice * s.qty)}</span>
             </div>
             <p class="cart-box-items">${s.qty} × ${peso(s.unitPrice)}</p>
-            ${s.unavailable ? `<p class="cart-box-warn">⚠ ${esc(s.name)} isn't available as a single anymore.
-              <button type="button" class="link-btn" data-remove-single="${esc(s.slug)}">Remove</button></p>` : ""}
+
           </div>`).join("")}
         <div class="subtotal"><span>Singles subtotal</span><span>${peso(cart.singlesTotal())}</span></div>` : "";
 
       summary.innerHTML = `
+        ${sundayNotice ? `<p class="hint-save" role="status">📅 ${sundayNotice}</p>` : ""}
         ${sundayHtml}
         ${boxesHtml}
         ${singlesHtml}
         ${hintHtml()}
         <div class="drawer-total"><span>Total</span><span class="price">${peso(cart.total())}</span></div>
-        ${pricesUpdated ? `<p class="field-hint">Heads up: we updated the prices in your cart to match today's menu.</p>` : ""}
         <p class="field-hint">Final price is confirmed when you place your order.</p>`;
 
       // The gift note belongs to boxes; with only single cookies there's nothing to attach it to
@@ -197,14 +196,18 @@
 
       // What stops checkout right now?
       //   - fewer than 2 cookies (singles and boxes together)
-      //   - something in the cart the menu no longer offers
+      //   - more of a flavor than is left this Sunday (we know once availability has loaded)
       const short = !cart.meetsMinimum();
-      const blocked = cart.hasUnavailable();
-      $("submit-btn").disabled = short || blocked || sending;
+      const over = Object.entries(cart.flavorTotals())
+        .filter(([slug, t]) => availability && availability[slug] && t.qty > availability[slug].remaining);
+      $("submit-btn").disabled = short || over.length > 0 || sending;
       if (short) {
         showFormError(`${minimumHtml().replace(/<\/?p[^>]*>/g, "")} <a href="index.html#menu">Add cookies</a>`, false);
-      } else if (blocked) {
-        showFormError("Something in your cart isn't available anymore. Please remove it above to continue.", false);
+      } else if (over.length) {
+        const [slug, t] = over[0];
+        const left = availability[slug].remaining;
+        showFormError(`${left === 0 ? `${esc(t.name)} is sold out for this Sunday.` : `Only ${left} ${esc(t.name)} left for this Sunday, and you have ${t.qty} in your cart.`}
+          Please remove some from your cart (tap the cart icon) to continue.`, false);
       } else if (!sending) {
         $("form-error").hidden = true;
       }
@@ -219,14 +222,31 @@
 
     // Check the cart against today's menu (flavor removed? price changed?). Best effort:
     // the database re-checks everything when the order is placed anyway.
+    // (Retired flavors are removed and price changes shown in a notice at the top of the page.)
     fetchMenu()
-      .then((menu) => { pricesUpdated = cart.syncWithMenu(menu).changed; renderSummary(); })
+      .then((menu) => { cart.syncWithMenu(menu); renderSummary(); })
+      .catch((err) => console.error(err));
+
+    // How many of each flavor are left, so we can warn BEFORE the order is placed
+    fetchAvailability()
+      .then((stock) => { availability = stock.bySlug; renderSummary(); })
       .catch((err) => console.error(err));
 
     // Load the Sunday date, then draw. The page works even if this fails.
     renderSummary();
     fetchSundayInfo()
-      .then((info) => { ordering = orderingSunday(info); renderSummary(); })
+      .then((info) => {
+        ordering = orderingSunday(info);
+        // Was this cart built for a different Sunday? (the cutoff passed, or everything sold out)
+        const before = cart.sundayChangedFrom(ordering.date);
+        if (before) {
+          sundayNotice = `The Sunday changed since you built your cart: it was for ${esc(formatSunday(before))}, and your order is now for <strong>${esc(ordering.label)}</strong>.`;
+          cart.acknowledgeSunday(ordering.date);   // tell them once
+        } else {
+          cart.rememberSunday(ordering.date);
+        }
+        renderSummary();
+      })
       .catch((err) => console.error(err));
     window.addEventListener("cart:changed", renderSummary);
 
@@ -325,6 +345,7 @@
         case "invalid_boxes":
         case "note_too_long":
         case "too_many_open_orders":
+        case "flavor_cap":
         case "minimum_not_met":
         case "too_many_cookies":
         case "empty_order":
@@ -350,7 +371,7 @@
       const boxes = cart.getBoxes();
       const singles = cart.getSingles();
       if (cart.isEmpty()) return renderSummary();
-      if (!cart.meetsMinimum() || cart.hasUnavailable()) return renderSummary();   // shows why checkout is blocked
+      if (!cart.meetsMinimum()) return renderSummary();   // shows why checkout is blocked
 
       // The checkout note goes on boxes that don't have their own note
       const sharedNote = $("gift").value.trim();

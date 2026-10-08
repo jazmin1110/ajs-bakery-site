@@ -72,10 +72,7 @@ export function renderBanner(el, ordering) {
   const lead = ordering.isFull
     ? `This Sunday is full, ordering for <strong>${esc(ordering.label)}</strong>`
     : `Now ordering for <strong>${esc(ordering.label)}</strong>`;
-  let small = `Orders by ${esc(ordering.cutoffLabel)} go to this Sunday`;
-  if (!ordering.isFull && ordering.remaining <= 12) {
-    small += ` · only ${ordering.remaining} cookies left`;
-  }
+  const small = `Orders by ${esc(ordering.cutoffLabel)} go to this Sunday · ${CONFIG.weeklyCapPerFlavor} of each flavor, once they're gone, they're gone`;
   el.innerHTML = `${lead}<small>${small}</small>`;
 }
 
@@ -114,6 +111,13 @@ export function flavorPhoto(slug, name, cls) {
     onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${info.emoji}'}))">`;
 }
 
+// "Sold out" at 0, "3 left" when 5 or fewer remain, nothing otherwise
+export function stockLabel(remaining) {
+  if (remaining == null) return "";
+  if (remaining <= 0) return "Sold out";
+  return remaining <= 5 ? `${remaining} left` : "";
+}
+
 // The cheapest a cookie gets inside a box: the best box's per-cookie price plus the flavor's
 // box surcharge (e.g. 380 / 4 = 95; Bueno Mucho adds 30 -> 125). For the "or from ₱95 each" label.
 export function boxEachPrice(flavor, boxes) {
@@ -123,10 +127,12 @@ export function boxEachPrice(flavor, boxes) {
 }
 
 // One card per flavor: single price, "or from ₱X each in a box", and a stepper + Add button for singles.
-export function renderMenu(container, flavors, boxes = []) {
+export function renderMenu(container, flavors, boxes = [], availability = {}) {
   container.innerHTML = flavors
     .map((f) => {
       const info = flavorInfo(f.slug);
+      const left = availability[f.slug] ? availability[f.slug].remaining : null;
+      const stock = stockLabel(left);
       const each = boxEachPrice(f, boxes);
       const inBox = each != null ? `from ${peso(each)} each in a box` : "";
       const canSingle = f.single_price != null;
@@ -134,7 +140,7 @@ export function renderMenu(container, flavors, boxes = []) {
       <article class="card" data-slug="${esc(f.slug)}">
         <div class="card-photo">${flavorPhoto(f.slug, f.name, "card-img")}</div>
         <div class="card-body">
-          <h3>${esc(f.name)}</h3>
+          <h3>${esc(f.name)} ${stock ? `<span class="stock${left <= 0 ? " stock-out" : ""}" data-stock>${stock}</span>` : `<span class="stock" data-stock hidden></span>`}</h3>
           <p>${esc(info.description)}</p>
           ${canSingle
             ? `<div class="price">${peso(f.single_price)} <small>each</small></div>
@@ -178,7 +184,7 @@ export function renderBoxes(container, noteEl, boxes, flavors) {
     .join(" ");
 }
 
-// Fill [data-config="key"], [data-cutoff] and [data-cap] from static config copy
+// Fill [data-config="key"], [data-cutoff] and [data-weekly-cap] from static config copy
 export function renderConfigText() {
   document.querySelectorAll("[data-config]").forEach((el) => {
     const value = CONFIG[el.dataset.config];
@@ -187,7 +193,7 @@ export function renderConfigText() {
   document.querySelectorAll("[data-cutoff]").forEach((el) => {
     el.textContent = CONFIG.cutoff.label;
   });
-  document.querySelectorAll("[data-cap]").forEach((el) => {
-    el.textContent = CONFIG.capPerSunday;
+  document.querySelectorAll("[data-weekly-cap]").forEach((el) => {
+    el.textContent = CONFIG.weeklyCapPerFlavor;
   });
 }
