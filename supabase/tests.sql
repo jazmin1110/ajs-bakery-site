@@ -339,3 +339,103 @@ begin
   raise notice 'PASS (h): retry with the same key returned order % and created no duplicate', a.ref_code;
 end $$;
 rollback;
+
+
+-- ===========================================================================
+-- (i) Admin functions (migration 004): only a listed admin can use them.
+-- We make two throwaway logins inside the transaction (one admin, one not).
+-- On Supabase, "request.jwt.claims" is how Postgres learns who is logged in.
+-- ===========================================================================
+begin;
+do $$
+declare
+  admin_id uuid := gen_random_uuid(); other_id uuid := gen_random_uuid();
+  o record; j jsonb; n int;
+  v_sunday date; v_order bigint; v_box bigint;
+  v_flavor bigint := (select id from public.flavors where slug = 'choc-chip');
+begin
+  insert into auth.users (id) values (admin_id), (other_id);
+  insert into public.admins (user_id) values (admin_id);
+
+  -- A customer places an order.
+  set local role anon;
+  select * into o from public.place_order('Zed', '@zed', '09171234567', 'delivery', '1 Test St',
+    '[{"size":4,"gift_note":"Hi","items":[{"flavor_slug":"choc-chip","qty":2},{"flavor_slug":"kinder-bueno","qty":2}]}]'::jsonb);
+  v_sunday := o.sunday_date;
+
+  -- Not logged in: can't even call it.
+  begin
+    perform public.admin_orders(v_sunday);
+    raise exception 'FAIL (i): anon called admin_orders';
+  exception when insufficient_privilege then
+    raise notice 'PASS (i): anon cannot call admin functions';
+  end;
+
+  -- Logged in but NOT an admin: refused.
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', other_id)::text, true);
+  begin
+    perform public.admin_orders(v_sunday);
+    raise exception 'FAIL (i): non-admin read orders';
+  exception when insufficient_privilege then
+    raise notice 'PASS (i): a logged-in non-admin gets "Not authorized"';
+  end;
+  begin
+    perform public.admin_set_order_status(o.ref_code, 'paid');
+    raise exception 'FAIL (i): non-admin changed a status';
+  exception when insufficient_privilege then
+    null;
+  end;
+  begin
+    perform 1 from public.orders;   -- direct table read: RLS hides every row
+    select count(*) into n from public.orders;
+    assert n = 0, 'non-admin must see 0 orders directly, saw ' || n;
+    raise notice 'PASS (i): non-admin sees 0 rows in orders';
+  end;
+
+  -- The admin.
+  perform set_config('request.jwt.claims', json_build_object('sub', admin_id)::text, true);
+  j := public.admin_orders(v_sunday);
+  assert jsonb_array_length(j) = 1 and j -> 0 ->> 'ref_code' = o.ref_code, 'admin should see the order';
+  assert j -> 0 -> 'boxes' -> 0 ->> 'gift_note' = 'Hi'
+     and jsonb_array_length(j -> 0 -> 'boxes' -> 0 -> 'items') = 2
+     and j -> 0 ->> 'address' = '1 Test St', 'order json should include box, items, note, address';
+  raise notice 'PASS (i): admin sees the order with its box, flavors, note and address';
+
+  perform public.admin_set_order_status(o.ref_code, 'paid');
+  assert (select status from public.orders where ref_code = o.ref_code) = 'paid', 'should be paid';
+  begin
+    perform public.admin_set_order_status(o.ref_code, 'expired');
+    raise exception 'FAIL (i): admin set status to expired by hand';
+  exception when others then
+    if sqlerrm not like '%pending, paid or cancelled%' then raise; end if;
+  end;
+  perform public.admin_set_order_status(o.ref_code, 'cancelled');
+  assert (select status from public.orders where ref_code = o.ref_code) = 'cancelled', 'should be cancelled';
+  raise notice 'PASS (i): Mark Paid and Cancel work';
+
+  -- Expiry: backdate a pending order, then run the expire function.
+  reset role;
+  update public.orders set status = 'pending', expires_at = now() - interval '1 hour' where ref_code = o.ref_code;
+  set local role authenticated;
+  n := public.admin_expire_stale_orders();
+  assert n = 1 and (select status from public.orders where ref_code = o.ref_code) = 'expired', 'should expire 1 order';
+  raise notice 'PASS (i): admin_expire_stale_orders expired the overdue order';
+
+  -- Reopening needs room: fill the Sunday to 45 cookies, then try to bring the order back.
+  reset role;
+  insert into public.orders (ref_code, sunday_date, name, phone, fulfillment, total, status)
+  values ('AJ-FIXTURE', v_sunday, 'Fixture', '09170000000', 'pickup', 0, 'paid') returning id into v_order;
+  insert into public.order_boxes (order_id, position, size, price) values (v_order, 1, 6, 0) returning id into v_box;
+  insert into public.order_items (order_id, order_box_id, flavor_id, qty) values (v_order, v_box, v_flavor, 45);
+  set local role authenticated;
+  begin
+    perform public.admin_set_order_status(o.ref_code, 'paid');
+    raise exception 'FAIL (i): reopened an order past the cap';
+  exception when others then
+    if sqlerrm not like '%no room left%' then raise; end if;
+    raise notice 'PASS (i): cannot bring back an order when the Sunday is full -> %', sqlerrm;
+  end;
+  reset role;
+end $$;
+rollback;

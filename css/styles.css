@@ -505,6 +505,72 @@ body.has-cart-bar { padding-bottom: 5rem; }  /* so the bar never covers the foot
 #gcash-form .btn { margin-top: 0.75rem; }
 .thanks .link-btn { margin-top: 0.4rem; }
 
+/* ---------- Admin ---------- */
+.admin-head { gap: 0.75rem; flex-wrap: wrap; }
+.admin-nav { display: flex; align-items: center; gap: 0.9rem; font-weight: 700; }
+.admin-nav a { text-decoration: none; padding: 0.4rem 0.2rem; border-bottom: 3px solid transparent; }
+.admin-nav a[aria-current="page"] { border-bottom-color: var(--blue); }
+.admin-nav .link-btn { color: var(--ink); }
+.admin-main { max-width: 760px; padding-top: 1rem; padding-bottom: 3rem; }
+
+.toolbar { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+.toolbar-label { font-family: var(--font-display); font-weight: 600; color: var(--blue-dark); }
+.toolbar select { flex: 1; min-width: 160px; font: inherit; font-size: 1rem; padding: 0.6rem 0.7rem; border: 2px solid var(--cream-dark); border-radius: var(--radius-sm); background: #fff; color: var(--ink); }
+
+.chips { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.4rem; margin-bottom: 0.8rem; }
+.chip { flex: none; font: inherit; font-weight: 700; font-size: 0.9rem; padding: 0.45rem 0.8rem; border-radius: 999px; border: 2px solid var(--cream-dark); background: #fff; color: var(--ink); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+.order-card, .pack-card, .t-card { background: #fff; border: 2px solid var(--cream-dark); border-radius: var(--radius-sm); padding: 0.9rem 1rem; margin-bottom: 0.9rem; box-shadow: var(--shadow); }
+.order-card.needs-check { background: #fff3d6; border-color: #e0a030; border-width: 3px; }      /* amber: customer says they paid, needs checking */
+.order-card.is-expired { background: #fdeceb; border-color: #d9665a; border-width: 3px; }         /* red: expired */
+.order-card.is-paid { border-color: #5cb868; }
+.order-card.is-cancelled { opacity: 0.65; }
+
+.o-top { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.o-ref { font-family: var(--font-display); font-weight: 700; font-size: 1.35rem; color: var(--blue-dark); letter-spacing: 0.04em; }
+.o-who { margin: 0.3rem 0; overflow-wrap: anywhere; }
+.o-meta { margin: 0.3rem 0; overflow-wrap: anywhere; }
+.o-small { font-size: 0.85rem; color: #7a665c; }
+.o-box { border-top: 2px dashed var(--cream-dark); padding: 0.45rem 0; font-size: 0.95rem; }
+.o-note { margin-top: 0.2rem; color: #7a665c; overflow-wrap: anywhere; }
+.o-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem; }
+
+.badge { font-size: 0.8rem; font-weight: 800; padding: 0.2rem 0.65rem; border-radius: 999px; white-space: nowrap; }
+.badge-pending { background: #fff3d6; border: 2px solid var(--accent); }
+.badge-paid { background: #e3f6e5; border: 2px solid #5cb868; }
+.badge-cancelled { background: #eee; border: 2px solid #bbb; }
+.badge-expired { background: #fdeceb; border: 2px solid #d9665a; color: #8a2b22; }
+.needs-check .badge-pending { background: #e0a030; border-color: #b87a10; color: #fff; }
+
+.btn-danger { background: #c0392b; box-shadow: 0 4px 0 #8a2b22; }
+.btn-ghost { background: #fff; color: var(--blue-dark); border: 2px solid var(--blue); box-shadow: none; }
+
+.pack-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 1rem; margin-bottom: 0.8rem; }
+.pack-head h1 { font-size: 1.5rem; margin: 0; flex: 1 1 100%; }
+.pack-head p { margin: 0; }
+.pack-card { border-width: 2px; border-style: dashed; border-color: #8a7a6a; }
+
+.t-card h2 { font-size: 1.3rem; }
+.t-big { font-family: var(--font-display); font-size: 1.8rem; margin: 0 0 0.4rem; color: var(--blue-dark); }
+.t-sub { color: #7a665c; font-size: 0.9rem; margin: 0.4rem 0 0; }
+.t-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.t-table th, .t-table td { padding: 0.45rem 0.3rem; text-align: right; border-bottom: 1px solid var(--cream-dark); }
+.t-table th:first-child { text-align: left; font-weight: 600; }
+.t-table thead th { font-size: 0.8rem; color: #7a665c; }
+.t-table .t-sum th, .t-table .t-sum td { border-top: 2px solid var(--ink); border-bottom: 0; }
+.t-toggle { margin-bottom: 0.6rem; }
+
+/* ---------- Printing (packing view) ---------- */
+@media print {
+  .no-print, .site-header, .site-footer, .cart-bar { display: none !important; }
+  body.admin { background: #fff; }
+  .admin-main { max-width: none; padding: 0; }
+  .pack-card { break-inside: avoid; box-shadow: none; border: 2px solid #000; margin-bottom: 0.6cm; }
+  .pack-head h1 { font-size: 18pt; }
+  .o-ref { font-size: 16pt; color: #000; }
+}
+
 /* ---------- Bigger screens ---------- */
 @media (min-width: 640px) {
   h1 { font-size: 2.6rem; }

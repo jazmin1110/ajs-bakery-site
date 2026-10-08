@@ -61,6 +61,9 @@ js/config.js        Supabase URL + anon key, and display copy (flavor text, labe
 js/supabase.js      Supabase client setup (anon key only)
 js/cart.js          cart state in localStorage (display-only prices)
 js/cart-ui.js       sticky cart bar + slide-in drawer
+js/admin.js         shared admin helpers (login guard, Sunday picker, totals math)
 js/ui.js            shared UI helpers
-assets/             images (logo, product photos, GCash QR)
+assets/             logo, flavors/*.jpg (web-sized photos), gcash-qr.png
+source-images/      full-size original photos (git-ignored, not deployed)
+supabase/           migrations 001-004, seed.sql, tests.sql
 ```

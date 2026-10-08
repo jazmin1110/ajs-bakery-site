@@ -1,1 +1,190 @@
-<!-- Admin: orders list per Sunday with paid toggle (auth required). -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Orders | AJ's Bakery admin</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="admin">
+
+  <header class="site-header no-print">
+    <div class="container admin-head">
+      <span class="logo-link"><span>AJ's Admin</span></span>
+      <nav class="admin-nav" id="admin-nav" aria-label="Admin"></nav>
+    </div>
+  </header>
+
+  <main class="container admin-main">
+    <div class="toolbar no-print">
+      <label class="toolbar-label" for="sunday">Sunday</label>
+      <select id="sunday"></select>
+      <button type="button" class="btn btn-small" id="packing-btn">Packing view</button>
+    </div>
+
+    <div class="chips no-print" id="chips" role="group" aria-label="Filter by status"></div>
+
+    <div class="form-error" id="message" role="alert" hidden></div>
+    <div id="list"><p class="loading">Loading orders...</p></div>
+  </main>
+
+  <script type="module">
+    import {
+      requireAdmin, renderNav, setupSundayPicker, selectedSunday, expireStale, loadOrders, setStatus,
+      formatWhen, timeLeft,
+    } from "../js/admin.js";
+    import { esc, peso, formatSunday } from "../js/ui.js";
+
+    await requireAdmin();
+    renderNav("orders");
+
+    const $ = (id) => document.getElementById(id);
+    let orders = [];
+    let filter = "all";
+    let packing = false;
+    let sunday = selectedSunday();
+
+    const STATUS_LABEL = { pending: "Pending", paid: "Paid", cancelled: "Cancelled", expired: "Expired" };
+
+    function showMessage(text) {
+      $("message").textContent = text || "";
+      $("message").hidden = !text;
+      if (text) $("message").scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    // ---- Loading ------------------------------------------------------------------------
+    async function load() {
+      showMessage("");
+      $("list").innerHTML = `<p class="loading">Loading orders...</p>`;
+      try {
+        // Mark overdue unpaid orders as expired first, so what you see is up to date
+        try { await expireStale(); } catch (e) { console.error("expire failed", e); }
+        orders = await loadOrders(sunday);
+        render();
+      } catch (err) {
+        console.error(err);
+        $("list").innerHTML = "";
+        showMessage(err.isNetwork ? "Couldn't reach the server. Check your connection and refresh."
+                                   : `Couldn't load orders: ${err.message}`);
+      }
+    }
+
+    // ---- Drawing ------------------------------------------------------------------------
+    function boxesHtml(o) {
+      return o.boxes.map((b) => `
+        <div class="o-box">
+          <strong>Box ${b.position}: box of ${b.size}</strong>
+          <div>${b.items.map((i) => `${i.qty} × ${esc(i.name)}`).join("<br>")}</div>
+          ${b.gift_note ? `<div class="o-note">🎁 ${esc(b.gift_note)}</div>` : ""}
+        </div>`).join("");
+    }
+
+    // Overdue pending orders count as expired for colouring, even if the flip hasn't happened yet
+    const effectiveStatus = (o) =>
+      o.status === "pending" && new Date(o.expires_at).getTime() <= Date.now() ? "expired" : o.status;
+
+    function orderCard(o) {
+      const status = effectiveStatus(o);
+      const needsCheck = status === "pending" && !!o.gcash_ref;       // customer says they paid
+      const cls = needsCheck ? "needs-check" : status === "expired" ? "is-expired" : `is-${status}`;
+      const ig = o.ig_handle ? o.ig_handle.replace(/^@/, "") : "";
+      const phoneDigits = o.phone.replace(/[^\d+]/g, "");
+
+      return `
+      <article class="order-card ${cls}" data-ref="${esc(o.ref_code)}">
+        <div class="o-top">
+          <span class="o-ref">${esc(o.ref_code)}</span>
+          <span class="badge badge-${status}">${esc(needsCheck ? "Check payment" : STATUS_LABEL[status])}</span>
+        </div>
+        <p class="o-who"><strong>${esc(o.name)}</strong>
+          ${ig ? ` · <a href="https://instagram.com/${encodeURIComponent(ig)}" target="_blank" rel="noopener">@${esc(ig)}</a>` : ""}
+          · <a href="tel:${esc(phoneDigits)}">${esc(o.phone)}</a></p>
+        <p class="o-meta">${o.fulfillment === "delivery"
+          ? `🚚 Delivery: ${esc(o.address || "(no address)")}` : "🏠 Pickup"}</p>
+        ${boxesHtml(o)}
+        <p class="o-meta"><strong>${peso(o.total)}</strong>
+          · GCash ref: ${o.gcash_ref ? `<strong>${esc(o.gcash_ref)}</strong>` : "<em>none yet</em>"}</p>
+        <p class="o-meta o-small">Ordered ${esc(formatWhen(o.created_at))}${status === "pending" ? ` · ${esc(timeLeft(o.expires_at))}` : ""}</p>
+        <div class="o-actions no-print">
+          ${status === "paid" ? "" : `<button type="button" class="btn btn-small" data-act="paid">Mark paid</button>`}
+          ${status === "cancelled" ? "" : `<button type="button" class="btn btn-small btn-danger" data-act="cancelled">Cancel</button>`}
+          ${status === "cancelled" || status === "expired" ? `<button type="button" class="btn btn-small btn-ghost" data-act="pending">Reopen</button>` : ""}
+        </div>
+      </article>`;
+    }
+
+    // One card per paid order: what to put in the box, who it's for, the note
+    function packingCard(o) {
+      return `
+      <article class="pack-card">
+        <div class="o-top"><span class="o-ref">${esc(o.ref_code)}</span>
+          <span>${o.fulfillment === "delivery" ? "🚚 DELIVERY" : "🏠 PICKUP"}</span></div>
+        <p class="o-who"><strong>${esc(o.name)}</strong>${o.ig_handle ? ` · ${esc(o.ig_handle)}` : ""} · ${esc(o.phone)}</p>
+        ${o.fulfillment === "delivery" ? `<p class="o-meta">${esc(o.address || "")}</p>` : ""}
+        ${boxesHtml(o)}
+      </article>`;
+    }
+
+    function render() {
+      const counts = { all: orders.length, pending: 0, paid: 0, cancelled: 0, expired: 0 };
+      orders.forEach((o) => { counts[effectiveStatus(o)] += 1; });
+
+      $("chips").innerHTML = ["all", "pending", "paid", "cancelled", "expired"].map((k) =>
+        `<button type="button" class="chip" data-filter="${k}" aria-pressed="${filter === k}">${k === "all" ? "All" : STATUS_LABEL[k]} (${counts[k]})</button>`
+      ).join("");
+
+      $("packing-btn").textContent = packing ? "Back to orders" : "Packing view";
+
+      if (packing) {
+        const paid = orders.filter((o) => o.status === "paid");
+        $("list").innerHTML = `
+          <div class="pack-head">
+            <h1>Packing list: ${esc(formatSunday(sunday))}</h1>
+            <p>${paid.length} paid order${paid.length === 1 ? "" : "s"}</p>
+            <button type="button" class="btn btn-small no-print" id="print-btn">Print</button>
+          </div>
+          ${paid.length ? paid.map(packingCard).join("") : `<p class="loading">No paid orders for this Sunday yet.</p>`}`;
+        const p = $("print-btn"); if (p) p.addEventListener("click", () => window.print());
+        return;
+      }
+
+      const shown = orders.filter((o) => filter === "all" || effectiveStatus(o) === filter);
+      $("list").innerHTML = shown.length
+        ? shown.map(orderCard).join("")
+        : `<p class="loading">${orders.length ? "No orders with that status." : "No orders for this Sunday yet."}</p>`;
+    }
+
+    // ---- Events -------------------------------------------------------------------------
+    $("chips").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-filter]"); if (!b) return;
+      filter = b.dataset.filter; render();
+    });
+
+    $("packing-btn").addEventListener("click", () => { packing = !packing; render(); });
+
+    // Mark paid / Cancel / Reopen (one listener for every card)
+    $("list").addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-act]"); if (!btn) return;
+      const ref = btn.closest("[data-ref]").dataset.ref;
+      const act = btn.dataset.act;
+      if (act === "cancelled" && !confirm(`Cancel order ${ref}? Its cookies go back to the Sunday.`)) return;
+
+      showMessage("");
+      btn.disabled = true;
+      try {
+        await setStatus(ref, act);
+        orders = await loadOrders(sunday);
+        render();
+      } catch (err) {
+        console.error(err);
+        btn.disabled = false;
+        showMessage(err.isNetwork ? "Couldn't reach the server. Nothing was changed." : err.message);
+      }
+    });
+
+    setupSundayPicker($("sunday"), (d) => { sunday = d; load(); });
+    load();
+  </script>
+</body>
+</html>

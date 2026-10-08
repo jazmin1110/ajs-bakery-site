@@ -1,1 +1,129 @@
-<!-- Admin: cookies per flavor and batches per Sunday (auth required). -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Totals | AJ's Bakery admin</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="admin">
+
+  <header class="site-header">
+    <div class="container admin-head">
+      <span class="logo-link"><span>AJ's Admin</span></span>
+      <nav class="admin-nav" id="admin-nav" aria-label="Admin"></nav>
+    </div>
+  </header>
+
+  <main class="container admin-main">
+    <div class="toolbar">
+      <label class="toolbar-label" for="sunday">Sunday</label>
+      <select id="sunday"></select>
+    </div>
+
+    <div class="form-error" id="message" role="alert" hidden></div>
+    <div id="out"><p class="loading">Loading totals...</p></div>
+  </main>
+
+  <script type="module">
+    import {
+      requireAdmin, renderNav, setupSundayPicker, selectedSunday, expireStale, loadOrders, loadFlavors,
+      summarize, batchesFor, BATCH_SIZE,
+    } from "../js/admin.js";
+    import { fetchSundayInfo } from "../js/supabase.js";
+    import { esc } from "../js/ui.js";
+
+    await requireAdmin();
+    renderNav("totals");
+
+    const $ = (id) => document.getElementById(id);
+    let sunday = selectedSunday();
+    let includePending = true;      // bake for unpaid-but-still-open orders too?
+    let data = null;                // { summary, cap }
+
+    async function load() {
+      $("message").hidden = true;
+      $("out").innerHTML = `<p class="loading">Loading totals...</p>`;
+      try {
+        try { await expireStale(); } catch (e) { console.error("expire failed", e); }
+        // The 45-cap comes from the database too, so it's never out of sync
+        const [orders, flavors, info] = await Promise.all([loadOrders(sunday), loadFlavors(), fetchSundayInfo()]);
+        data = { summary: summarize(orders, flavors), cap: info.cap };
+        render();
+      } catch (err) {
+        console.error(err);
+        $("out").innerHTML = "";
+        $("message").textContent = err.isNetwork ? "Couldn't reach the server. Check your connection and refresh."
+                                                  : `Couldn't load totals: ${err.message}`;
+        $("message").hidden = false;
+      }
+    }
+
+    function render() {
+      const { summary, cap } = data;
+      const used = summary.paid + summary.pending;       // what holds cap space
+      const left = Math.max(cap - used, 0);
+      const pct = Math.min(100, Math.round((used / cap) * 100));
+
+      const flavors = Object.values(summary.perFlavor);
+      const sizes = Object.keys(summary.boxes).map(Number).sort((a, b) => a - b);
+
+      // Batches: bake for paid, plus pending if the box is ticked
+      let totalBatches = 0;
+      const batchRows = flavors.map((f) => {
+        const need = f.paid + (includePending ? f.pending : 0);
+        const { batches, leftover } = batchesFor(need);
+        totalBatches += batches;
+        return `<tr><th scope="row">${esc(f.name)}</th><td>${need}</td><td><strong>${batches}</strong></td><td>${leftover}</td></tr>`;
+      }).join("");
+
+      $("out").innerHTML = `
+        <section class="t-card">
+          <h2>Cookies vs cap</h2>
+          <p class="t-big"><strong>${used}</strong> of ${cap} <span class="t-sub">(${left} left)</span></p>
+          <div class="progress" aria-hidden="true"><div style="width:${pct}%"></div></div>
+          <p class="t-sub">${summary.paid} paid + ${summary.pending} pending. Cancelled and expired orders don't count.</p>
+        </section>
+
+        <section class="t-card">
+          <h2>Cookies per flavor</h2>
+          <table class="t-table">
+            <thead><tr><th></th><th>Paid</th><th>Pending</th><th>Total</th></tr></thead>
+            <tbody>
+              ${flavors.map((f) => `<tr><th scope="row">${esc(f.name)}</th><td>${f.paid}</td><td>${f.pending}</td><td><strong>${f.paid + f.pending}</strong></td></tr>`).join("")}
+              <tr class="t-sum"><th scope="row">All flavors</th><td>${summary.paid}</td><td>${summary.pending}</td><td><strong>${used}</strong></td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="t-card">
+          <h2>Boxes</h2>
+          ${sizes.length ? `
+          <table class="t-table">
+            <thead><tr><th></th><th>Paid</th><th>Pending</th><th>Total</th></tr></thead>
+            <tbody>${sizes.map((s) => `<tr><th scope="row">Box of ${s}</th><td>${summary.boxes[s].paid}</td><td>${summary.boxes[s].pending}</td><td><strong>${summary.boxes[s].paid + summary.boxes[s].pending}</strong></td></tr>`).join("")}</tbody>
+          </table>` : `<p class="t-sub">No boxes yet.</p>`}
+        </section>
+
+        <section class="t-card">
+          <h2>Batches to bake</h2>
+          <label class="choice t-toggle"><input type="checkbox" id="inc-pending" ${includePending ? "checked" : ""}>
+            <span>Include pending (unpaid) orders</span></label>
+          <table class="t-table">
+            <thead><tr><th></th><th>Cookies</th><th>Batches</th><th>Left over</th></tr></thead>
+            <tbody>${batchRows}
+              <tr class="t-sum"><th scope="row">Total batches</th><td></td><td><strong>${totalBatches}</strong></td><td></td></tr>
+            </tbody>
+          </table>
+          <p class="t-sub">One batch = ${BATCH_SIZE} cookies. Leftover = spare cookies from the last batch of each flavor.</p>
+        </section>`;
+
+      $("inc-pending").addEventListener("change", (e) => { includePending = e.target.checked; render(); });
+    }
+
+    setupSundayPicker($("sunday"), (d) => { sunday = d; load(); });
+    load();
+  </script>
+</body>
+</html>
