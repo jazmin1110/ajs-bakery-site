@@ -1,1 +1,180 @@
-<!-- Box builder: pick box size and flavors, live total (display only). -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Build your box | AJ's Bakery</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container">
+      <a class="logo-link" href="index.html">
+        <img src="assets/logo.png" alt="" onerror="this.style.display='none'">
+        <span>AJ's Bakery</span>
+      </a>
+      <button type="button" class="cart-btn" data-open-cart aria-label="Open your cart">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/>
+          <path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 7H6"/>
+        </svg>
+        <span class="cart-count" id="cart-count">0</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="order-banner" id="order-banner">Checking this week's Sunday...</div>
+
+  <main class="container builder" id="builder">
+    <a class="back-link" href="index.html#boxes">&larr; All boxes</a>
+    <p class="loading">Loading your box...</p>
+  </main>
+
+  <script type="module">
+    import { CONFIG } from "./js/config.js";
+    import { fetchMenu, fetchSundayInfo } from "./js/supabase.js";
+    import { orderingSunday, renderBanner, renderBannerError, peso, esc } from "./js/ui.js";
+    import * as cart from "./js/cart.js";
+    import { initCartUI, openCart } from "./js/cart-ui.js";
+
+    initCartUI();
+    const root = document.getElementById("builder");
+
+    // Banner loads on its own; the builder doesn't depend on it
+    fetchSundayInfo()
+      .then((info) => renderBanner(document.getElementById("order-banner"), orderingSunday(info)))
+      .catch((err) => { console.error(err); renderBannerError(document.getElementById("order-banner")); });
+
+    try {
+      const { flavors, boxes } = await fetchMenu();
+      const size = Number(new URLSearchParams(location.search).get("size"));
+      const box = boxes.find((b) => b.size === size);
+      if (!box) showSizePicker(boxes); else startBuilder(box, flavors);
+    } catch (err) {
+      console.error(err);
+      root.innerHTML = `<a class="back-link" href="index.html#boxes">&larr; All boxes</a>
+        <p class="load-error">We couldn't load the boxes right now. Please refresh, or message us on Instagram.</p>`;
+    }
+
+    // No (or unknown) ?size= in the URL: let them pick one
+    function showSizePicker(boxes) {
+      root.innerHTML = `
+        <a class="back-link" href="index.html#boxes">&larr; All boxes</a>
+        <h1>Pick a box size</h1>
+        <div class="card-grid">${boxes.map((b) => `
+          <article class="card box-card"><div class="card-body">
+            <div class="box-size">Box of ${b.size}</div>
+            <div class="price">${peso(b.price)}</div>
+            <a class="btn" href="box.html?size=${b.size}">Build this box</a>
+          </div></article>`).join("")}</div>`;
+    }
+
+    function startBuilder(box, flavors) {
+      document.title = `Build your box of ${box.size} | AJ's Bakery`;
+      const qty = Object.fromEntries(flavors.map((f) => [f.slug, 0]));
+      const chosen = () => Object.values(qty).reduce((a, b) => a + b, 0);
+
+      root.innerHTML = `
+        <a class="back-link" href="index.html#boxes">&larr; All boxes</a>
+        <h1>Build your box of ${box.size}</h1>
+        <p class="section-sub">Pick any mix of flavors. Your box needs exactly ${box.size} cookies.</p>
+
+        <div class="counter" aria-live="polite">
+          <span><strong id="chosen">0</strong> of ${box.size} chosen</span>
+          <div class="progress" aria-hidden="true"><div id="progress-fill"></div></div>
+        </div>
+
+        <ul class="flavor-list">
+          ${flavors.map((f) => `
+          <li class="flavor-row" data-slug="${esc(f.slug)}">
+            <div class="flavor-emoji" aria-hidden="true">${(CONFIG.flavorInfo[f.slug] || {}).emoji || "🍪"}</div>
+            <div class="flavor-info">
+              <strong>${esc(f.name)}</strong>
+              ${f.surcharge > 0 ? `<span class="surcharge">+${peso(f.surcharge)} each</span>` : ""}
+            </div>
+            <div class="stepper">
+              <button type="button" data-step="-1" aria-label="Remove one ${esc(f.name)}">&minus;</button>
+              <output aria-label="${esc(f.name)} quantity">0</output>
+              <button type="button" data-step="1" aria-label="Add one ${esc(f.name)}">+</button>
+            </div>
+          </li>`).join("")}
+        </ul>
+
+        <label class="gift-label" for="gift-note">Gift note <span>(optional)</span></label>
+        <textarea id="gift-note" maxlength="500" rows="3" placeholder="Happy birthday, Tita! Love, Ana"></textarea>
+
+        <div class="live-price">
+          <span class="price" id="price">${peso(box.price)}</span>
+          <small id="price-note"></small>
+        </div>
+        <button type="button" class="btn btn-block" id="add-btn" disabled></button>
+        <p class="builder-msg" id="builder-msg" aria-live="polite"></p>`;
+
+      const $ = (id) => document.getElementById(id);
+
+      // Items in the cart's format, from the current quantities
+      const items = () => flavors.map((f) => ({ slug: f.slug, name: f.name, surcharge: f.surcharge, qty: qty[f.slug] }));
+
+      // Redraw numbers and enable/disable buttons (rows are NOT re-created, so focus stays put)
+      function refresh() {
+        const n = chosen();
+        const full = n === box.size;
+        const surcharge = cart.priceFor(box.price, items()) - box.price;
+
+        $("chosen").textContent = n;
+        $("progress-fill").style.width = `${(n / box.size) * 100}%`;
+        $("price").textContent = peso(cart.priceFor(box.price, items()));
+        const extras = flavors.filter((f) => f.surcharge > 0 && qty[f.slug] > 0).map((f) => f.name);
+        $("price-note").textContent = surcharge > 0 ? `includes ${peso(surcharge)} extra for ${extras.join(" + ")}` : "";
+
+        root.querySelectorAll(".flavor-row").forEach((row) => {
+          const q = qty[row.dataset.slug];
+          row.querySelector("output").textContent = q;
+          row.querySelector('[data-step="-1"]').disabled = q === 0;
+          row.querySelector('[data-step="1"]').disabled = full; // can't go past the box size
+        });
+
+        const addBtn = $("add-btn");
+        const cartFull = cart.isFull();
+        addBtn.disabled = !full || cartFull;
+        addBtn.textContent = cartFull ? "Your cart is full"
+          : full ? `Add to cart · ${peso(cart.priceFor(box.price, items()))}`
+          : `Pick ${box.size - n} more`;
+        $("builder-msg").textContent = cartFull
+          ? `You can order up to ${CONFIG.maxBoxesPerOrder} boxes at a time. Remove one from your cart to add another.`
+          : "";
+      }
+
+      // One listener for every + / - button
+      root.querySelector(".flavor-list").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-step]");
+        if (!btn) return;
+        const slug = btn.closest(".flavor-row").dataset.slug;
+        const next = qty[slug] + Number(btn.dataset.step);
+        if (next < 0 || (next > qty[slug] && chosen() >= box.size)) return;
+        qty[slug] = next;
+        refresh();
+      });
+
+      $("add-btn").addEventListener("click", () => {
+        const result = cart.add({
+          size: box.size,
+          boxPrice: box.price,
+          items: items(),
+          giftNote: $("gift-note").value,
+        });
+        if (!result.ok) { $("builder-msg").textContent = result.error; return; }
+        // Reset the builder so they can make another box, then show the cart
+        flavors.forEach((f) => (qty[f.slug] = 0));
+        $("gift-note").value = "";
+        refresh();
+        openCart();
+      });
+
+      window.addEventListener("cart:changed", refresh); // cart-full state can change (e.g. Remove)
+      refresh();
+    }
+  </script>
+</body>
+</html>

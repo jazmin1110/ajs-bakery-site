@@ -1,54 +1,54 @@
-// Business config: the ONE place for flavors, prices, box sizes, cap and cutoff.
-// This is display-only. The database enforces the real rules (see CLAUDE.md).
-// Change a number here and every page updates, because pages render from this object.
+// Site config: connection settings + display copy.
+//
+// Flavors, prices, box sizes and the Sunday cap/cutoff now come from the
+// Supabase database (see js/supabase.js). Only things the database doesn't
+// store live here: the connection, descriptions, and static wording.
+// Prices shown in the browser are for DISPLAY ONLY; the database recalculates
+// every total when an order is placed (see CLAUDE.md).
 
 export const CONFIG = {
   brandName: "AJ's Bakery",
   tagline: "Small-batch brown butter cookies, baked at home in Manila.",
   timezone: "Asia/Manila",
 
-  // PLACEHOLDER until the database assigns the real Sunday.
-  nowOrderingFor: "Sunday, Oct 18",
+  // --- Supabase connection (Project Settings > API in the dashboard) ---
+  // The URL is public. The anon key is ALSO safe in browser code: it can only
+  // do what Row Level Security allows. NEVER paste the service_role key here.
+  supabaseUrl: "https://jzkehcfhuanavjdkbrpn.supabase.co",
+  supabaseAnonKey: "PASTE_YOUR_ANON_KEY_HERE",
 
   // Links (placeholder until the real handle is set)
   instagramUrl: "https://instagram.com/",
   instagramHandle: "@ajsbakery",
 
-  // Prices are per cookie, in pesos.
-  flavors: [
-    {
-      id: "choc-chip",
-      name: "Brown Butter Choc Chip",
+  // Text and emoji for each flavor, keyed by the flavor's slug in the database.
+  // A flavor with no entry here still shows up (with a generic description).
+  flavorInfo: {
+    "choc-chip": {
+      emoji: "🍪",
       description: "Nutty brown butter dough, melty chocolate chips, crisp edges and a soft middle.",
-      price: 95,
-      boxSurcharge: 0, // extra pesos per cookie when inside a box
     },
-    {
-      id: "double-choc",
-      name: "Brown Butter Double Chocolate",
+    "double-choc": {
+      emoji: "🍫",
       description: "Deep cocoa dough packed with chocolate chunks. For the chocolate-first crowd.",
-      price: 100,
-      boxSurcharge: 0,
     },
-    {
-      id: "kinder-bueno",
-      name: "Brown Butter Kinder Bueno",
+    "kinder-bueno": {
+      emoji: "🥜",
       description: "Brown butter dough stuffed with Kinder Bueno. Gooey, hazelnutty, a little extra.",
-      price: 125,
-      boxSurcharge: 30, // +P30 per Bueno cookie over the P95 base, inside box totals
     },
-  ],
+  },
 
-  // Box prices are flat for the base flavors. Bueno cookies add their boxSurcharge.
-  boxes: [
-    { id: "box-4", size: 4, price: 380, blurb: "A little treat for you, or a gift for one." },
-    { id: "box-6", size: 6, price: 570, blurb: "Share it (or don't). Best for gifting." },
-  ],
+  // One-liner for each box, keyed by box size.
+  boxBlurbs: {
+    4: "A little treat for you, or a gift for one.",
+    6: "Share it (or don't). Best for gifting.",
+  },
 
-  capPerSunday: 45, // max cookies per Sunday
+  maxBoxesPerOrder: 3, // cart limit (the checkout step must respect this too)
 
-  // Cutoff: a Sunday accepts orders until 4 days before, at 21:00 (Wednesday 9pm).
-  cutoff: { daysBeforeSunday: 4, hour: 21, minute: 0, label: "Wednesday 9pm" },
+  // Copy only: the real cap (45) and cutoff are enforced by the database.
+  capPerSunday: 45,
+  cutoff: { label: "Wednesday 9pm" },
 
   pickupWindow: "3-6pm",
   unpaidExpiryHours: 24,

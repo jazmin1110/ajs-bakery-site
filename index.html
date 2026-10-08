@@ -17,20 +17,19 @@
         <img src="assets/logo.png" alt="" onerror="this.style.display='none'">
         <span>AJ's Bakery</span>
       </a>
-      <a class="cart-btn" href="box.html" aria-label="View your cart">
+      <button type="button" class="cart-btn" data-open-cart aria-label="Open your cart">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/>
           <path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 7H6"/>
         </svg>
         <span class="cart-count" id="cart-count">0</span>
-      </a>
+      </button>
     </div>
   </header>
 
-  <!-- Which Sunday we're taking orders for (placeholder date lives in config.js) -->
-  <div class="order-banner">
-    Now ordering for <span data-ordering-date></span>
-    <small>Order by <span data-cutoff></span></small>
+  <!-- Which Sunday we're taking orders for. Filled in from the database. -->
+  <div class="order-banner" id="order-banner">
+    Checking this week's Sunday...
   </div>
 
   <main>
@@ -46,7 +45,7 @@
       <div class="container">
         <h2>The Menu</h2>
         <p class="section-sub">Three brown butter flavors. Every cookie ships with a nutrition label.</p>
-        <div class="card-grid" id="menu-grid"></div>
+        <div class="card-grid" id="menu-grid"><p class="loading">Loading the menu...</p></div>
       </div>
     </section>
 
@@ -54,7 +53,7 @@
       <div class="container">
         <h2>Boxes</h2>
         <p class="section-sub">Mix your flavors however you like.</p>
-        <div class="card-grid" id="box-grid"></div>
+        <div class="card-grid" id="box-grid"><p class="loading">Loading boxes...</p></div>
         <p class="box-note" id="box-note"></p>
       </div>
     </section>
@@ -108,19 +107,39 @@
     <p>Follow us: <a data-instagram href="#">@ajsbakery</a></p>
   </footer>
 
-  <!-- type="module" lets us import from config.js / ui.js (no build step needed) -->
+  <!-- type="module" lets us import from js/ files (no build step needed) -->
   <script type="module">
     import { CONFIG } from "./js/config.js";
-    import { renderBanner, renderMenu, renderBoxes, renderConfigText } from "./js/ui.js";
+    import { fetchMenu, fetchSundayInfo } from "./js/supabase.js";
+    import {
+      orderingSunday, renderBanner, renderBannerError,
+      renderMenu, renderBoxes, renderConfigText, showError,
+    } from "./js/ui.js";
+    import { initCartUI } from "./js/cart-ui.js";
 
-    renderBanner();
-    renderMenu(document.getElementById("menu-grid"));
-    renderBoxes(document.getElementById("box-grid"), document.getElementById("box-note"));
     renderConfigText();
+    initCartUI();
 
     const ig = document.querySelector("[data-instagram]");
     ig.href = CONFIG.instagramUrl;
     ig.textContent = CONFIG.instagramHandle;
+
+    // Banner, menu and boxes load separately so one failing doesn't hide the others
+    fetchSundayInfo()
+      .then((info) => renderBanner(document.getElementById("order-banner"), orderingSunday(info)))
+      .catch((err) => { console.error(err); renderBannerError(document.getElementById("order-banner")); });
+
+    fetchMenu()
+      .then(({ flavors, boxes }) => {
+        renderMenu(document.getElementById("menu-grid"), flavors);
+        renderBoxes(document.getElementById("box-grid"), document.getElementById("box-note"), boxes, flavors);
+      })
+      .catch((err) => {
+        console.error(err);
+        const msg = "We couldn't load the menu right now. Please refresh, or message us on Instagram.";
+        showError(document.getElementById("menu-grid"), msg);
+        showError(document.getElementById("box-grid"), msg);
+      });
   </script>
 </body>
 </html>

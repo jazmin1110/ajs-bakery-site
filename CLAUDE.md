@@ -19,7 +19,7 @@ Owner (Jazmin) is a beginner vibe coder (basic HTML/CSS/JS, Supabase, Vercel). S
 
 ## 2. Business config
 
-Single source of truth for the numbers. The database is the enforcer; `js/config.js` only mirrors these for display.
+Single source of truth for the numbers. The database is the enforcer and the storefront reads flavors, boxes, prices and the open Sunday from it; `js/config.js` holds only copy text (e.g. the cutoff wording).
 
 | Thing | Value |
 |---|---|
@@ -57,9 +57,10 @@ checkout.html       customer details + submit
 confirmed.html      order confirmation + GCash instructions
 admin/              login, orders, totals (auth required)
 css/styles.css      all styles
-js/config.js        display-only copy of business config
+js/config.js        Supabase URL + anon key, and display copy (flavor text, labels). Prices come from the DB
 js/supabase.js      Supabase client setup (anon key only)
-js/cart.js          cart state
+js/cart.js          cart state in localStorage (display-only prices)
+js/cart-ui.js       sticky cart bar + slide-in drawer
 js/ui.js            shared UI helpers
 assets/             images (logo, product photos, GCash QR)
 ```
