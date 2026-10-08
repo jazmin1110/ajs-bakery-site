@@ -55,7 +55,6 @@ export const CONFIG = {
   cutoff: { label: "Wednesday 9pm" },
 
   pickupWindow: "3-6pm",
-  // PLACEHOLDER: replace with the real pickup area before launch
-  pickupArea: "Pickup is in [your area], Metro Manila. We'll send the exact address on Instagram once your payment is confirmed.",
+  pickupArea: "Pickup is at Corinthian Gardens Village, Quezon City. We'll send the exact address on Instagram once your payment is confirmed.",
   unpaidExpiryHours: 24,
 };
