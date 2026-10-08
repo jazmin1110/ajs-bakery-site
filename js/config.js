@@ -15,7 +15,7 @@ export const CONFIG = {
   // The URL is public. The anon key is ALSO safe in browser code: it can only
   // do what Row Level Security allows. NEVER paste the service_role key here.
   supabaseUrl: "https://jzkehcfhuanavjdkbrpn.supabase.co",
-  supabaseAnonKey: "PASTE_YOUR_ANON_KEY_HERE",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6a2VoY2ZodWFuYXZqZGticnBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NjQwMjcsImV4cCI6MjEwNzA0MDAyN30.QSQyjcQhbeclzfOGw_7fuw68sLDyXKiXIh1rSmocdCw",
 
   // Links (placeholder until the real handle is set)
   instagramUrl: "https://instagram.com/",

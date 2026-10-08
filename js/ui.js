@@ -43,19 +43,26 @@ export function formatCutoff(date) {
 }
 
 // Turn the database's current_sunday_info row into what the pages show.
-// If the open Sunday is full, we show the following Sunday instead and use
-// that date everywhere.
+// The database says which Sunday a new order would land on (ordering_sunday):
+// the upcoming one, or the first later one with room if that one is full.
 export function orderingSunday(info) {
-  const full = info.is_full;
-  const date = full ? addDays(info.sunday_date, 7) : info.sunday_date;
-  // The next cutoff is exactly 7 days later (Manila has no daylight saving)
-  const cutoff = new Date(new Date(info.cutoff_at).getTime() + (full ? 7 * 24 * 3600 * 1000 : 0));
+  let date = info.ordering_sunday;
+  let cutoff = info.ordering_cutoff_at;
+  let remaining = info.ordering_remaining;
+
+  // Fallback if the database hasn't got the 002 migration yet: assume next week
+  if (date === undefined) {
+    date = info.is_full ? addDays(info.sunday_date, 7) : info.sunday_date;
+    cutoff = new Date(new Date(info.cutoff_at).getTime() + (info.is_full ? 7 * 24 * 3600 * 1000 : 0));
+    remaining = info.remaining;
+  }
+
   return {
-    isFull: full,
+    isFull: info.is_full,       // is the UPCOMING Sunday full?
     date,                       // "2026-10-25"
     label: formatSunday(date),  // "Sunday, Oct 25"
-    cutoffLabel: formatCutoff(cutoff), // "Wed 9pm"
-    remaining: info.remaining,
+    cutoffLabel: formatCutoff(new Date(cutoff)), // "Wed 9pm"
+    remaining,
   };
 }
 
