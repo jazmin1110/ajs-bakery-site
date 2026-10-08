@@ -17,24 +17,28 @@ export const CONFIG = {
   supabaseUrl: "https://jzkehcfhuanavjdkbrpn.supabase.co",
   supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp6a2VoY2ZodWFuYXZqZGticnBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NjQwMjcsImV4cCI6MjEwNzA0MDAyN30.QSQyjcQhbeclzfOGw_7fuw68sLDyXKiXIh1rSmocdCw",
 
-  // Links (placeholder until the real handle is set)
-  instagramUrl: "https://instagram.com/",
-  instagramHandle: "@ajsbakery",
+  // Instagram
+  instagramUrl: "https://instagram.com/ajs.mnl",
+  instagramHandle: "@ajs.mnl",
 
-  // Text and emoji for each flavor, keyed by the flavor's slug in the database.
-  // A flavor with no entry here still shows up (with a generic description).
+  // Description, photo and fallback emoji for each flavor, keyed by the flavor's
+  // slug in the database. (The flavor NAME lives in the database.)
+  // A flavor with no entry here still shows up, with an emoji and no description.
   flavorInfo: {
     "choc-chip": {
       emoji: "🍪",
-      description: "Nutty brown butter dough, melty chocolate chips, crisp edges and a soft middle.",
+      image: "assets/flavors/chimp-chips.jpg",
+      description: "Classic nutty brown butter chocolate chip cookie.",
     },
     "double-choc": {
       emoji: "🍫",
-      description: "Deep cocoa dough packed with chocolate chunks. For the chocolate-first crowd.",
+      image: "assets/flavors/coco-loco.jpg",
+      description: "Double chocolate brown butter chocolate chip cookie.",
     },
     "kinder-bueno": {
       emoji: "🥜",
-      description: "Brown butter dough stuffed with Kinder Bueno. Gooey, hazelnutty, a little extra.",
+      image: "assets/flavors/bueno-mucho.jpg",
+      description: "Nutty brown butter with Kinder Maxi chocolate and a bueno center.",
     },
   },
 

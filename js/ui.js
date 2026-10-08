@@ -93,13 +93,22 @@ function flavorInfo(slug) {
   return CONFIG.flavorInfo[slug] || { emoji: "🍪", description: "" };
 }
 
+// A flavor photo, or its emoji if there's no photo (or it fails to load).
+// cls = the CSS class for the <img>.
+export function flavorPhoto(slug, name, cls) {
+  const info = flavorInfo(slug);
+  if (!info.image) return `<span aria-hidden="true">${info.emoji}</span>`;
+  return `<img class="${cls}" src="${esc(info.image)}" alt="${esc(name)}" loading="lazy"
+    onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${info.emoji}'}))">`;
+}
+
 export function renderMenu(container, flavors) {
   container.innerHTML = flavors
     .map((f) => {
       const info = flavorInfo(f.slug);
       return `
       <article class="card">
-        <div class="card-photo" role="img" aria-label="Photo of ${esc(f.name)} coming soon">${info.emoji}</div>
+        <div class="card-photo">${flavorPhoto(f.slug, f.name, "card-img")}</div>
         <div class="card-body">
           <h3>${esc(f.name)}</h3>
           <p>${esc(info.description)}</p>

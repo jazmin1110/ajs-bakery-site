@@ -34,7 +34,7 @@
   <script type="module">
     import { CONFIG } from "./js/config.js";
     import { fetchMenu, fetchSundayInfo } from "./js/supabase.js";
-    import { orderingSunday, renderBanner, renderBannerError, peso, esc } from "./js/ui.js";
+    import { orderingSunday, renderBanner, renderBannerError, flavorPhoto, peso, esc } from "./js/ui.js";
     import * as cart from "./js/cart.js";
     import { initCartUI, openCart } from "./js/cart-ui.js";
 
@@ -88,7 +88,7 @@
         <ul class="flavor-list">
           ${flavors.map((f) => `
           <li class="flavor-row" data-slug="${esc(f.slug)}">
-            <div class="flavor-emoji" aria-hidden="true">${(CONFIG.flavorInfo[f.slug] || {}).emoji || "🍪"}</div>
+            <div class="flavor-emoji">${flavorPhoto(f.slug, f.name, "flavor-thumb")}</div>
             <div class="flavor-info">
               <strong>${esc(f.name)}</strong>
               ${f.surcharge > 0 ? `<span class="surcharge">+${peso(f.surcharge)} each</span>` : ""}

@@ -8,7 +8,7 @@ let bar, drawer, overlay, closeBtn, lastFocus;
 
 const boxesWord = (n) => (n === 1 ? "1 box" : `${n} boxes`);
 
-// "2 × Brown Butter Choc Chip, 2 × Brown Butter Kinder Bueno"
+// "2 × Chimp Chips, 2 × Bueno Mucho"
 const breakdown = (box) => box.items.map((i) => `${i.qty} × ${esc(i.name)}`).join("<br>");
 
 function build(showBar) {

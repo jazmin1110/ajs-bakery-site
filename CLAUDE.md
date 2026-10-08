@@ -25,9 +25,9 @@ Single source of truth for the numbers. The database is the enforcer and the sto
 |---|---|
 | Box of 4 | ₱380 |
 | Box of 6 | ₱570 |
-| Brown Butter Choc Chip | ₱95 per cookie |
-| Brown Butter Double Chocolate | ₱100 per cookie |
-| Brown Butter Kinder Bueno | ₱125 per cookie |
+| Chimp Chips (brown butter choc chip) | ₱95 per cookie |
+| Coco Loco (double chocolate) | ₱100 per cookie |
+| Bueno Mucho (Kinder Bueno) | ₱125 per cookie |
 | Bueno surcharge | +₱30 per Bueno cookie over the ₱95 base, applied inside box totals |
 | Cap | 45 cookies per Sunday |
 | Order cutoff | Wednesday 21:00 Asia/Manila |

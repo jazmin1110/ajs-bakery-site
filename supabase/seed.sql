@@ -1,12 +1,12 @@
 -- seed.sql: starting menu data from CLAUDE.md. Safe to re-run (it updates in place).
 -- Run AFTER migrations/001_init.sql.
 
--- Per-cookie prices. Kinder Bueno carries a +30 surcharge inside box totals
+-- Per-cookie prices. Bueno Mucho (Kinder Bueno) carries a +30 surcharge inside box totals
 -- (125 = the 95 base + 30). Slugs match the ids in js/config.js.
 insert into public.flavors (slug, name, price, surcharge, active) values
-  ('choc-chip',    'Brown Butter Choc Chip',        95,  0, true),
-  ('double-choc',  'Brown Butter Double Chocolate', 100, 0, true),
-  ('kinder-bueno', 'Brown Butter Kinder Bueno',     125, 30, true)
+  ('choc-chip',    'Chimp Chips',                   95,  0, true),
+  ('double-choc',  'Coco Loco',                     100, 0, true),
+  ('kinder-bueno', 'Bueno Mucho',                   125, 30, true)
 on conflict (slug) do update
   set name = excluded.name, price = excluded.price,
       surcharge = excluded.surcharge, active = excluded.active;
