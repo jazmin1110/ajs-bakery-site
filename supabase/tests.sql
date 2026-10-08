@@ -312,3 +312,30 @@ begin
   raise notice 'PASS (g): 3 boxes accepted, total %, notes kept per box', r.total;
 end $$;
 rollback;
+
+
+-- ===========================================================================
+-- (h) Idempotency (migration 003): retrying with the SAME key returns the
+-- original order instead of creating a duplicate; a different key (or no key)
+-- creates a new order.
+-- ===========================================================================
+begin;
+do $$
+declare
+  k1 uuid := gen_random_uuid(); k2 uuid := gen_random_uuid();
+  a record; b record; c record;
+  boxes jsonb := '[{"size":4,"items":[{"flavor_slug":"choc-chip","qty":4}]}]';
+begin
+  set local role anon;
+  select * into a from public.place_order('Eve', null, '09171234567', 'pickup', null, boxes, k1);
+  select * into b from public.place_order('Eve', null, '09171234567', 'pickup', null, boxes, k1);  -- the "retry"
+  assert a.ref_code = b.ref_code and a.total = b.total and a.sunday_date = b.sunday_date,
+    'same key must return the same order';
+  select * into c from public.place_order('Eve', null, '09171234567', 'pickup', null, boxes, k2);
+  assert c.ref_code <> a.ref_code, 'a new key must create a new order';
+  reset role;
+  assert (select count(*) from public.orders) = 2, 'expected exactly 2 orders (retry must not duplicate)';
+  assert (select count(*) from public.order_items) = 2, 'retry must not duplicate items';
+  raise notice 'PASS (h): retry with the same key returned order % and created no duplicate', a.ref_code;
+end $$;
+rollback;

@@ -85,7 +85,7 @@ async function callFunction(name, args) {
 // flavors, quantities, gift notes). No prices: the database prices everything.
 // Returns { ref_code, total, sunday_date } (the real Sunday, which can differ
 // from the banner if the order didn't fit and rolled over).
-export async function placeOrder({ name, igHandle, phone, fulfillment, address, boxes }) {
+export async function placeOrder({ name, igHandle, phone, fulfillment, address, boxes, idempotencyKey }) {
   const data = await callFunction("place_order", {
     p_name: name,
     p_ig_handle: igHandle,
@@ -97,6 +97,9 @@ export async function placeOrder({ name, igHandle, phone, fulfillment, address, 
       gift_note: b.giftNote || null,
       items: b.items.map((i) => ({ flavor_slug: i.slug, qty: i.qty })),
     })),
+    // Same key on a retry = the database hands back the order it already saved
+    // instead of creating a duplicate (see migration 003).
+    p_idempotency_key: idempotencyKey || null,
   });
   const row = Array.isArray(data) ? data[0] : data;
   return { ref_code: row.ref_code, total: Number(row.total), sunday_date: row.sunday_date };

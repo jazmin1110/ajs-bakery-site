@@ -104,6 +104,24 @@
     let sending = false;       // true while the order request is in flight
     let done = false;          // true once the order is placed (page is about to change)
 
+    // ---- Retry-safe order key --------------------------------------------------
+    // If the connection drops after the database saved the order, the customer
+    // taps "Try again". Sending the SAME key makes the database return the
+    // order it already saved instead of making a duplicate. The key is reused
+    // only while the order details are identical; change anything and you get
+    // a fresh key (so an edited cart can never get an old order back).
+    // Kept in sessionStorage so a page refresh before retrying is also safe.
+    function keyFor(payload) {
+      const json = JSON.stringify(payload);
+      try {
+        const saved = JSON.parse(sessionStorage.getItem("ajs-order-key") || "null");
+        if (saved && saved.json === json) return saved.key;
+      } catch (e) { /* storage blocked or corrupt: just make a new key */ }
+      const key = crypto.randomUUID();
+      try { sessionStorage.setItem("ajs-order-key", JSON.stringify({ json, key })); } catch (e) { /* fine */ }
+      return key;
+    }
+
     // ---- Order summary ------------------------------------------------------
     // All prices here are for display only: the database prices the real order.
     function renderSummary() {
@@ -271,10 +289,11 @@
       btn.textContent = "Placing your order...";
 
       try {
-        const order = await placeOrder({ ...values, boxes: withNotes });
+        const payload = { ...values, boxes: withNotes };
+        const order = await placeOrder({ ...payload, idempotencyKey: keyFor(payload) });
         done = true;
         cart.clear();                            // only after the database accepted it
-        try { localStorage.setItem("ajs-last-ref", order.ref_code); } catch (e) { /* storage blocked: fine */ }
+        try { localStorage.setItem("ajs-last-ref", order.ref_code); sessionStorage.removeItem("ajs-order-key"); } catch (e) { /* storage blocked: fine */ }
         location.href = `confirmed.html?ref=${encodeURIComponent(order.ref_code)}`;
         // (button stays disabled while the browser navigates)
       } catch (err) {
