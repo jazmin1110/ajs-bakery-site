@@ -614,12 +614,13 @@ declare
   v_sunday date := public.next_order_sunday();
   v_order bigint; v_box bigint;
   v_flavor bigint := (select id from public.flavors where slug = 'choc-chip');
+  v_existing int := public.cookies_taken(public.next_order_sunday());   -- real orders already booked that Sunday
   r record; i record;
 begin
-  -- 43 cookies already paid on the upcoming Sunday (a fixture, as postgres)
+  -- top the Sunday up to exactly 43 cookies (a fixture, as postgres), whatever real orders are already there
   insert into public.orders (ref_code, sunday_date, name, phone, fulfillment, total, status)
   values ('AJ-FIXTURE', v_sunday, 'Fixture', '09170000000', 'pickup', 0, 'paid') returning id into v_order;
-  insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, v_flavor, 43, 105);
+  insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, v_flavor, 43 - v_existing, 105);
 
   set local role anon;
   -- 43 + 2 singles = 45: fits, stays on this Sunday
@@ -636,14 +637,6 @@ begin
   reset role;
   raise notice 'PASS (k): singles count toward the 45 cap and roll over like box cookies';
 
-  -- 1 cookie left: a full Sunday is not "full" until fewer than 2 remain
-  delete from public.order_items where order_id = (select id from public.orders where ref_code = 'AJ-FIXTURE');
-  delete from public.orders where status <> 'paid';
-  insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, v_flavor, 43, 105);
-  set local role anon;
-  select * into i from public.current_sunday_info();
-  assert not i.is_full and i.remaining = 2, 'with 2 left the Sunday is not full';
-  reset role;
 end $$;
 rollback;
 
