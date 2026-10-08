@@ -94,6 +94,7 @@ function render() {
         </div>
         <p class="cart-box-items">${breakdown(b)}</p>
         ${b.giftNote ? `<p class="cart-box-note">🎁 ${esc(b.giftNote)}</p>` : ""}
+        ${b.unavailable ? `<p class="cart-box-warn">⚠ ${esc(b.unavailable.join(", "))} isn't available anymore. Please remove this box.</p>` : ""}
         <button type="button" class="link-btn" data-remove-box="${esc(b.id)}">Remove</button>
       </article>`).join("");
 

@@ -13,6 +13,10 @@
 import { CONFIG } from "./config.js";
 
 const KEY = "ajs-cart-v1";
+// If localStorage is blocked (some private modes), the cart is parked in window.name
+// instead. window.name survives moving between pages in the SAME tab, so the cart
+// still reaches checkout. (It is cleared when you navigate to another website.)
+const NAME_PREFIX = "ajs-cart:";
 let memory = { boxes: [] }; // fallback copy, also the latest known state
 
 // Price of one box = flat box price + per-cookie surcharges (e.g. Bueno +30)
@@ -43,6 +47,13 @@ function clean(data) {
 // Read fresh each time so a second tab's changes show up
 function read() {
   try {
+    // Set only when the last save couldn't use localStorage, so it's the newest copy
+    if (window.name.startsWith(NAME_PREFIX)) {
+      memory = clean(JSON.parse(window.name.slice(NAME_PREFIX.length)));
+      return memory;
+    }
+  } catch (e) { /* corrupt: fall through to storage */ }
+  try {
     const raw = localStorage.getItem(KEY);
     if (raw) memory = clean(JSON.parse(raw));
   } catch (e) {
@@ -55,8 +66,10 @@ function write(cart) {
   memory = cart;
   try {
     localStorage.setItem(KEY, JSON.stringify(cart));
+    if (window.name.startsWith(NAME_PREFIX)) window.name = ""; // storage works again: it's the source of truth
   } catch (e) {
-    // storage blocked or full: in-memory copy still works
+    // storage blocked or full: keep the cart in window.name so other pages in this tab can see it
+    try { window.name = NAME_PREFIX + JSON.stringify(cart); } catch (e2) { /* in-memory copy still works */ }
   }
   window.dispatchEvent(new Event("cart:changed")); // UI listens for this
 }
@@ -118,4 +131,34 @@ export function changeQuantity(boxId, newItems) {
 
 export function clear() {
   write({ boxes: [] });
+}
+
+// Compare the cart with today's menu from the database (names, prices, flavors
+// that were removed). Call it whenever a page has just loaded the menu.
+// Prices are still display-only; this just keeps what the customer SEES honest.
+// Boxes containing a flavor (or box size) that no longer exists get an
+// `unavailable` list, which checkout uses to block ordering until they're removed.
+export function syncWithMenu({ flavors, boxes }) {
+  const cart = read();
+  let changed = false;
+
+  for (const b of cart.boxes) {
+    const menuBox = boxes.find((x) => x.size === b.size);
+    const gone = menuBox ? [] : [`box of ${b.size}`];
+    for (const i of b.items) {
+      const f = flavors.find((x) => x.slug === i.slug);
+      if (!f) { gone.push(i.name); continue; }
+      if (i.name !== f.name || i.surcharge !== f.surcharge) { i.name = f.name; i.surcharge = f.surcharge; changed = true; }
+    }
+    if (menuBox && b.boxPrice !== menuBox.price) { b.boxPrice = menuBox.price; changed = true; }
+
+    const price = priceFor(b.boxPrice, b.items);
+    if (price !== b.price) { b.price = price; changed = true; }
+
+    const flag = gone.length ? gone : undefined;
+    if (JSON.stringify(b.unavailable) !== JSON.stringify(flag)) { b.unavailable = flag; changed = true; }
+  }
+
+  if (changed) write(cart);
+  return { changed, unavailable: cart.boxes.filter((b) => b.unavailable).map((b) => b.id) };
 }

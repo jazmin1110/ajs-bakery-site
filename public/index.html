@@ -4,10 +4,31 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AJ's Bakery | Brown butter cookies, Metro Manila</title>
-  <meta name="description" content="Small-batch brown butter cookies, baked at home in Metro Manila. Order by Wednesday 9pm for Sunday pickup or delivery.">
+  <meta name="description" content="Small-batch brown butter cookies baked at home in Metro Manila: Chimp Chips, Coco Loco and Bueno Mucho. Order by Wednesday 9pm for Sunday pickup or delivery.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%AA%3C/text%3E%3C/svg%3E">
+  <meta name="theme-color" content="#3a72b8">
+  <link rel="canonical" href="https://ajs-bakery-site.vercel.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AJ's Bakery">
+  <meta property="og:title" content="AJ's Bakery | Brown butter cookies, Metro Manila">
+  <meta property="og:description" content="Small-batch brown butter cookies baked at home in Metro Manila: Chimp Chips, Coco Loco and Bueno Mucho. Order by Wednesday 9pm for Sunday pickup or delivery.">
+  <meta property="og:url" content="https://ajs-bakery-site.vercel.app/">
+  <meta property="og:image" content="https://ajs-bakery-site.vercel.app/assets/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Freshly baked Bueno Mucho cookies from AJ's Bakery">
+  <meta property="og:locale" content="en_PH">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AJ's Bakery | Brown butter cookies, Metro Manila">
+  <meta name="twitter:description" content="Small-batch brown butter cookies baked at home in Metro Manila: Chimp Chips, Coco Loco and Bueno Mucho. Order by Wednesday 9pm for Sunday pickup or delivery.">
+  <meta name="twitter:image" content="https://ajs-bakery-site.vercel.app/assets/og-image.jpg">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"Bakery","name":"AJ's Bakery","description":"Small-batch brown butter cookies baked at home in Metro Manila.","url":"https://ajs-bakery-site.vercel.app/","image":"https://ajs-bakery-site.vercel.app/assets/og-image.jpg","areaServed":"Metro Manila, Philippines","servesCuisine":"Cookies","sameAs":["https://instagram.com/ajs.mnl"],"priceRange":"₱₱"}
+  </script>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
 
   <!-- Header: logo (left) + cart (right) -->
   <header class="site-header">
@@ -32,7 +53,7 @@
     Checking this week's Sunday...
   </div>
 
-  <main>
+  <main id="main">
     <section class="hero">
       <div class="container">
         <h1>Warm cookies, made at home.</h1>
@@ -113,9 +134,10 @@
     import { fetchMenu, fetchSundayInfo } from "./js/supabase.js";
     import {
       orderingSunday, renderBanner, renderBannerError,
-      renderMenu, renderBoxes, renderConfigText, showError,
+      renderMenu, renderBoxes, renderConfigText, renderClosed,
     } from "./js/ui.js";
     import { initCartUI } from "./js/cart-ui.js";
+    import { syncWithMenu } from "./js/cart.js";
 
     renderConfigText();
     initCartUI();
@@ -133,12 +155,14 @@
       .then(({ flavors, boxes }) => {
         renderMenu(document.getElementById("menu-grid"), flavors);
         renderBoxes(document.getElementById("box-grid"), document.getElementById("box-note"), boxes, flavors);
+        syncWithMenu({ flavors, boxes });   // keep the cart's names/prices in line with today's menu
       })
       .catch((err) => {
+        // Can't reach the database: show "Ordering is closed" with the Instagram DM link
         console.error(err);
-        const msg = "We couldn't load the menu right now. Please refresh, or message us on Instagram.";
-        showError(document.getElementById("menu-grid"), msg);
-        showError(document.getElementById("box-grid"), msg);
+        renderClosed(document.getElementById("menu-grid"));
+        document.getElementById("box-grid").innerHTML = "";
+        document.getElementById("box-note").hidden = true;
       });
   </script>
 </body>

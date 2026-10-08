@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>Orders | AJ's Bakery admin</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%AA%3C/text%3E%3C/svg%3E">
+  <meta name="theme-color" content="#3a72b8">
   <link rel="stylesheet" href="../css/styles.css">
 </head>
 <body class="admin">
@@ -80,9 +82,9 @@
         </div>`).join("");
     }
 
-    // Overdue pending orders count as expired for colouring, even if the flip hasn't happened yet
-    const effectiveStatus = (o) =>
-      o.status === "pending" && new Date(o.expires_at).getTime() <= Date.now() ? "expired" : o.status;
+    // Overdue pending orders count as expired for colouring, even if the flip hasn't happened yet.
+    // "overdue" comes from the database clock, so this phone's clock/timezone can't skew it.
+    const effectiveStatus = (o) => (o.overdue ? "expired" : o.status);
 
     function orderCard(o) {
       const status = effectiveStatus(o);
@@ -105,7 +107,7 @@
         ${boxesHtml(o)}
         <p class="o-meta"><strong>${peso(o.total)}</strong>
           · GCash ref: ${o.gcash_ref ? `<strong>${esc(o.gcash_ref)}</strong>` : "<em>none yet</em>"}</p>
-        <p class="o-meta o-small">Ordered ${esc(formatWhen(o.created_at))}${status === "pending" ? ` · ${esc(timeLeft(o.expires_at))}` : ""}</p>
+        <p class="o-meta o-small">Ordered ${esc(formatWhen(o.created_at))}${status === "pending" ? ` · ${esc(timeLeft(o.seconds_left))}` : ""}</p>
         <div class="o-actions no-print">
           ${status === "paid" ? "" : `<button type="button" class="btn btn-small" data-act="paid">Mark paid</button>`}
           ${status === "cancelled" ? "" : `<button type="button" class="btn btn-small btn-danger" data-act="cancelled">Cancel</button>`}

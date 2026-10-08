@@ -50,20 +50,29 @@ Single source of truth for the numbers. The database is the enforcer and the sto
 
 ## 5. Layout
 
+Only `public/` is deployed (`vercel.json` sets `outputDirectory: public`). Docs, SQL and original photos stay out of the live site.
+
 ```
-index.html          storefront / menu
-box.html            box builder
-checkout.html       customer details + submit
-confirmed.html      order confirmation + GCash instructions
-admin/              login, orders, totals (auth required)
-css/styles.css      all styles
-js/config.js        Supabase URL + anon key, and display copy (flavor text, labels). Prices come from the DB
-js/supabase.js      Supabase client setup (anon key only)
-js/cart.js          cart state in localStorage (display-only prices)
-js/cart-ui.js       sticky cart bar + slide-in drawer
-js/admin.js         shared admin helpers (login guard, Sunday picker, totals math)
-js/ui.js            shared UI helpers
-assets/             logo, flavors/*.jpg (web-sized photos), gcash-qr.png
-source-images/      full-size original photos (git-ignored, not deployed)
-supabase/           migrations 001-004, seed.sql, tests.sql
+public/                      <- what Vercel serves
+  index.html                 storefront / menu
+  box.html                   box builder
+  checkout.html              customer details + submit
+  confirmed.html             order confirmation + GCash instructions
+  404.html                   not-found page
+  admin/                     login, orders, totals (auth required, noindex)
+  css/styles.css             all styles
+  js/config.js               Supabase URL + anon key, display copy (flavor text, pickup area, Instagram)
+  js/supabase.js             Supabase client (anon key only) + database calls, 10s timeout
+  js/cart.js                 cart in localStorage (window.name fallback), display-only prices
+  js/cart-ui.js              sticky cart bar + slide-in drawer
+  js/ui.js                   shared UI helpers, banner, "ordering is closed" card
+  js/admin.js                shared admin helpers (login guard, Sunday picker, totals math)
+  assets/                    flavors/*.jpg, gcash-qr.png, og-image.jpg
+  robots.txt, sitemap.xml
+supabase/                    migrations 001-005, seed.sql, tests.sql  (NOT deployed)
+docs/                        planning docs                            (NOT deployed)
+source-images/               full-size original photos, git-ignored   (NOT deployed)
+vercel.json                  output folder + security headers
 ```
+
+Preview locally: `python3 -m http.server 8000 --directory public`, then open http://localhost:8000

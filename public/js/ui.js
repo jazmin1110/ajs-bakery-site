@@ -79,8 +79,20 @@ export function renderBanner(el, ordering) {
   el.innerHTML = `${lead}<small>${small}</small>`;
 }
 
+// Shown when we can't reach the database: ordering by Instagram DM is the fallback
 export function renderBannerError(el) {
-  el.innerHTML = `Orders are open every week<small>We couldn't load this Sunday's date. Please refresh.</small>`;
+  el.innerHTML = `Ordering is closed right now<small>DM us on Instagram ${esc(CONFIG.instagramHandle)} to order</small>`;
+}
+
+// A friendly "closed" card (with the Instagram DM link) for when the menu can't load
+export function renderClosed(container) {
+  container.innerHTML = `
+    <div class="closed-card">
+      <h3>Ordering is closed right now</h3>
+      <p>We can't reach our order system at the moment, so the menu isn't available here.
+         You can still order by message: DM us on Instagram and we'll take your order there.</p>
+      <a class="btn" href="${esc(CONFIG.instagramUrl)}" target="_blank" rel="noopener">DM ${esc(CONFIG.instagramHandle)}</a>
+    </div>`;
 }
 
 // ---- Menu + boxes ---------------------------------------------------------------

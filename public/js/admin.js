@@ -45,9 +45,10 @@ export async function signOut() {
 
 // ---- Sundays -----------------------------------------------------------------------
 
-// Today's date in Manila as "YYYY-MM-DD"
-export function manilaToday() {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date());
+// Today's date in Manila as "YYYY-MM-DD". Reads the phone's clock but always
+// formats it as Manila time, so the phone's TIMEZONE doesn't matter.
+export function manilaToday(now = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(now);
 }
 
 // The Sunday on or after a date (a Sunday gives itself)
@@ -144,8 +145,9 @@ export async function setStatus(refCode, status) {
 // ---- Small helpers ------------------------------------------------------------------------
 
 // Is this order currently holding cookie slots? Paid, or pending and not yet overdue.
-export function isLive(order, now = Date.now()) {
-  return order.status === "paid" || (order.status === "pending" && new Date(order.expires_at).getTime() > now);
+// "overdue" is worked out by the database clock (admin_orders), not this phone's.
+export function isLive(order) {
+  return order.status === "paid" || (order.status === "pending" && !order.overdue);
 }
 
 // "Oct 8, 3:20 PM" on the Manila clock
@@ -155,22 +157,21 @@ export function formatWhen(iso) {
   });
 }
 
-// "23h left", "45m left", or "overdue"
-export function timeLeft(iso, now = Date.now()) {
-  const ms = new Date(iso).getTime() - now;
-  if (ms <= 0) return "overdue";
-  const h = Math.floor(ms / 3600000);
-  return h >= 1 ? `${h}h left` : `${Math.max(1, Math.floor(ms / 60000))}m left`;
+// "23h left", "45m left", or "overdue", from the seconds the database counted
+export function timeLeft(secondsLeft) {
+  if (secondsLeft <= 0) return "overdue";
+  const h = Math.floor(secondsLeft / 3600);
+  return h >= 1 ? `${h}h left` : `${Math.max(1, Math.floor(secondsLeft / 60))}m left`;
 }
 
 // Roll orders up into the numbers the Totals page shows
-export function summarize(orders, flavors, now = Date.now()) {
+export function summarize(orders, flavors) {
   const perFlavor = Object.fromEntries(flavors.map((f) => [f.slug, { name: f.name, paid: 0, pending: 0 }]));
   const boxes = {}; // size -> { paid, pending }
   let paid = 0, pending = 0;
 
   for (const o of orders) {
-    const kind = o.status === "paid" ? "paid" : isLive(o, now) ? "pending" : null;
+    const kind = o.status === "paid" ? "paid" : isLive(o) ? "pending" : null;
     if (!kind) continue;                               // cancelled / expired: ignore
     for (const b of o.boxes) {
       boxes[b.size] ??= { paid: 0, pending: 0 };

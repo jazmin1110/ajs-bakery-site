@@ -439,3 +439,74 @@ begin
   reset role;
 end $$;
 rollback;
+
+
+-- ===========================================================================
+-- (0b) Timezone: next_order_sunday must give the SAME answer no matter what
+-- timezone the database session (or a visitor's phone) is set to, because it
+-- always converts to Asia/Manila itself.
+-- ===========================================================================
+do $$
+declare tz text;
+begin
+  foreach tz in array array['UTC', 'Asia/Manila', 'America/Los_Angeles', 'Pacific/Auckland', 'Europe/London'] loop
+    perform set_config('timezone', tz, true);
+    assert public.next_order_sunday('2026-10-07 20:59:59.999+08') = '2026-10-11', 'Wed 20:59:59 should be Oct 11 in ' || tz;
+    assert public.next_order_sunday('2026-10-07 21:00:00+08')     = '2026-10-18', 'Wed 21:00:00 sharp should be Oct 18 in ' || tz;
+    assert public.next_order_sunday('2026-10-07T13:00:00Z')       = '2026-10-18', 'same instant in UTC (Wed 13:00Z = 21:00 Manila) in ' || tz;
+    assert public.next_order_sunday('2026-10-07T12:59:59Z')       = '2026-10-11', 'one second earlier in ' || tz;
+    assert public.sunday_cutoff('2026-10-11') = '2026-10-07T13:00:00Z'::timestamptz, 'cutoff instant in ' || tz;
+  end loop;
+  raise notice 'PASS (0b): next_order_sunday and sunday_cutoff identical under 5 different session timezones';
+end $$;
+
+
+-- ===========================================================================
+-- (j) Migration 005: a phone number can have at most 3 open (unpaid) orders,
+-- however the number is written; and admin_orders reports overdue from the DB clock.
+-- ===========================================================================
+begin;
+do $$
+declare
+  boxes jsonb := '[{"size":4,"items":[{"flavor_slug":"choc-chip","qty":4}]}]';
+  admin_id uuid := gen_random_uuid(); r record; j jsonb;
+begin
+  set local role anon;
+  perform public.place_order('A', null, '+639171234567', 'pickup', null, boxes);
+  perform public.place_order('A', null, '09171234567',  'pickup', null, boxes);
+  perform public.place_order('A', null, '63 917 123 4567', 'pickup', null, boxes);
+  begin
+    perform public.place_order('A', null, '0917-123-4567', 'pickup', null, boxes);
+    raise exception 'FAIL (j): a 4th open order from the same phone was accepted';
+  exception when others then
+    if sqlerrm not like '%3 orders waiting%' then raise; end if;
+    raise notice 'PASS (j): 4th open order from the same phone rejected -> %', sqlerrm;
+  end;
+  -- A different phone is unaffected.
+  perform public.place_order('B', null, '09179998888', 'pickup', null, boxes);
+  reset role;
+
+  -- Expired orders don't count against the limit.
+  update public.orders set expires_at = now() - interval '1 minute'
+   where ref_code = (select ref_code from public.orders where phone = '+639171234567' limit 1);
+  set local role anon;
+  perform public.place_order('A', null, '09171234567', 'pickup', null, boxes);
+  reset role;
+  raise notice 'PASS (j): an expired order frees up a slot';
+
+  -- admin_orders: overdue flag comes from the database clock.
+  -- (Backdate one still-pending order; place_order would have flipped an overdue one to 'expired'.)
+  update public.orders set expires_at = now() - interval '1 minute'
+   where ref_code = (select ref_code from public.orders where status = 'pending' order by id limit 1);
+  insert into auth.users (id) values (admin_id);
+  insert into public.admins (user_id) values (admin_id);
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', admin_id)::text, true);
+  j := public.admin_orders((select min(sunday_date) from public.orders));
+  assert exists (select 1 from jsonb_array_elements(j) e where (e ->> 'overdue')::boolean), 'one order should be overdue';
+  assert exists (select 1 from jsonb_array_elements(j) e where not (e ->> 'overdue')::boolean and (e ->> 'seconds_left')::int > 80000),
+    'a fresh order should have about 24h left';
+  reset role;
+  raise notice 'PASS (j): admin_orders reports overdue and seconds_left from the DB clock';
+end $$;
+rollback;

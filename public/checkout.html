@@ -4,9 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Checkout | AJ's Bakery</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%AA%3C/text%3E%3C/svg%3E">
+  <meta name="theme-color" content="#3a72b8">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <a class="skip-link" href="#checkout">Skip to content</a>
 
   <header class="site-header">
     <div class="container">
@@ -85,12 +89,13 @@
 
       <button type="submit" class="btn btn-block" id="submit-btn">Place order</button>
       <p class="fine-print">Next you'll see how to pay by GCash.</p>
+      <p class="fine-print">We only use your name, number, Instagram and address to prepare and deliver your order.</p>
     </form>
   </main>
 
   <script type="module">
     import { CONFIG } from "./js/config.js";
-    import { fetchSundayInfo, placeOrder } from "./js/supabase.js";
+    import { fetchSundayInfo, fetchMenu, placeOrder } from "./js/supabase.js";
     import { orderingSunday, peso, esc } from "./js/ui.js";
     import * as cart from "./js/cart.js";
     import { initCartUI } from "./js/cart-ui.js";
@@ -103,6 +108,7 @@
     let ordering = null;       // this Sunday's info from the database (display only)
     let sending = false;       // true while the order request is in flight
     let done = false;          // true once the order is placed (page is about to change)
+    let pricesUpdated = false; // true if today's menu changed what's in the cart
 
     // ---- Retry-safe order key --------------------------------------------------
     // If the connection drops after the database saved the order, the customer
@@ -156,10 +162,30 @@
             </div>
             <p class="cart-box-items">${b.items.map((it) => `${it.qty} × ${esc(it.name)}`).join("<br>")}</p>
             ${b.giftNote ? `<p class="cart-box-note">🎁 ${esc(b.giftNote)}</p>` : ""}
+            ${b.unavailable ? `<p class="cart-box-warn">⚠ ${esc(b.unavailable.join(", "))} isn't available anymore.
+              <button type="button" class="link-btn" data-remove-box="${esc(b.id)}">Remove this box</button></p>` : ""}
           </div>`).join("")}
         <div class="drawer-total"><span>Total</span><span class="price">${peso(cart.total())}</span></div>
+        ${pricesUpdated ? `<p class="field-hint">Heads up: we updated the prices in your cart to match today's menu.</p>` : ""}
         <p class="field-hint">Final price is confirmed when you place your order.</p>`;
+
+      // Can't order while a box has something we no longer sell
+      const blocked = boxes.some((b) => b.unavailable);
+      $("submit-btn").disabled = blocked || sending;
+      if (blocked) showFormError("One of your boxes has a flavor we no longer offer. Please remove it above (or rebuild it) to continue.", false);
+      else if (!sending) $("form-error").hidden = true;
     }
+
+    summary.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-remove-box]");
+      if (btn) cart.remove(btn.dataset.removeBox);
+    });
+
+    // Check the cart against today's menu (flavor removed? price changed?). Best effort:
+    // the database re-checks everything when the order is placed anyway.
+    fetchMenu()
+      .then((menu) => { pricesUpdated = cart.syncWithMenu(menu).changed; renderSummary(); })
+      .catch((err) => console.error(err));
 
     // Load the Sunday date, then draw. The page works even if this fails.
     renderSummary();
@@ -237,16 +263,17 @@
     $("ig").addEventListener("blur", () => { const h = cleanIg($("ig").value); if (h) $("ig").value = h; });
 
     // ---- Friendly messages for database errors -------------------------------
-    function showFormError(html) {
+    function showFormError(html, scroll = true) {
       const box = $("form-error");
       box.innerHTML = html;
       box.hidden = false;
-      box.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (scroll) box.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 
     function explain(err) {
       if (err.isNetwork) {
-        return `We couldn't reach our server. Your cart is still saved. Check your connection and tap <strong>Try again</strong>.`;
+        return `We couldn't reach our server. Your cart is still saved. Check your connection and tap <strong>Try again</strong>.
+          Still not working? DM us on Instagram <a href="${esc(CONFIG.instagramUrl)}" target="_blank" rel="noopener">${esc(CONFIG.instagramHandle)}</a> and we'll take your order there.`;
       }
       switch (err.hint) {
         case "sunday_full":
@@ -261,11 +288,16 @@
         case "address_required": setError("address", err.message); return "";
         case "invalid_boxes":
         case "note_too_long":
+        case "too_many_open_orders":
           return esc(err.message);
         default:
           return `Something went wrong placing your order. Please try again, or message us on Instagram.`;
       }
     }
+
+    // Back button after ordering: browsers can restore this page frozen mid-submit
+    // (button stuck on "Placing your order..."). Reload so it reflects the real, now-empty cart.
+    window.addEventListener("pageshow", (e) => { if (e.persisted) location.reload(); });
 
     // ---- Submit ---------------------------------------------------------------
     form.addEventListener("submit", async (e) => {
@@ -278,6 +310,7 @@
 
       const boxes = cart.getBoxes();
       if (boxes.length === 0) return renderSummary();
+      if (boxes.some((b) => b.unavailable)) return renderSummary();   // shows the "remove it" message
 
       // The checkout note goes on boxes that don't have their own note
       const sharedNote = $("gift").value.trim();

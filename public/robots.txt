@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /checkout.html
+Disallow: /confirmed.html
+
+Sitemap: https://ajs-bakery-site.vercel.app/sitemap.xml

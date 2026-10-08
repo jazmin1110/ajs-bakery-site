@@ -4,9 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Order placed | AJ's Bakery</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%AA%3C/text%3E%3C/svg%3E">
+  <meta name="theme-color" content="#3a72b8">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <a class="skip-link" href="#confirmed">Skip to content</a>
 
   <header class="site-header">
     <div class="container">
@@ -62,7 +66,8 @@
       console.error(err);
       root.innerHTML = `<h1>Hmm, we couldn't load your order</h1>
         <p>${err.isNetwork ? "Check your connection and refresh this page." : "Please refresh this page."}
-        Your order is safe. Your reference code is <strong>${esc(ref)}</strong>.</p>
+        Your order is safe. Your reference code is <strong>${esc(ref)}</strong>.
+        Still stuck? DM us on Instagram <a href="${esc(CONFIG.instagramUrl)}" target="_blank" rel="noopener">${esc(CONFIG.instagramHandle)}</a> with that code.</p>
         <button class="btn" onclick="location.reload()">Refresh</button>`;
       throw err;
     }

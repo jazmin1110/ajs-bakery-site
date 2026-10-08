@@ -5,6 +5,17 @@ import { CONFIG } from "./config.js";
 
 let client = null;
 
+// Give up on a request after 10 seconds, so a dead connection shows the
+// "Ordering is closed" message quickly instead of spinning for a minute.
+// (Safe for orders too: the idempotency key means a retry can't double-order.)
+const TIMEOUT_MS = 10000;
+function fetchWithTimeout(url, options = {}) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  if (options.signal) options.signal.addEventListener("abort", () => ctrl.abort());
+  return fetch(url, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
 // False until the real URL and anon key are pasted into js/config.js
 export function isConfigured() {
   return (
@@ -20,7 +31,7 @@ export function getClient() {
   if (!isConfigured()) {
     throw new Error("The site isn't connected to its database yet.");
   }
-  if (!client) client = createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
+  if (!client) client = createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey, { global: { fetch: fetchWithTimeout } });
   return client;
 }
 
