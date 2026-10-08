@@ -294,7 +294,7 @@ begin
       ('[' || box4 || ',' || box4 || ',' || box4 || ',' || box4 || ']')::jsonb);
     raise exception 'FAIL (g): 4 boxes accepted';
   exception when others then
-    if sqlerrm not like '%1 to 3 boxes%' then raise; end if;
+    if sqlerrm not like '%at most 3 boxes%' then raise; end if;
     raise notice 'PASS (g): 4 boxes rejected -> %', sqlerrm;
   end;
 
@@ -508,5 +508,204 @@ begin
     'a fresh order should have about 24h left';
   reset role;
   raise notice 'PASS (j): admin_orders reports overdue and seconds_left from the DB clock';
+end $$;
+rollback;
+
+
+-- ===========================================================================
+-- (k) Single cookies (migration 006).
+--   single prices: Chimp Chips 105, Coco Loco 110, Bueno Mucho 135
+--   minimum 2 cookies per order; singles count toward the 45 cap;
+--   the browser can never set a price.
+-- ===========================================================================
+begin;
+do $$
+declare r record; n int;
+begin
+  set local role anon;
+
+  -- Single-only order: 2 Chimp Chips = 2 x 105 = 210
+  select * into r from public.place_order('Sam', null, '09175550001', 'pickup', null, '[]'::jsonb, null,
+    '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
+  assert r.total = 210, 'two Chimp Chips should be 210, got ' || r.total;
+  raise notice 'PASS (k): single-only order total = % (2 x 105)', r.total;
+
+  -- Mixed order: box of 4 (2 Chimp + 2 Bueno = 380 + 60 = 440) + singles (1 Coco 110 + 1 Bueno 135 = 245) = 685
+  select * into r from public.place_order('Sam', null, '09175550002', 'pickup', null,
+    '[{"size":4,"items":[{"flavor_slug":"choc-chip","qty":2},{"flavor_slug":"kinder-bueno","qty":2}]}]'::jsonb, null,
+    '[{"flavor_slug":"double-choc","qty":1},{"flavor_slug":"kinder-bueno","qty":1}]'::jsonb);
+  assert r.total = 685, 'box 440 + singles 245 should be 685, got ' || r.total;
+  raise notice 'PASS (k): box + singles total = % (440 + 245)', r.total;
+
+  -- Duplicate slugs are merged; 3 Coco Loco = 330
+  select * into r from public.place_order('Sam', null, '09175550003', 'pickup', null, '[]'::jsonb, null,
+    '[{"flavor_slug":"double-choc","qty":1},{"flavor_slug":"double-choc","qty":2}]'::jsonb);
+  assert r.total = 330, 'merged Coco Loco singles should be 330, got ' || r.total;
+  reset role;
+
+  -- Stored as loose items (no box) with the price they were sold at.
+  select count(*) into n from public.order_items where order_box_id is null and unit_price = 135;
+  assert n = 1, 'the Bueno single should be stored with unit_price 135';
+  select count(*) into n from public.order_items where order_box_id is not null and unit_price is not null;
+  assert n = 0, 'box items must not carry a unit price';
+  raise notice 'PASS (k): singles stored with order_box_id null and their unit_price';
+end $$;
+rollback;
+
+-- Minimum order: 2 cookies
+begin;
+do $$
+begin
+  set local role anon;
+  begin
+    perform 1 from public.place_order('Min', null, '09175550004', 'pickup', null, '[]'::jsonb, null,
+      '[{"flavor_slug":"choc-chip","qty":1}]'::jsonb);
+    raise exception 'FAIL (k): a 1-cookie order was accepted';
+  exception when others then
+    if sqlerrm not like '%minimum order is 2%' then raise; end if;
+    raise notice 'PASS (k): 1 cookie rejected -> %', sqlerrm;
+  end;
+  begin
+    perform 1 from public.place_order('Min', null, '09175550004', 'pickup', null, '[]'::jsonb);
+    raise exception 'FAIL (k): an empty order was accepted';
+  exception when others then
+    if sqlerrm not like '%add something%' then raise; end if;
+    raise notice 'PASS (k): empty order rejected';
+  end;
+  begin
+    perform 1 from public.place_order('Min', null, '09175550004', 'pickup', null, '[]'::jsonb, null,
+      '[{"flavor_slug":"choc-chip","qty":0}]'::jsonb);
+    raise exception 'FAIL (k): qty 0 accepted';
+  exception when others then
+    if sqlerrm not like '%at least 1%' then raise; end if;
+  end;
+  begin
+    perform 1 from public.place_order('Min', null, '09175550004', 'pickup', null, '[]'::jsonb, null,
+      '[{"flavor_slug":"choc-chip","qty":-5},{"flavor_slug":"double-choc","qty":9}]'::jsonb);
+    raise exception 'FAIL (k): negative qty accepted';
+  exception when others then
+    if sqlerrm not like '%at least 1%' then raise; end if;
+    raise notice 'PASS (k): zero / negative quantities rejected';
+  end;
+  begin
+    perform 1 from public.place_order('Min', null, '09175550004', 'pickup', null, '[]'::jsonb, null,
+      '[{"flavor_slug":"choc-chip","qty":46}]'::jsonb);
+    raise exception 'FAIL (k): 46 cookies in one order accepted';
+  exception when others then
+    if sqlerrm not like '%more than the 45%' then raise; end if;
+    raise notice 'PASS (k): an order bigger than the 45 cap is rejected';
+  end;
+  begin
+    perform 1 from public.place_order('Min', null, '09175550004', 'pickup', null, '[]'::jsonb, null,
+      '[{"flavor_slug":"matcha-cookie","qty":2}]'::jsonb);
+    raise exception 'FAIL (k): unknown single flavor accepted';
+  exception when others then
+    if sqlerrm not like '%as a single cookie%' then raise; end if;
+    raise notice 'PASS (k): unknown flavor rejected';
+  end;
+  reset role;
+end $$;
+rollback;
+
+-- Singles count toward the 45 cap
+begin;
+do $$
+declare
+  v_sunday date := public.next_order_sunday();
+  v_order bigint; v_box bigint;
+  v_flavor bigint := (select id from public.flavors where slug = 'choc-chip');
+  r record; i record;
+begin
+  -- 43 cookies already paid on the upcoming Sunday (a fixture, as postgres)
+  insert into public.orders (ref_code, sunday_date, name, phone, fulfillment, total, status)
+  values ('AJ-FIXTURE', v_sunday, 'Fixture', '09170000000', 'pickup', 0, 'paid') returning id into v_order;
+  insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, v_flavor, 43, 105);
+
+  set local role anon;
+  -- 43 + 2 singles = 45: fits, stays on this Sunday
+  select * into r from public.place_order('Cap1', null, '09175550005', 'pickup', null, '[]'::jsonb, null,
+    '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
+  assert r.sunday_date = v_sunday, 'singles reaching exactly 45 should stay on ' || v_sunday;
+  -- now 45 are taken: even 2 more singles roll over to the next Sunday
+  select * into r from public.place_order('Cap2', null, '09175550006', 'pickup', null, '[]'::jsonb, null,
+    '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
+  assert r.sunday_date = v_sunday + 7, '2 more singles should roll to ' || (v_sunday + 7) || ', got ' || r.sunday_date;
+  -- and the banner function agrees (smallest possible order is now 2 cookies)
+  select * into i from public.current_sunday_info();
+  assert i.is_full and i.cookies_taken = 45 and i.ordering_sunday = v_sunday + 7, 'banner should say full';
+  reset role;
+  raise notice 'PASS (k): singles count toward the 45 cap and roll over like box cookies';
+
+  -- 1 cookie left: a full Sunday is not "full" until fewer than 2 remain
+  delete from public.order_items where order_id = (select id from public.orders where ref_code = 'AJ-FIXTURE');
+  delete from public.orders where status <> 'paid';
+  insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, v_flavor, 43, 105);
+  set local role anon;
+  select * into i from public.current_sunday_info();
+  assert not i.is_full and i.remaining = 2, 'with 2 left the Sunday is not full';
+  reset role;
+end $$;
+rollback;
+
+-- Price tampering is ignored: every price comes from the database
+begin;
+do $$
+declare r record; n int;
+begin
+  set local role anon;
+  -- extra "price" fields on singles and on a box, and a fake "total", are never read
+  select * into r from public.place_order('Cheat', null, '09175550007', 'pickup', null,
+    '[{"size":4,"price":1,"total":1,"items":[{"flavor_slug":"choc-chip","qty":4,"price":1}]}]'::jsonb, null,
+    '[{"flavor_slug":"choc-chip","qty":2,"price":1,"unit_price":1,"single_price":1,"total":1}]'::jsonb);
+  assert r.total = 380 + 210, 'tampered prices must be ignored: expected 590, got ' || r.total;
+  reset role;
+  select count(*) into n from public.order_items where unit_price = 1;
+  assert n = 0, 'no item may carry the tampered price';
+  assert (select unit_price from public.order_items where order_box_id is null limit 1) = 105, 'unit price must be the DB price';
+  raise notice 'PASS (k): price tampering ignored (total %, singles priced by the database)', r.total;
+
+  -- The DB, not the browser, decides which flavors can be bought as singles
+  reset role;
+  update public.flavors set single_price = null where slug = 'kinder-bueno';
+  set local role anon;
+  begin
+    perform 1 from public.place_order('Cheat', null, '09175550008', 'pickup', null, '[]'::jsonb, null,
+      '[{"flavor_slug":"kinder-bueno","qty":2}]'::jsonb);
+    raise exception 'FAIL (k): a flavor with no single price was sold as a single';
+  exception when others then
+    if sqlerrm not like '%as a single cookie%' then raise; end if;
+    raise notice 'PASS (k): a flavor with no single price cannot be ordered as a single';
+  end;
+  -- ...but it can still go in a box
+  perform public.place_order('Cheat', null, '09175550009', 'pickup', null,
+    '[{"size":4,"items":[{"flavor_slug":"kinder-bueno","qty":4}]}]'::jsonb);
+  reset role;
+end $$;
+rollback;
+
+-- Visitors can't call the internal pricing helper, and admins see singles
+begin;
+do $$
+declare admin_id uuid := gen_random_uuid(); o record; j jsonb;
+begin
+  set local role anon;
+  begin
+    perform public.quote_singles('[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
+    raise exception 'FAIL (k): anon called quote_singles';
+  exception when insufficient_privilege then
+    raise notice 'PASS (k): anon cannot call quote_singles';
+  end;
+  select * into o from public.place_order('Adm', null, '09175550010', 'pickup', null, '[]'::jsonb, null,
+    '[{"flavor_slug":"choc-chip","qty":1},{"flavor_slug":"double-choc","qty":2}]'::jsonb);
+  reset role;
+  insert into auth.users (id) values (admin_id);
+  insert into public.admins (user_id) values (admin_id);
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', admin_id)::text, true);
+  j := public.admin_orders(o.sunday_date);
+  assert jsonb_array_length(j -> 0 -> 'singles') = 2 and jsonb_array_length(j -> 0 -> 'boxes') = 0, 'admin should see 2 single lines and no boxes';
+  assert (j -> 0 -> 'singles' -> 0 ->> 'unit_price')::numeric = 105 and (j -> 0 -> 'singles' -> 1 ->> 'qty')::int = 2, 'singles detail';
+  reset role;
+  raise notice 'PASS (k): admin_orders lists singles with quantity and the price they were sold at';
 end $$;
 rollback;

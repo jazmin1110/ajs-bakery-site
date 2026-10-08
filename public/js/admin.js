@@ -164,11 +164,20 @@ export function timeLeft(secondsLeft) {
   return h >= 1 ? `${h}h left` : `${Math.max(1, Math.floor(secondsLeft / 60))}m left`;
 }
 
-// Roll orders up into the numbers the Totals page shows
+// Roll orders up into the numbers the Totals page shows.
+// Cookies per flavor count BOTH box cookies and single cookies; `singles` is the
+// loose-cookie part on its own.
 export function summarize(orders, flavors) {
   const perFlavor = Object.fromEntries(flavors.map((f) => [f.slug, { name: f.name, paid: 0, pending: 0 }]));
   const boxes = {}; // size -> { paid, pending }
+  const singles = { paid: 0, pending: 0 };
   let paid = 0, pending = 0;
+
+  const addCookies = (slug, name, qty, kind) => {
+    perFlavor[slug] ??= { name, paid: 0, pending: 0 };
+    perFlavor[slug][kind] += qty;
+    if (kind === "paid") paid += qty; else pending += qty;
+  };
 
   for (const o of orders) {
     const kind = o.status === "paid" ? "paid" : isLive(o) ? "pending" : null;
@@ -176,14 +185,21 @@ export function summarize(orders, flavors) {
     for (const b of o.boxes) {
       boxes[b.size] ??= { paid: 0, pending: 0 };
       boxes[b.size][kind] += 1;
-      for (const i of b.items) {
-        perFlavor[i.slug] ??= { name: i.name, paid: 0, pending: 0 };
-        perFlavor[i.slug][kind] += i.qty;
-        if (kind === "paid") paid += i.qty; else pending += i.qty;
-      }
+      for (const i of b.items) addCookies(i.slug, i.name, i.qty, kind);
+    }
+    for (const sgl of o.singles || []) {
+      singles[kind] += sgl.qty;
+      addCookies(sgl.slug, sgl.name, sgl.qty, kind);
     }
   }
-  return { perFlavor, boxes, paid, pending };
+  return { perFlavor, boxes, singles, paid, pending };
+}
+
+// How to pack loose single cookies: a bag for a few, a box from this many up.
+// (Change it here if you pack differently.)
+export const SINGLES_BOX_FROM = 4;
+export function singlesPack(n) {
+  return `${n >= SINGLES_BOX_FROM ? "Box" : "Bag"} of ${n}`;
 }
 
 // Batches for a number of cookies: round up, and say how many are left over

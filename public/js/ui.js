@@ -114,17 +114,41 @@ export function flavorPhoto(slug, name, cls) {
     onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${info.emoji}'}))">`;
 }
 
-export function renderMenu(container, flavors) {
+// The cheapest a cookie gets inside a box: the best box's per-cookie price plus the flavor's
+// box surcharge (e.g. 380 / 4 = 95; Bueno Mucho adds 30 -> 125). For the "or from ₱95 each" label.
+export function boxEachPrice(flavor, boxes) {
+  if (!boxes.length) return null;
+  const perCookie = Math.min(...boxes.map((b) => b.price / b.size));
+  return Math.round((perCookie + flavor.surcharge) * 100) / 100;
+}
+
+// One card per flavor: single price, "or from ₱X each in a box", and a stepper + Add button for singles.
+export function renderMenu(container, flavors, boxes = []) {
   container.innerHTML = flavors
     .map((f) => {
       const info = flavorInfo(f.slug);
+      const each = boxEachPrice(f, boxes);
+      const inBox = each != null ? `from ${peso(each)} each in a box` : "";
+      const canSingle = f.single_price != null;
       return `
-      <article class="card">
+      <article class="card" data-slug="${esc(f.slug)}">
         <div class="card-photo">${flavorPhoto(f.slug, f.name, "card-img")}</div>
         <div class="card-body">
           <h3>${esc(f.name)}</h3>
           <p>${esc(info.description)}</p>
-          <div class="price">${peso(f.price)} <small>/ cookie</small></div>
+          ${canSingle
+            ? `<div class="price">${peso(f.single_price)} <small>each</small></div>
+               <p class="box-each">${inBox ? `or ${esc(inBox)}` : ""}</p>
+               <div class="single-add">
+                 <div class="stepper">
+                   <button type="button" data-single-step="-1" aria-label="One fewer ${esc(f.name)}">&minus;</button>
+                   <output aria-label="${esc(f.name)} quantity">1</output>
+                   <button type="button" data-single-step="1" aria-label="One more ${esc(f.name)}">+</button>
+                 </div>
+                 <button type="button" class="btn btn-small" data-add-single>Add to cart</button>
+               </div>`
+            : `<div class="price">Box only</div>
+               <p class="box-each">${esc(inBox)}</p>`}
           <span class="tag">Macro label coming soon</span>
         </div>
       </article>`;

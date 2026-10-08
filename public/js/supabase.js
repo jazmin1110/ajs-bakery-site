@@ -36,10 +36,11 @@ export function getClient() {
 }
 
 // Active flavors and boxes. Prices come back as numbers for display only.
+// flavor.single_price = price of one loose cookie; flavor.surcharge = extra per cookie inside a box.
 export async function fetchMenu() {
   const sb = getClient();
   const [flavorsRes, boxesRes] = await Promise.all([
-    sb.from("flavors").select("id, slug, name, price, surcharge").eq("active", true).order("id"),
+    sb.from("flavors").select("id, slug, name, surcharge, single_price").eq("active", true).order("id"),
     sb.from("boxes").select("id, size, price").eq("active", true).order("size"),
   ]);
   if (flavorsRes.error) throw flavorsRes.error;
@@ -48,8 +49,9 @@ export async function fetchMenu() {
   return {
     flavors: flavorsRes.data.map((f) => ({
       ...f,
-      price: Number(f.price),
       surcharge: Number(f.surcharge),
+      // null = not sold as a single cookie (box only)
+      single_price: f.single_price == null ? null : Number(f.single_price),
     })),
     boxes: boxesRes.data.map((b) => ({ ...b, price: Number(b.price) })),
   };
@@ -92,11 +94,11 @@ async function callFunction(name, args) {
   return result.data;
 }
 
-// Place an order from the cart. We send ONLY what the customer chose (sizes,
-// flavors, quantities, gift notes). No prices: the database prices everything.
+// Place an order from the cart. We send ONLY what the customer chose (box sizes,
+// flavors, quantities, gift notes, single cookies). No prices: the database prices everything.
 // Returns { ref_code, total, sunday_date } (the real Sunday, which can differ
 // from the banner if the order didn't fit and rolled over).
-export async function placeOrder({ name, igHandle, phone, fulfillment, address, boxes, idempotencyKey }) {
+export async function placeOrder({ name, igHandle, phone, fulfillment, address, boxes, singles = [], idempotencyKey }) {
   const data = await callFunction("place_order", {
     p_name: name,
     p_ig_handle: igHandle,
@@ -108,6 +110,8 @@ export async function placeOrder({ name, igHandle, phone, fulfillment, address, 
       gift_note: b.giftNote || null,
       items: b.items.map((i) => ({ flavor_slug: i.slug, qty: i.qty })),
     })),
+    // Loose single cookies: just flavor and quantity, never a price
+    p_singles: singles.map((s) => ({ flavor_slug: s.slug, qty: s.qty })),
     // Same key on a retry = the database hands back the order it already saved
     // instead of creating a duplicate (see migration 003).
     p_idempotency_key: idempotencyKey || null,

@@ -23,17 +23,23 @@ Single source of truth for the numbers. The database is the enforcer and the sto
 
 | Thing | Value |
 |---|---|
-| Box of 4 | ₱380 |
-| Box of 6 | ₱570 |
-| Chimp Chips (brown butter choc chip) | ₱95 per cookie |
-| Coco Loco (double chocolate) | ₱100 per cookie |
-| Bueno Mucho (Kinder Bueno) | ₱125 per cookie |
-| Bueno surcharge | +₱30 per Bueno cookie over the ₱95 base, applied inside box totals |
-| Cap | 45 cookies per Sunday |
+| Box of 4 | ₱380 (₱95 per cookie) |
+| Box of 6 | ₱570 (₱95 per cookie) |
+| Bueno surcharge | +₱30 per Bueno Mucho cookie inside a box (so ₱125 each in a box) |
+| **Single cookie: Chimp Chips** (brown butter choc chip) | **₱105** |
+| **Single cookie: Coco Loco** (double chocolate) | **₱110** |
+| **Single cookie: Bueno Mucho** (Kinder Bueno) | **₱135** |
+| **Minimum order** | **2 cookies**, singles and boxes combined |
+| Cap | 45 cookies per Sunday. **Singles count toward it**, same as box cookies |
+| Order limits | Up to 3 boxes per order, plus any single cookies (45 cookies max per order) |
 | Order cutoff | Wednesday 21:00 Asia/Manila |
 | Fulfillment | Pickup, or customer-booked delivery, on Sundays 3–6pm |
 | Payment | GCash, customer submits a reference number |
 | Unpaid orders | Expire after 24 hours (slot is released) |
+
+**Singles vs boxes:** an order can hold boxes, loose single cookies, or both. A box is cheaper per cookie than singles (that is the point of boxes), so the cart nudges people toward a box when singles would cost more. `flavors.single_price` is the single price (null = not sold as a single). The old `flavors.price` column is unused legacy; ignore it.
+
+**All prices, the 2-cookie minimum and the cap are computed in the database** (`place_order`). The browser shows prices for display only and never sends a price.
 
 **Cutoff rule:** a Sunday `S` accepts orders until `S − 4 days at 21:00` Asia/Manila (that's Wednesday 9pm). Orders placed after that go to the next Sunday.
 
@@ -69,7 +75,7 @@ public/                      <- what Vercel serves
   js/admin.js                shared admin helpers (login guard, Sunday picker, totals math)
   assets/                    flavors/*.jpg, gcash-qr.png, og-image.jpg
   robots.txt, sitemap.xml
-supabase/                    migrations 001-005, seed.sql, tests.sql  (NOT deployed)
+supabase/                    migrations 001-006, seed.sql, tests.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers

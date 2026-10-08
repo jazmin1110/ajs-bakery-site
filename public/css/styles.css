@@ -578,6 +578,25 @@ body.has-cart-bar { padding-bottom: 5rem; }  /* so the bar never covers the foot
   .o-ref { font-size: 16pt; color: #000; }
 }
 
+/* ---------- Single cookies: menu cards, cart sections ---------- */
+.box-each { margin: -0.2rem 0 0.6rem; color: #6b574d; font-size: 0.95rem; }
+.box-each:empty { display: none; }
+.single-add { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; margin: 0.4rem 0 0.2rem; }
+.single-add .btn-small { flex: 1; min-width: 130px; }
+
+.cart-section { margin-bottom: 0.4rem; }
+.cart-section-title { font-size: 1.05rem; margin: 0.5rem 0 0.4rem; color: var(--blue-dark); }
+.subtotal { display: flex; justify-content: space-between; padding: 0.4rem 0.2rem 0.2rem; font-weight: 700; border-top: 2px dashed var(--cream-dark); }
+.cart-line-controls { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.3rem; }
+.cart-line-each { color: #6b574d; font-size: 0.92rem; flex: 1; }
+
+.hint-save { background: #e3f6e5; border: 2px solid #5cb868; border-radius: var(--radius-sm); padding: 0.7rem 0.9rem; margin: 0.6rem 0; font-size: 0.95rem; }
+.hint-save a { font-weight: 700; }
+.min-msg { background: #fff3d6; border: 2px solid var(--accent); border-radius: var(--radius-sm); padding: 0.6rem 0.8rem; margin: 0; font-weight: 700; }
+
+.cart-bar .btn.is-disabled { background: #d9c9ae; color: #5b4a3f; box-shadow: none; pointer-events: none; }
+.btn:disabled { opacity: 0.6; }
+
 /* ---------- "Ordering is closed" card, 404, cart warnings ---------- */
 .closed-card { grid-column: 1 / -1; text-align: center; background: #fff; border: 3px dashed var(--accent); border-radius: var(--radius); padding: 1.5rem 1.2rem; box-shadow: var(--shadow); }
 .closed-card h3 { font-size: 1.5rem; }

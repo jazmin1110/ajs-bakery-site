@@ -98,7 +98,7 @@
     import { fetchSundayInfo, fetchMenu, placeOrder } from "./js/supabase.js";
     import { orderingSunday, peso, esc } from "./js/ui.js";
     import * as cart from "./js/cart.js";
-    import { initCartUI } from "./js/cart-ui.js";
+    import { initCartUI, hintHtml, minimumHtml } from "./js/cart-ui.js";
 
     initCartUI({ showBar: false });
 
@@ -133,16 +133,17 @@
     function renderSummary() {
       if (done) return;          // don't flash "cart is empty" while redirecting
       const boxes = cart.getBoxes();
-      if (boxes.length === 0) {
+      const singles = cart.getSingles();
+      if (cart.isEmpty()) {
         summary.innerHTML = `
           <p class="drawer-empty">Your cart is empty.</p>
-          <a class="btn btn-block" href="index.html#boxes">Pick a box</a>`;
+          <a class="btn btn-block" href="index.html#menu">Browse the menu</a>`;
         form.hidden = true;
         return;
       }
       form.hidden = false;
 
-      const cookies = boxes.reduce((n, b) => n + b.size, 0);
+      const cookies = cart.cookieCount();
       let sundayHtml = `<p class="summary-sunday">Checking your Sunday...</p>`;
       if (ordering) {
         sundayHtml = `<p class="summary-sunday">Ready <strong>${esc(ordering.label)}</strong></p>`;
@@ -152,8 +153,9 @@
         }
       }
 
-      summary.innerHTML = `
-        ${sundayHtml}
+      // Boxes and singles are separate lines, each group with its own subtotal
+      const boxesHtml = boxes.length ? `
+        <h3 class="cart-section-title">Boxes</h3>
         ${boxes.map((b, i) => `
           <div class="summary-box">
             <div class="cart-box-head">
@@ -165,20 +167,54 @@
             ${b.unavailable ? `<p class="cart-box-warn">⚠ ${esc(b.unavailable.join(", "))} isn't available anymore.
               <button type="button" class="link-btn" data-remove-box="${esc(b.id)}">Remove this box</button></p>` : ""}
           </div>`).join("")}
+        <div class="subtotal"><span>Boxes subtotal</span><span>${peso(cart.boxesTotal())}</span></div>` : "";
+
+      const singlesHtml = singles.length ? `
+        <h3 class="cart-section-title">Single cookies</h3>
+        ${singles.map((s) => `
+          <div class="summary-box">
+            <div class="cart-box-head">
+              <strong>${s.qty} × ${esc(s.name)}</strong>
+              <span class="price">${peso(s.unitPrice * s.qty)}</span>
+            </div>
+            <p class="cart-box-items">${s.qty} × ${peso(s.unitPrice)}</p>
+            ${s.unavailable ? `<p class="cart-box-warn">⚠ ${esc(s.name)} isn't available as a single anymore.
+              <button type="button" class="link-btn" data-remove-single="${esc(s.slug)}">Remove</button></p>` : ""}
+          </div>`).join("")}
+        <div class="subtotal"><span>Singles subtotal</span><span>${peso(cart.singlesTotal())}</span></div>` : "";
+
+      summary.innerHTML = `
+        ${sundayHtml}
+        ${boxesHtml}
+        ${singlesHtml}
+        ${hintHtml()}
         <div class="drawer-total"><span>Total</span><span class="price">${peso(cart.total())}</span></div>
         ${pricesUpdated ? `<p class="field-hint">Heads up: we updated the prices in your cart to match today's menu.</p>` : ""}
         <p class="field-hint">Final price is confirmed when you place your order.</p>`;
 
-      // Can't order while a box has something we no longer sell
-      const blocked = boxes.some((b) => b.unavailable);
-      $("submit-btn").disabled = blocked || sending;
-      if (blocked) showFormError("One of your boxes has a flavor we no longer offer. Please remove it above (or rebuild it) to continue.", false);
-      else if (!sending) $("form-error").hidden = true;
+      // The gift note belongs to boxes; with only single cookies there's nothing to attach it to
+      document.querySelector('[data-field="gift"]').hidden = boxes.length === 0;
+
+      // What stops checkout right now?
+      //   - fewer than 2 cookies (singles and boxes together)
+      //   - something in the cart the menu no longer offers
+      const short = !cart.meetsMinimum();
+      const blocked = cart.hasUnavailable();
+      $("submit-btn").disabled = short || blocked || sending;
+      if (short) {
+        showFormError(`${minimumHtml().replace(/<\/?p[^>]*>/g, "")} <a href="index.html#menu">Add cookies</a>`, false);
+      } else if (blocked) {
+        showFormError("Something in your cart isn't available anymore. Please remove it above to continue.", false);
+      } else if (!sending) {
+        $("form-error").hidden = true;
+      }
     }
 
     summary.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-remove-box]");
-      if (btn) cart.remove(btn.dataset.removeBox);
+      if (btn) return cart.remove(btn.dataset.removeBox);
+      const single = e.target.closest("[data-remove-single]");
+      if (single) cart.removeSingle(single.dataset.removeSingle);
     });
 
     // Check the cart against today's menu (flavor removed? price changed?). Best effort:
@@ -289,6 +325,9 @@
         case "invalid_boxes":
         case "note_too_long":
         case "too_many_open_orders":
+        case "minimum_not_met":
+        case "too_many_cookies":
+        case "empty_order":
           return esc(err.message);
         default:
           return `Something went wrong placing your order. Please try again, or message us on Instagram.`;
@@ -309,8 +348,9 @@
       if (!values) return;
 
       const boxes = cart.getBoxes();
-      if (boxes.length === 0) return renderSummary();
-      if (boxes.some((b) => b.unavailable)) return renderSummary();   // shows the "remove it" message
+      const singles = cart.getSingles();
+      if (cart.isEmpty()) return renderSummary();
+      if (!cart.meetsMinimum() || cart.hasUnavailable()) return renderSummary();   // shows why checkout is blocked
 
       // The checkout note goes on boxes that don't have their own note
       const sharedNote = $("gift").value.trim();
@@ -322,7 +362,7 @@
       btn.textContent = "Placing your order...";
 
       try {
-        const payload = { ...values, boxes: withNotes };
+        const payload = { ...values, boxes: withNotes, singles };
         const order = await placeOrder({ ...payload, idempotencyKey: keyFor(payload) });
         done = true;
         cart.clear();                            // only after the database accepted it

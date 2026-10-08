@@ -90,6 +90,7 @@
 
         <section class="t-card">
           <h2>Cookies per flavor</h2>
+          <p class="t-sub">Counts box cookies and single cookies together.</p>
           <table class="t-table">
             <thead><tr><th></th><th>Paid</th><th>Pending</th><th>Total</th></tr></thead>
             <tbody>
@@ -100,12 +101,16 @@
         </section>
 
         <section class="t-card">
-          <h2>Boxes</h2>
-          ${sizes.length ? `
+          <h2>Boxes and singles</h2>
+          ${sizes.length || summary.singles.paid + summary.singles.pending ? `
           <table class="t-table">
             <thead><tr><th></th><th>Paid</th><th>Pending</th><th>Total</th></tr></thead>
-            <tbody>${sizes.map((s) => `<tr><th scope="row">Box of ${s}</th><td>${summary.boxes[s].paid}</td><td>${summary.boxes[s].pending}</td><td><strong>${summary.boxes[s].paid + summary.boxes[s].pending}</strong></td></tr>`).join("")}</tbody>
-          </table>` : `<p class="t-sub">No boxes yet.</p>`}
+            <tbody>
+              ${sizes.map((s) => `<tr><th scope="row">Box of ${s}</th><td>${summary.boxes[s].paid}</td><td>${summary.boxes[s].pending}</td><td><strong>${summary.boxes[s].paid + summary.boxes[s].pending}</strong></td></tr>`).join("")}
+              <tr><th scope="row">Single cookies</th><td>${summary.singles.paid}</td><td>${summary.singles.pending}</td><td><strong>${summary.singles.paid + summary.singles.pending}</strong></td></tr>
+            </tbody>
+          </table>
+          <p class="t-sub">Boxes are counted as boxes; single cookies are counted as cookies.</p>` : `<p class="t-sub">No boxes or singles yet.</p>`}
         </section>
 
         <section class="t-card">

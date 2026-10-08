@@ -34,7 +34,7 @@
   <script type="module">
     import {
       requireAdmin, renderNav, setupSundayPicker, selectedSunday, expireStale, loadOrders, setStatus,
-      formatWhen, timeLeft,
+      formatWhen, timeLeft, singlesPack,
     } from "../js/admin.js";
     import { esc, peso, formatSunday } from "../js/ui.js";
 
@@ -82,6 +82,18 @@
         </div>`).join("");
     }
 
+    // Loose single cookies (not in a box): "Single cookies (3): 2 × Chimp Chips ..."
+    const singlesCount = (o) => (o.singles || []).reduce((n, s) => n + s.qty, 0);
+    function singlesHtml(o, packing = false) {
+      if (!(o.singles || []).length) return "";
+      const n = singlesCount(o);
+      return `
+        <div class="o-box">
+          <strong>${packing ? `Singles: ${esc(singlesPack(n))}` : `Single cookies (${n})`}</strong>
+          <div>${o.singles.map((s) => `${s.qty} × ${esc(s.name)}${packing ? "" : ` <span class="o-small">(${peso(s.unit_price)} each)</span>`}`).join("<br>")}</div>
+        </div>`;
+    }
+
     // Overdue pending orders count as expired for colouring, even if the flip hasn't happened yet.
     // "overdue" comes from the database clock, so this phone's clock/timezone can't skew it.
     const effectiveStatus = (o) => (o.overdue ? "expired" : o.status);
@@ -105,6 +117,7 @@
         <p class="o-meta">${o.fulfillment === "delivery"
           ? `🚚 Delivery: ${esc(o.address || "(no address)")}` : "🏠 Pickup"}</p>
         ${boxesHtml(o)}
+        ${singlesHtml(o)}
         <p class="o-meta"><strong>${peso(o.total)}</strong>
           · GCash ref: ${o.gcash_ref ? `<strong>${esc(o.gcash_ref)}</strong>` : "<em>none yet</em>"}</p>
         <p class="o-meta o-small">Ordered ${esc(formatWhen(o.created_at))}${status === "pending" ? ` · ${esc(timeLeft(o.seconds_left))}` : ""}</p>
@@ -125,6 +138,7 @@
         <p class="o-who"><strong>${esc(o.name)}</strong>${o.ig_handle ? ` · ${esc(o.ig_handle)}` : ""} · ${esc(o.phone)}</p>
         ${o.fulfillment === "delivery" ? `<p class="o-meta">${esc(o.address || "")}</p>` : ""}
         ${boxesHtml(o)}
+        ${singlesHtml(o, true)}
       </article>`;
     }
 

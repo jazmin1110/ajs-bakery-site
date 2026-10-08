@@ -65,7 +65,7 @@
     <section id="menu">
       <div class="container">
         <h2>The Menu</h2>
-        <p class="section-sub">Three brown butter flavors. Every cookie ships with a nutrition label.</p>
+        <p class="section-sub">Three brown butter flavors. Grab a few single cookies, or save with a box. Minimum order is 2 cookies. Every cookie ships with a nutrition label.</p>
         <div class="card-grid" id="menu-grid"><p class="loading">Loading the menu...</p></div>
       </div>
     </section>
@@ -137,7 +137,7 @@
       renderMenu, renderBoxes, renderConfigText, renderClosed,
     } from "./js/ui.js";
     import { initCartUI } from "./js/cart-ui.js";
-    import { syncWithMenu } from "./js/cart.js";
+    import * as cart from "./js/cart.js";
 
     renderConfigText();
     initCartUI();
@@ -146,6 +146,28 @@
     ig.href = CONFIG.instagramUrl;
     ig.textContent = CONFIG.instagramHandle;
 
+    // Stepper + "Add to cart" on each menu card (single cookies).
+    // Quantities live in the page; the cart only changes when "Add to cart" is tapped.
+    function wireSingles(grid, flavors) {
+      grid.addEventListener("click", (e) => {
+        const card = e.target.closest("[data-slug]");
+        if (!card) return;
+        const out = card.querySelector("output");
+        const step = e.target.closest("[data-single-step]");
+        if (step) {
+          out.textContent = Math.min(Math.max(Number(out.textContent) + Number(step.dataset.singleStep), 1), 45);
+          return;
+        }
+        const add = e.target.closest("[data-add-single]");
+        if (!add) return;
+        const flavor = flavors.find((f) => f.slug === card.dataset.slug);
+        const result = cart.addSingle(flavor, Number(out.textContent));
+        add.textContent = result.ok ? "Added ✓" : result.error;
+        out.textContent = "1";
+        setTimeout(() => { add.textContent = "Add to cart"; }, 1800);
+      });
+    }
+
     // Banner, menu and boxes load separately so one failing doesn't hide the others
     fetchSundayInfo()
       .then((info) => renderBanner(document.getElementById("order-banner"), orderingSunday(info)))
@@ -153,9 +175,10 @@
 
     fetchMenu()
       .then(({ flavors, boxes }) => {
-        renderMenu(document.getElementById("menu-grid"), flavors);
+        renderMenu(document.getElementById("menu-grid"), flavors, boxes);
+        wireSingles(document.getElementById("menu-grid"), flavors);
         renderBoxes(document.getElementById("box-grid"), document.getElementById("box-note"), boxes, flavors);
-        syncWithMenu({ flavors, boxes });   // keep the cart's names/prices in line with today's menu
+        cart.syncWithMenu({ flavors, boxes });   // keep the cart's names/prices in line with today's menu
       })
       .catch((err) => {
         // Can't reach the database: show "Ordering is closed" with the Instagram DM link
