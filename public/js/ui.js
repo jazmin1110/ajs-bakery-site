@@ -168,9 +168,11 @@ export function boxSavings(box, flavors) {
   return saving > 0 ? saving : null;
 }
 
-// One compact card per flavor. Everything needed to order is visible without opening anything:
-// name, stock label, price, "or from ₱95 each in a box", stepper and Add to cart.
-// Tapping anywhere else on the card (photo, name, text) opens the detail sheet.
+// One item per flavor. On phones (CSS, under 700px) the items are rows inside one rounded list: text on
+// the left, a square thumbnail on the right. From 700px they are the 3-up cards. The markup is the same.
+//   * Tapping the item (not the add control) opens the detail sheet.
+//   * The add control is a "+ Add" pill; once the flavor is in the cart it shows a "- N +" stepper.
+//     Both are in the page from the start and the page script shows one of them (see index.html).
 export function renderMenu(container, flavors, boxes = [], availability = {}) {
   container.innerHTML = flavors
     .map((f) => {
@@ -178,51 +180,81 @@ export function renderMenu(container, flavors, boxes = [], availability = {}) {
       const left = availability[f.slug] ? availability[f.slug].remaining : null;
       const stock = stockLabel(left);
       const each = boxEachPrice(f, boxes);
-      const inBox = each != null ? `from ${peso(each)} each in a box` : "";
+      const inBox = each != null ? `or from ${peso(each)} each in a box` : "";
       const canSingle = f.single_price != null;
+      const desc = f.short_description || f.long_description || info.description;
       return `
-      <article class="card" data-slug="${esc(f.slug)}">
-        <div class="card-photo" data-open-sheet>${flavorPhoto(f, "card-img", { lazy: true })}</div>
-        <div class="card-body">
-          <h3><button type="button" class="card-open" data-open-sheet aria-haspopup="dialog">${esc(f.name)}</button>
-            ${stock ? `<span class="stock${left <= 0 ? " stock-out" : ""}" data-stock>${stock}</span>` : `<span class="stock" data-stock hidden></span>`}</h3>
-          <p class="card-desc" data-open-sheet>${esc(f.long_description || info.description)}</p>
-          ${canSingle
-            ? `<div class="price-line" data-open-sheet>
-                 <span class="price">${peso(f.single_price)} <small>each</small></span>
-                 <span class="box-each">${inBox ? `or ${esc(inBox)}` : ""}</span>
-               </div>
-               <div class="single-add">
-                 <div class="stepper">
-                   <button type="button" data-single-step="-1" aria-label="One fewer ${esc(f.name)}">&minus;</button>
-                   <output aria-label="${esc(f.name)} quantity">1</output>
-                   <button type="button" data-single-step="1" aria-label="One more ${esc(f.name)}">+</button>
-                 </div>
-                 <button type="button" class="btn btn-small" data-add-single>Add to cart</button>
-               </div>`
-            : `<div class="price-line" data-open-sheet><span class="price">Box only</span><span class="box-each">${esc(inBox)}</span></div>`}
-          <p class="soldout-note" data-soldout-note hidden>Unpaid orders release after 24 hours, so check back.</p>
+      <article class="flavor-item" data-slug="${esc(f.slug)}">
+        <div class="fi-body" data-open-sheet>
+          <div class="fi-text">
+            <h3><button type="button" class="card-open" data-open-sheet aria-haspopup="dialog">${esc(f.name)}</button></h3>
+            <p class="fi-desc" data-full="${esc(desc)}">${esc(desc)}</p>
+            ${canSingle
+              ? `<p class="fi-price"><span class="price">${peso(f.single_price)}</span> <small>each</small></p>`
+              : `<p class="fi-price"><span class="price">Box only</span></p>`}
+            <p class="box-each">${esc(inBox)}</p>
+            <p class="fi-stock"><span class="stock${left !== null && left <= 0 ? " stock-out" : ""}" data-stock${stock ? "" : " hidden"}>${stock}</span></p>
+          </div>
+          <div class="fi-photo">${flavorPhoto(f, "card-img", { lazy: true })}</div>
         </div>
+        ${canSingle ? `
+        <div class="fi-add" data-add-slot>
+          <button type="button" class="add-pill" data-add-single aria-label="Add one ${esc(f.name)} to your cart">+ Add</button>
+          <div class="fi-stepper" data-stepper hidden>
+            <button type="button" data-single-step="-1" aria-label="One fewer ${esc(f.name)}">&minus;</button>
+            <output aria-live="polite" aria-label="${esc(f.name)} in your cart">0</output>
+            <button type="button" data-single-step="1" aria-label="One more ${esc(f.name)}">+</button>
+          </div>
+        </div>` : ""}
       </article>`;
     })
     .join("");
+  clampDescriptions(container);
 }
 
+// Show at most 2 lines of each short description, cutting after a WHOLE word and adding "…"
+// (plain CSS line-clamp can cut in the middle of a word). The full text stays in data-full.
+// Called after rendering and again when the screen size changes.
+export function clampDescriptions(root = document, lines = 2) {
+  root.querySelectorAll(".fi-desc[data-full]").forEach((el) => {
+    const full = el.dataset.full;
+    el.textContent = full;
+    if (window.matchMedia("(min-width: 700px)").matches) return;   // cards have room: show the whole sentence
+    if (!el.offsetParent) return;                                   // hidden right now: nothing to measure
+    const max = parseFloat(getComputedStyle(el).lineHeight) * lines + 1;
+    if (el.scrollHeight <= max) return;                             // fits already
+    const words = full.split(" ");
+    let lo = 1, hi = words.length - 1;
+    while (lo < hi) {                                               // most words that still fit with the "…"
+      const mid = Math.ceil((lo + hi) / 2);
+      el.textContent = words.slice(0, mid).join(" ").replace(/[\s,;:.\-]+$/, "") + "…";
+      if (el.scrollHeight <= max) lo = mid; else hi = mid - 1;
+    }
+    el.textContent = words.slice(0, lo).join(" ").replace(/[\s,;:.\-]+$/, "") + "…";
+  });
+}
+
+// Boxes: one row per box on phones (name, price, "Save ₱X vs singles", chevron), cards from 700px.
 export function renderBoxes(container, noteEl, boxes, flavors) {
   container.innerHTML = boxes
-    .map(
-      (b) => `
-      <article class="card box-card" data-box-size="${b.size}">
+    .map((b) => {
+      const save = boxSavings(b, flavors);
+      return `
+      <article class="card box-card box-item" data-box-size="${b.size}">
         <div class="card-body">
           <div class="box-size">Box of ${b.size}</div>
-          <div class="price">${peso(b.price)}</div>
-          ${boxSavings(b, flavors) ? `<span class="save-badge">Save ${peso(boxSavings(b, flavors))} vs singles</span>` : ""}
+          <div class="bi-meta">
+            <span class="price">${peso(b.price)}</span>
+            ${save ? `<span class="save-badge">Save ${peso(save)} vs singles</span>` : ""}
+          </div>
           <p class="box-desc">${esc(b.description || "")}</p>
           <p class="box-left" data-box-left hidden></p>
-          <a class="btn" data-box-cta href="box.html?size=${b.size}">Build this box</a>
+          <a class="btn bi-cta" data-box-cta href="box.html?size=${b.size}" aria-label="Build a box of ${b.size}">
+            <span class="bi-cta-text">Build this box</span><span class="bi-chevron" aria-hidden="true">&rsaquo;</span>
+          </a>
         </div>
-      </article>`
-    )
+      </article>`;
+    })
     .join("");
 
   // Mention any flavor that costs extra inside a box

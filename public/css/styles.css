@@ -196,19 +196,6 @@ section { padding: 2rem 0; }
 .card-grid > .card:nth-child(odd)  { transform: rotate(calc(var(--card-tilt) * -1)); }
 .card-grid > .card:nth-child(even) { transform: rotate(var(--card-tilt)); }
 
-.card-photo {
-  aspect-ratio: 4 / 3;      /* every flavor photo is cropped to the same 4:3 shape (object-fit: cover below) */
-  overflow: hidden;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  background: repeating-linear-gradient(45deg, var(--cream-dark), var(--cream-dark) 12px, var(--cream) 12px, var(--cream) 24px);
-  font-size: 3rem;
-}
-.card-photo { position: relative; }
-/* The photo fills the 4:3 frame exactly and is cropped to it (absolute, so its own shape can't resize the frame) */
-.card-img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }   /* object-position comes from the flavor (focus_x / focus_y) */
-.card-body { padding: 0.45rem 0.9rem 0.7rem; }
 .card-body { padding: 1rem 1.1rem 1.2rem; }
 .card-body h3 { margin-bottom: 0.35rem; }
 
@@ -642,8 +629,6 @@ body.has-cart-bar { padding-bottom: calc(var(--bottom-room) + 4.5rem); }  /* so 
 /* ---------- Single cookies: menu cards, cart sections ---------- */
 .box-each { margin: -0.2rem 0 0.6rem; color: #6b574d; font-size: 0.95rem; }
 .box-each:empty { display: none; }
-.single-add { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; margin: 0.4rem 0 0.2rem; }
-.single-add .btn-small { flex: 1; min-width: 130px; }
 
 .cart-section { margin-bottom: 0.4rem; }
 .cart-section-title { font-size: 1.05rem; margin: 0.5rem 0 0.4rem; color: var(--blue-dark); }
@@ -658,16 +643,7 @@ body.has-cart-bar { padding-bottom: calc(var(--bottom-room) + 4.5rem); }  /* so 
 .cart-bar .btn.is-disabled { background: #d9c9ae; color: #5b4a3f; box-shadow: none; pointer-events: none; }
 .btn:disabled { opacity: 0.6; }
 
-/* ---------- Compact menu cards ---------- */
-.card h3 { font-size: 1.15rem; margin-bottom: 0.15rem; }
 .card-open { background: none; border: 0; padding: 0.2rem 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; min-height: 44px; }
-.card-desc { margin: 0 0 0.3rem; font-size: 0.92rem; cursor: pointer;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.price-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.7rem; cursor: pointer; }
-.price-line .box-each { margin: 0; }
-.card .single-add { margin: 0.2rem 0 0; }
-/* On phones the description lives in the detail sheet, so the card stays short */
-@media (max-width: 639px) { .card-desc { display: none; } .card-grid { gap: 0.9rem; } }
 .card-grid > .card { cursor: default; }
 
 /* ---------- Flavor detail sheet (bottom sheet) ---------- */
@@ -752,16 +728,118 @@ body.sheet-open { overflow: hidden; }
   .steps { grid-template-columns: repeat(2, 1fr); }
 }
 @media (min-width: 900px) {
-  #menu .card-grid { grid-template-columns: repeat(3, 1fr); }
   .steps { grid-template-columns: repeat(4, 1fr); }
 }
 
 /* Three boxes sit side by side from tablet width up; on phones they stack (one column) */
 @media (min-width: 700px) {
-  #boxes .card-grid, .box-picker .card-grid { grid-template-columns: repeat(3, 1fr); }
+  .box-picker .card-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 /* Respect people who turn animations off */
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; scroll-behavior: auto !important; }
 }
+
+
+/* ==========================================================================
+   Cookies list (phones) and cards (700px and up), boxes the same way.
+   Under 700px: ONE rounded container, a row per flavor: text left, 96px square thumbnail right,
+   thin dividers, a "+ Add" pill at the bottom right. From 700px: the 3-up card grid.
+   ========================================================================== */
+.menu-list, .box-list {
+  background: #fff; border: 2px solid var(--cream-dark); border-radius: var(--radius); box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);   /* the iOS toolbar / cart bar never sit on the last row */
+}
+.menu-list > .loading, .box-list > .loading { padding: 1rem; margin: 0; }
+.menu-list .closed-card { border: 0; box-shadow: none; margin: 0; }
+.menu-msg { min-height: 1.4em; margin: 0.5rem 0 0; color: var(--accent-dark); font-weight: 700; }
+
+.flavor-item { position: relative; border-top: 1px solid var(--cream-dark); }
+.flavor-item:first-child { border-top: 0; }
+.fi-body { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 12px; align-items: start; padding: 12px 14px 24px; cursor: pointer; }
+.fi-text { min-width: 0; }                                  /* lets long words wrap instead of widening the row */
+.fi-text h3 { font-size: 1.1rem; margin: 0; }
+.fi-text .card-open { min-height: 36px; padding: 0; display: inline-flex; align-items: center; overflow-wrap: anywhere; }
+.fi-desc { margin: -0.15rem 0 0.25rem; font-size: 0.92rem; line-height: 1.35; }
+.fi-price { margin: 0; }
+.fi-price .price { font-size: 1.2rem; }
+.fi-price small { font-size: 0.85rem; color: #7a665c; }
+.fi-text .box-each { margin: 0; font-size: 0.88rem; }
+.fi-stock { margin: 0.25rem 0 0; min-height: 0; }
+.fi-stock .stock { margin-left: 0; }
+.fi-photo {
+  position: relative; width: 96px; aspect-ratio: 1 / 1; border-radius: 16px; overflow: hidden;
+  background: repeating-linear-gradient(45deg, var(--cream-dark), var(--cream-dark) 12px, var(--cream) 12px, var(--cream) 24px);
+  display: grid; place-items: center; font-size: 2rem;
+}
+/* The photo fills its frame and is cropped to it; the focus point (focus_x / focus_y) comes from the database */
+.card-img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* The add control: sits at the bottom right of the row, overlapping the bottom of the thumbnail */
+.fi-add { position: absolute; right: 14px; bottom: 10px; }
+.fi-add[hidden] { display: none; }
+.add-pill, .fi-stepper {
+  height: 48px; border-radius: 999px; background: #fff; border: 2px solid var(--blue);
+  box-shadow: 0 2px 8px rgba(90, 60, 30, 0.2);
+}
+.add-pill { min-width: 88px; padding: 0 18px; color: var(--blue-dark); font: 800 1rem var(--font-body); cursor: pointer; }
+.add-pill:active:not(:disabled) { background: var(--blue-soft); }
+.add-pill:disabled { background: var(--cream-dark); border-color: #cdbd9f; color: #8a7a62; box-shadow: none; cursor: not-allowed; }
+.add-pill[hidden], .fi-stepper[hidden] { display: none; }
+.fi-stepper { display: flex; align-items: center; padding: 0 2px; }
+.fi-stepper button { width: 44px; height: 44px; border: 0; background: none; color: var(--blue-dark); font-size: 1.5rem; font-weight: 700; line-height: 1; border-radius: 50%; cursor: pointer; }
+.fi-stepper button:active:not(:disabled) { background: var(--blue-soft); }
+.fi-stepper button:disabled { color: #b8a58c; cursor: not-allowed; }
+.fi-stepper output { min-width: 1.6rem; text-align: center; font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; }
+
+.flavor-item.is-soldout { filter: grayscale(0.85); opacity: 0.72; }       /* greyed row, no add control (the page hides it) */
+.flavor-item.is-soldout .fi-body { cursor: pointer; }
+
+/* Boxes on phones: a row each (name, price, saving, chevron); the whole row is the link */
+.box-item.card { border: 0; border-radius: 0; box-shadow: none; background: #fff; transform: none; border-top: 1px solid var(--cream-dark); }
+.box-item.card:first-child { border-top: 0; }
+.box-item .card-body { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 0 10px; text-align: left; padding: 14px; }
+.box-item .box-size { grid-column: 1; font-size: 1.5rem; }
+.box-item .bi-meta { grid-column: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.6rem; margin-top: 0.2rem; }
+.box-item .bi-meta .save-badge { margin-top: 0; }
+.box-item .box-desc { grid-column: 1; margin: 0.3rem 0 0; font-size: 0.9rem; }
+.box-item .box-left { grid-column: 1; margin: 0.3rem 0 0; }
+.box-item .bi-cta { grid-column: 2; grid-row: 1 / span 4; justify-self: end; background: none; box-shadow: none; color: var(--blue-dark); min-width: 44px; min-height: 44px; padding: 0; font-size: 2rem; line-height: 1; }
+.box-item .bi-cta::after { content: ""; position: absolute; inset: 0; }   /* stretches the link over the whole row */
+.box-item .bi-cta-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.box-item .bi-cta:active { transform: none; }
+.box-item.is-soldout { filter: grayscale(0.85); opacity: 0.72; }
+
+@media (min-width: 700px) {
+  /* Back to the 3-up cards */
+  .menu-list, .box-list {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem;
+    background: none; border: 0; box-shadow: none; border-radius: 0; overflow: visible;
+  }
+  .menu-list > .loading, .box-list > .loading, .menu-list .closed-card { grid-column: 1 / -1; }
+  .flavor-item {
+    display: flex; flex-direction: column; background: #fff; border: 2px solid var(--cream-dark);
+    border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+    transform: rotate(calc(var(--card-tilt) * -1));
+  }
+  .flavor-item:nth-child(even) { transform: rotate(var(--card-tilt)); }
+  .flavor-item:first-child { border-top: 2px solid var(--cream-dark); }
+  .fi-body { display: flex; flex-direction: column; flex: 1; gap: 0; padding: 0; }
+  .fi-photo { order: -1; width: 100%; aspect-ratio: 4 / 3; border-radius: 0; font-size: 3rem; }
+  .fi-text { padding: 1rem 1.1rem 0.6rem; }
+  .fi-add { position: static; align-self: flex-end; margin: 0 1rem 1rem; }
+  .box-item.card { border: 2px solid var(--blue); border-radius: var(--radius); box-shadow: var(--shadow); background: var(--blue-soft); }
+  .box-item.card:first-child { border-top: 2px solid var(--blue); }
+  .box-item .card-body { display: block; text-align: center; padding: 1.4rem 1.1rem; }
+  .box-item .box-size { font-size: 2.4rem; }
+  .box-item .bi-meta { display: block; margin-top: 0; }
+  .box-item .bi-meta .save-badge { margin-top: 0.5rem; }
+  .box-item .box-desc { margin: 0.5rem 0 0.9rem; font-size: 1rem; }
+  .box-item .bi-cta { background: var(--blue); color: #fff; box-shadow: 0 4px 0 var(--blue-dark); padding: 12px 26px; font-size: 1.05rem; min-width: 0; }
+  .box-item .bi-cta::after { display: none; }
+  .box-item .bi-cta-text { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+  .box-item .bi-chevron { display: none; }
+}
+.fi-stock:has(.stock[hidden]) { display: none; }   /* no empty gap when there's no stock label */

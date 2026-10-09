@@ -41,7 +41,7 @@ export async function fetchMenu() {
   const sb = getClient();
   const [flavorsRes, boxesRes] = await Promise.all([
     sb.from("flavors")
-      .select("id, slug, name, surcharge, single_price, long_description, ingredients, allergens, weight_g, shelf_life, storage_tip, nutrition_image_url, photo_url, focus_x, focus_y, photo_version, nutrition_version")
+      .select("id, slug, name, surcharge, single_price, short_description, long_description, ingredients, allergens, weight_g, shelf_life, storage_tip, nutrition_image_url, photo_url, focus_x, focus_y, photo_version, nutrition_version")
       .eq("active", true).order("id"),
     sb.from("boxes").select("id, size, price, description").eq("active", true).order("size"),
   ]);
