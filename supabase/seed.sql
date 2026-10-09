@@ -1,5 +1,5 @@
 -- seed.sql: starting menu data from CLAUDE.md. Safe to re-run (it updates in place).
--- Run AFTER the migrations (001 to 007).
+-- Run AFTER the migrations (001 to 009).
 
 -- Per-cookie prices. Bueno Mucho (Kinder Bueno) carries a +30 surcharge inside box totals
 -- (125 = the 95 base + 30). Slugs match the ids in js/config.js.
@@ -13,6 +13,15 @@ on conflict (slug) do update
 -- single_price = price of one loose cookie (migration 006).
 -- weekly_cap   = how many of this flavor we bake per Sunday (migration 007).
 -- `price` is an unused legacy column.
+
+-- Starting photo and description for the detail sheet (migration 009). "coalesce" means: only fill
+-- them in if they're still empty, so re-running this file never overwrites text you wrote yourself.
+update public.flavors set photo_url = coalesce(photo_url, 'assets/flavors/chimp-chips.jpg'),
+  long_description = coalesce(long_description, 'Classic nutty brown butter chocolate chip cookie.') where slug = 'choc-chip';
+update public.flavors set photo_url = coalesce(photo_url, 'assets/flavors/coco-loco.jpg'),
+  long_description = coalesce(long_description, 'Double chocolate brown butter chocolate chip cookie.') where slug = 'double-choc';
+update public.flavors set photo_url = coalesce(photo_url, 'assets/flavors/bueno-mucho.jpg'),
+  long_description = coalesce(long_description, 'Nutty brown butter with Kinder Maxi chocolate and a bueno center.') where slug = 'kinder-bueno';
 
 -- Flat box prices.
 insert into public.boxes (size, price, active) values
@@ -28,4 +37,20 @@ on conflict (size) do update
 --
 --   insert into public.admins (user_id)
 --   select id from auth.users where email = 'you@example.com';
+-- ---------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------------
+-- FLAVOR DETAILS TO FILL IN (migration 009). The website shows "coming soon" for
+-- anything left empty. Nothing here is guessed: these are YOURS to write.
+-- Copy one block per flavor into the SQL editor, replace the text, and run it.
+-- (Or edit the same columns by hand: Supabase > Table Editor > flavors.)
+--
+--   update public.flavors set
+--     ingredients         = '<write the full ingredient list>',
+--     allergens           = '<write every allergen: people rely on this>',
+--     weight_g            = <grams per cookie, a number>,
+--     shelf_life          = '<how long they keep>',
+--     storage_tip         = '<how to store or reheat>',
+--     nutrition_image_url = 'assets/nutrition/<file>.jpg'   -- add the picture to public/assets/nutrition/ first
+--   where slug = 'choc-chip';        -- choc-chip = Chimp Chips, double-choc = Coco Loco, kinder-bueno = Bueno Mucho
 -- ---------------------------------------------------------------------------

@@ -104,11 +104,17 @@ function flavorInfo(slug) {
 
 // A flavor photo, or its emoji if there's no photo (or it fails to load).
 // cls = the CSS class for the <img>.
-export function flavorPhoto(slug, name, cls) {
+export function flavorPhoto(slug, name, cls, url) {
   const info = flavorInfo(slug);
-  if (!info.image) return `<span aria-hidden="true">${info.emoji}</span>`;
-  return `<img class="${cls}" src="${esc(info.image)}" alt="${esc(name)}" loading="lazy"
+  const src = url || info.image;                       // the database's photo_url first, then the built-in one
+  if (!src) return `<span aria-hidden="true">${info.emoji}</span>`;
+  return `<img class="${cls}" src="${esc(src)}" alt="${esc(name)}" loading="lazy"
     onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${info.emoji}'}))">`;
+}
+
+// A flavor's name as a URL hash: "Chimp Chips" -> "chimp-chips" (used by the detail sheet's deep links)
+export function flavorHash(flavor) {
+  return flavor.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || flavor.slug;
 }
 
 // "Sold out" at 0, "3 left" when 5 or fewer remain, nothing otherwise
@@ -126,7 +132,9 @@ export function boxEachPrice(flavor, boxes) {
   return Math.round((perCookie + flavor.surcharge) * 100) / 100;
 }
 
-// One card per flavor: single price, "or from ₱X each in a box", and a stepper + Add button for singles.
+// One compact card per flavor. Everything needed to order is visible without opening anything:
+// name, stock label, price, "or from ₱95 each in a box", stepper and Add to cart.
+// Tapping anywhere else on the card (photo, name, text) opens the detail sheet.
 export function renderMenu(container, flavors, boxes = [], availability = {}) {
   container.innerHTML = flavors
     .map((f) => {
@@ -138,13 +146,16 @@ export function renderMenu(container, flavors, boxes = [], availability = {}) {
       const canSingle = f.single_price != null;
       return `
       <article class="card" data-slug="${esc(f.slug)}">
-        <div class="card-photo">${flavorPhoto(f.slug, f.name, "card-img")}</div>
+        <div class="card-photo" data-open-sheet>${flavorPhoto(f.slug, f.name, "card-img", f.photo_url)}</div>
         <div class="card-body">
-          <h3>${esc(f.name)} ${stock ? `<span class="stock${left <= 0 ? " stock-out" : ""}" data-stock>${stock}</span>` : `<span class="stock" data-stock hidden></span>`}</h3>
-          <p>${esc(info.description)}</p>
+          <h3><button type="button" class="card-open" data-open-sheet aria-haspopup="dialog">${esc(f.name)}</button>
+            ${stock ? `<span class="stock${left <= 0 ? " stock-out" : ""}" data-stock>${stock}</span>` : `<span class="stock" data-stock hidden></span>`}</h3>
+          <p class="card-desc" data-open-sheet>${esc(f.long_description || info.description)}</p>
           ${canSingle
-            ? `<div class="price">${peso(f.single_price)} <small>each</small></div>
-               <p class="box-each">${inBox ? `or ${esc(inBox)}` : ""}</p>
+            ? `<div class="price-line" data-open-sheet>
+                 <span class="price">${peso(f.single_price)} <small>each</small></span>
+                 <span class="box-each">${inBox ? `or ${esc(inBox)}` : ""}</span>
+               </div>
                <div class="single-add">
                  <div class="stepper">
                    <button type="button" data-single-step="-1" aria-label="One fewer ${esc(f.name)}">&minus;</button>
@@ -153,10 +164,8 @@ export function renderMenu(container, flavors, boxes = [], availability = {}) {
                  </div>
                  <button type="button" class="btn btn-small" data-add-single>Add to cart</button>
                </div>`
-            : `<div class="price">Box only</div>
-               <p class="box-each">${esc(inBox)}</p>`}
+            : `<div class="price-line" data-open-sheet><span class="price">Box only</span><span class="box-each">${esc(inBox)}</span></div>`}
           <p class="soldout-note" data-soldout-note hidden>Unpaid orders release after 24 hours, so check back.</p>
-          <span class="tag">Macro label coming soon</span>
         </div>
       </article>`;
     })

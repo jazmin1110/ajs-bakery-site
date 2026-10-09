@@ -844,3 +844,31 @@ begin
   raise notice 'PASS (l): the last single cookie can be ordered for pickup, then ordering moves to the next Sunday';
 end $$;
 rollback;
+
+
+-- ===========================================================================
+-- (m) Flavor detail columns (migration 009): visitors can read them, nobody but you can
+-- change them, and nothing was invented (ingredients/allergens/nutrition start empty).
+-- ===========================================================================
+begin;
+do $$
+declare r record;
+begin
+  set local role anon;
+  select photo_url, long_description, ingredients, allergens, weight_g, shelf_life, storage_tip, nutrition_image_url
+    into r from public.flavors where slug = 'choc-chip';
+  assert r.photo_url = 'assets/flavors/chimp-chips.jpg' and r.long_description is not null, 'photo and description are seeded';
+  assert r.ingredients is null and r.allergens is null and r.weight_g is null
+     and r.shelf_life is null and r.storage_tip is null and r.nutrition_image_url is null,
+    'ingredients, allergens, weight, shelf life, storage tip and the nutrition label must start empty (never invented)';
+  raise notice 'PASS (m): detail columns are readable, photo/description seeded, facts left empty';
+
+  begin
+    update public.flavors set allergens = 'none' where slug = 'choc-chip';
+    raise exception 'FAIL (m): a visitor edited flavor details';
+  exception when insufficient_privilege then
+    raise notice 'PASS (m): visitors cannot edit flavor details';
+  end;
+  reset role;
+end $$;
+rollback;

@@ -138,9 +138,10 @@
     import { fetchMenu, fetchSundayInfo, fetchAvailability } from "./js/supabase.js";
     import {
       orderingSunday, renderBanner, renderBannerError,
-      renderMenu, renderBoxes, renderConfigText, renderClosed, stockLabel,
+      renderMenu, renderBoxes, renderConfigText, renderClosed, stockLabel, boxEachPrice,
     } from "./js/ui.js";
     import { initCartUI } from "./js/cart-ui.js";
+    import { initFlavorSheet } from "./js/flavor-sheet.js";
     import * as cart from "./js/cart.js";
 
     renderConfigText();
@@ -152,6 +153,7 @@
 
     // How many of each flavor are left this Sunday (from the database). null = unknown (no limits shown).
     let availability = null;
+    let sheet = null;          // the flavor detail sheet (created once the menu has loaded)
 
     // How many MORE of this flavor can go in the cart: what's left, minus what's already in it
     const limitFor = (slug) =>
@@ -187,8 +189,10 @@
           add.textContent = left !== null && left <= 0 ? "Sold out" : limit <= 0 ? "All in your cart" : "Add to cart";
         }
       });
+      if (sheet) sheet.refresh();
     }
 
+    // (the sheet shows the same stock numbers, so it updates whenever the cards do)
     // Disable a box size when fewer cookies are left (across all flavors, minus what's already
     // in the cart) than the box needs: "Only 3 cookies left".
     let boxCards = [];
@@ -232,7 +236,12 @@
           return;
         }
         const add = e.target.closest("[data-add-single]");
-        if (!add || add.disabled) return;
+        if (!add) {
+          // A tap anywhere else on the card (photo, name, text) opens the detail sheet
+          if (!e.target.closest(".single-add") && sheet) sheet.open(card.dataset.slug);
+          return;
+        }
+        if (add.disabled) return;
         const flavor = flavors.find((f) => f.slug === card.dataset.slug);
         const result = cart.addSingle(flavor, Number(out.textContent));
         add.dataset.busy = "1";
@@ -259,6 +268,14 @@
         availability = stock ? stock.bySlug : null;
         renderMenu(document.getElementById("menu-grid"), flavors, boxes, availability || {});
         wireSingles(document.getElementById("menu-grid"), flavors);
+        // The detail sheet (also opens straight from a link like /#chimp-chips)
+        sheet = initFlavorSheet({
+          flavors,
+          getRemaining: (slug) => (availability && availability[slug] ? availability[slug].remaining : null),
+          getLimit: limitFor,
+          boxEach: (f) => boxEachPrice(f, boxes),
+          add: (flavor, qty) => { const r = cart.addSingle(flavor, qty); if (r.ok) reloadAvailability(); return r; },
+        });
         refreshStock();
         renderBoxes(document.getElementById("box-grid"), document.getElementById("box-note"), boxes, flavors);
         refreshBoxes();

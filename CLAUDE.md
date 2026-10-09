@@ -43,6 +43,10 @@ Single source of truth for the numbers. The database is the enforcer and the sto
 
 **Cutoff rule:** a Sunday `S` accepts orders until `S − 4 days at 21:00` Asia/Manila (that's Wednesday 9pm). Orders placed after that go to the next Sunday.
 
+## Flavor details (the detail sheet)
+
+Each flavor row holds its own content: `long_description`, `ingredients`, `allergens`, `weight_g`, `shelf_life`, `storage_tip`, `nutrition_image_url`, `photo_url`. Anything empty shows "coming soon" on the sheet. **Never invent ingredients, allergens or nutrition numbers: the owner writes them** (template at the bottom of `supabase/seed.sql`). Tapping a menu card opens the sheet; `/#chimp-chips` (the flavor name as a slug) opens it from a link.
+
 ## Saved cart (browser)
 
 The cart lives in `localStorage` (falls back to `window.name`, then memory, if storage is blocked). It stores a `savedAt` time and is thrown away after **48 hours**. Every page that loads the menu checks the saved cart against it: retired flavors are removed, prices refreshed, and a notice tells the customer. Checkout warns if the ordering Sunday changed since the cart was built. Prices in the cart are display only.
@@ -76,10 +80,11 @@ public/                      <- what Vercel serves
   js/cart.js                 cart in localStorage (window.name fallback), display-only prices
   js/cart-ui.js              sticky cart bar + slide-in drawer
   js/ui.js                   shared UI helpers, banner, "ordering is closed" card
+  js/flavor-sheet.js         flavor detail bottom sheet (data-driven from the flavors columns; deep link #chimp-chips)
   js/admin.js                shared admin helpers (login guard, Sunday picker, totals math)
   assets/                    flavors/*.jpg, gcash-qr.png, og-image.jpg
   robots.txt, sitemap.xml
-supabase/                    migrations 001-008, seed.sql, tests.sql  (NOT deployed)
+supabase/                    migrations 001-009, seed.sql, tests.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers
