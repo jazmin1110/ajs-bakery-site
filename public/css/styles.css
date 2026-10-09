@@ -568,7 +568,7 @@ body.has-cart-bar { padding-bottom: calc(var(--bar-h, 4.5rem) + 1rem); }  /* --b
 .field-error:empty { display: none; }
 
 .choice, .field .choice { display: flex; align-items: center; gap: 0.7rem; padding: 0.8rem 0.9rem; margin-bottom: 0.5rem; background: #fff; border: 2px solid var(--cream-dark); border-radius: var(--radius-sm); cursor: pointer; font-family: var(--font-body) !important; font-weight: 700 !important; color: var(--ink) !important; }
-.choice input { width: 22px; height: 22px; accent-color: var(--blue); }
+.choice input { flex: none; width: 22px; height: 22px; margin: 0; accent-color: var(--blue); }   /* flex:none = a long, wrapping label can't squeeze the circle; margin 0 drops the browser's own offset, so both rows share one left edge */
 .choice:has(input:checked), .field .choice:has(input:checked) { border-color: var(--blue); background: var(--blue-soft); }
 
 .note-box { background: var(--blue-soft); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.75rem 0.9rem; margin: 0 0 1.1rem; font-size: 0.95rem; }
