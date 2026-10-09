@@ -265,10 +265,10 @@ export function renderMenu(container, flavors, boxes = [], availability = {}) {
   clampDescriptions(container);
 }
 
-// Show at most 2 lines of each short description, cutting after a WHOLE word and adding "…"
+// Show at most 3 lines of each short description, cutting after a WHOLE word and adding "…"
 // (plain CSS line-clamp can cut in the middle of a word). The full text stays in data-full.
 // Called after rendering and again when the screen size changes.
-export function clampDescriptions(root = document, lines = 2) {
+export function clampDescriptions(root = document, lines = 3) {
   root.querySelectorAll(".fi-desc[data-full]").forEach((el) => {
     const full = el.dataset.full;
     el.textContent = full;
