@@ -1,6 +1,6 @@
 // Shared UI helpers: formatting, the Sunday banner, and menu/box cards.
 // Prices passed in here come from the database and are shown for display only.
-import { CONFIG } from "./config.js";
+import { CONFIG, PICK_FLAVOR_SLUG } from "./config.js";
 
 // 95 -> "₱95"
 export function peso(amount) {
@@ -118,7 +118,7 @@ export function trackBarHeight(bar) {
 }
 
 // Photos that aren't flavor photos, with their version from config.js (assetVersions)
-const ASSET_PATHS = { logo: "assets/logo.png", gcashQr: "assets/gcash-qr.png" };
+const ASSET_PATHS = { logo: "assets/stickers/logo-badge-128.webp", gcashQr: "assets/gcash-qr.png" };
 export function assetUrl(name) {
   return withVersion(ASSET_PATHS[name], CONFIG.assetVersions[name]);
 }
@@ -131,21 +131,43 @@ function flavorInfo(slug) {
   return CONFIG.flavorInfo[slug] || { emoji: "🍪", description: "" };
 }
 
-// A flavor photo, or its emoji if there's no photo (or it fails to load).
-//   cls    = the CSS class for the <img> (the CSS gives it its shape and object-fit: cover)
-//   width/height = the shape the image is shown in (4:3 cards = 800x600, square thumbs = 96x96).
-//     They stop the page jumping while the photo loads. They're a RATIO hint: the CSS sets the real size.
-//   lazy   = true for photos below the fold (the browser loads them as they scroll into view)
-// focus_x / focus_y (0-100, from the database) pick which point of the photo stays in the middle of the crop.
-export function flavorPhoto(flavor, cls, { width = 800, height = 600, lazy = false } = {}) {
+// The sticker file name for a flavor: "assets/flavors/chimp-chips.jpg" -> "chimp-chips"
+// (the flavor's photo path in the database decides it, because the sticker files share the photo's name).
+function stickerBase(flavor) {
+  const path = flavor.photo_url || (CONFIG.flavorInfo[flavor.slug] || {}).image || "";
+  return path.split("/").pop().replace(/\.[a-z0-9]+$/i, "");
+}
+
+// Sticker image URLs for a flavor at 240 or 480 wide (null if the flavor has no photo to name them after).
+// The version number (photo_version) makes a replaced sticker show up straight away.
+export function stickerSrc(flavor, width = 240) {
+  const base = stickerBase(flavor);
+  return base ? withVersion(`assets/stickers/${base}-sticker-${width}.webp`, flavor.photo_version) : null;
+}
+
+// A flavor's cookie sticker (a cutout with its die-cut outline already baked in, so no frame is added), or its emoji
+// if there is none. If the cutout fails to load, it falls back to the plain jpg, then to the emoji.
+//   cls    = the CSS class for the <img> (the CSS gives it its size, shadow and tilt)
+//   sizes  = how wide it is shown, so a phone downloads the 240w file and big screens the 480w one
+//   lazy   = true for stickers below the fold (the browser loads them as they scroll into view)
+// width/height are a ratio hint that stops the page jumping while the image loads.
+export function flavorPhoto(flavor, cls, { width = 240, height = 240, sizes = "96px", lazy = false } = {}) {
   const info = flavorInfo(flavor.slug);
-  const path = flavor.photo_url || info.image;         // the database's photo_url first, then the built-in one
-  const src = withVersion(path, flavor.photo_version); // ?v=N so a replaced photo shows up straight away
-  if (!path) return `<span aria-hidden="true">${info.emoji}</span>`;
-  const pct = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 50; };
-  return `<img class="${cls}" src="${esc(src)}" alt="${esc(flavor.name)}" width="${width}" height="${height}"
-    style="object-position:${pct(flavor.focus_x)}% ${pct(flavor.focus_y)}%"${lazy ? ' loading="lazy" decoding="async"' : ""}
-    onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${info.emoji}'}))">`;
+  const jpg = flavor.photo_url || info.image;           // the plain photo: the fallback
+  const small = stickerSrc(flavor, 240), big = stickerSrc(flavor, 480);
+  if (!jpg || !small) return `<span aria-hidden="true">${info.emoji}</span>`;
+  const jpgUrl = withVersion(jpg, flavor.photo_version);
+  const fallback = `if(!this.dataset.fb){this.dataset.fb=1;this.removeAttribute('srcset');this.classList.add('is-fallback');this.src='${esc(jpgUrl)}';}`
+    + `else{this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${info.emoji}'}))}`;
+  return `<img class="${cls}" src="${esc(small)}" srcset="${esc(small)} 240w, ${esc(big)} 480w" sizes="${esc(sizes)}"
+    alt="${esc(flavor.name)}" width="${width}" height="${height}"${lazy ? ' loading="lazy" decoding="async"' : ""}
+    onerror="${fallback}">`;
+}
+
+// The monkey stamp (mascot). size = how wide it is shown, in px.
+export function mascotImg(size = 80, cls = "mascot") {
+  return `<img class="${cls}" src="assets/stickers/mascot-badge-96.webp" srcset="assets/stickers/mascot-badge-96.webp 96w, assets/stickers/mascot-badge.webp 256w"
+    sizes="${size}px" width="${size}" height="${size}" alt="" loading="lazy">`;
 }
 
 // A flavor's name as a URL hash: "Chimp Chips" -> "chimp-chips" (used by the detail sheet's deep links)
@@ -179,6 +201,13 @@ export function boxSavings(box, flavors) {
   return saving > 0 ? saving : null;
 }
 
+// The small "AJ's pick" badge: the mascot stamp on the sticker's corner plus a dough-coloured pill.
+// Shown only for the flavor named by PICK_FLAVOR_SLUG in js/config.js (null = nobody).
+function pickBadge(flavor) {
+  if (!PICK_FLAVOR_SLUG || flavorHash(flavor) !== PICK_FLAVOR_SLUG) return "";
+  return `<span class="pick-badge"><img src="assets/stickers/mascot-badge-96.webp" width="32" height="32" alt=""><span class="pick-label">AJ's pick</span></span>`;
+}
+
 // One item per flavor. On phones (CSS, under 700px) the items are rows inside one rounded list: text on
 // the left, a square thumbnail on the right. From 700px they are the 3-up cards. The markup is the same.
 //   * Tapping the item (not the add control) opens the detail sheet.
@@ -205,11 +234,11 @@ export function renderMenu(container, flavors, boxes = [], availability = {}) {
               : `<p class="fi-price"><span class="price">Box only</span></p>`}
             <p class="box-each">${esc(inBox)}</p>
             <p class="fi-extra">
-              <span class="stock${left !== null && left <= 0 ? " stock-out" : ""}" data-stock${stock ? "" : " hidden"}>${stock}</span>
+              <span class="stock sticker${left !== null && left <= 0 ? " stock-out" : ""}" data-stock${stock ? "" : " hidden"}>${stock}</span>
               ${f.nutrition ? `<button type="button" class="nutri-link" data-open-nutrition aria-haspopup="dialog" aria-label="Nutrition info for ${esc(f.name)}">Nutrition info</button>` : ""}
             </p>
           </div>
-          <div class="fi-photo">${flavorPhoto(f, "card-img", { lazy: true })}</div>
+          <div class="fi-photo">${flavorPhoto(f, "card-img", { lazy: true, sizes: "(min-width: 700px) 180px, 96px" })}${pickBadge(f)}</div>
         </div>
         ${canSingle ? `
         <div class="fi-add" data-add-slot>

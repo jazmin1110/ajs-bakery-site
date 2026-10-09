@@ -5,8 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Build your box | AJ's Bakery</title>
   <meta name="description" content="Build a box of 3, 6 or 12 brown butter cookies. Pick your flavors and order for Sunday pickup or delivery in Metro Manila.">
-  <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png?v=2">
-  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=2">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/icons/favicon-64.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <!-- The two fonts are self-hosted; preloading the Latin files means text is drawn in them from the first paint -->
+  <link rel="preload" href="assets/fonts/baloo-2-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/nunito-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#2B4C93">
   <link rel="canonical" href="https://ajs-bakery.vercel.app/box.html">
   <meta property="og:type" content="website">
@@ -31,7 +36,7 @@
   <header class="site-header">
     <div class="container">
       <a class="logo-link" href="index.html">
-        <img data-asset="logo" alt="AJ's Bakery" width="48" height="48" onerror="this.style.display='none'">
+        <img data-asset="logo" alt="AJ's Bakery" width="56" height="56" onerror="this.style.display='none'">
         <span>AJ's Bakery</span>
       </a>
       <div class="header-actions">
@@ -47,7 +52,7 @@
     </div>
   </header>
 
-  <div class="order-banner compact" id="order-banner">Checking this week's Sunday...</div>
+  <div class="order-banner compact sticker" id="order-banner">Checking this week's Sunday...</div>
 
   <main class="container builder" id="builder" tabindex="-1">
     <a class="back-link-sm" href="index.html#boxes">&larr; Boxes</a>
@@ -140,12 +145,12 @@
         <ul class="flavor-list">
           ${flavors.map((f) => `
           <li class="flavor-row" data-slug="${esc(f.slug)}">
-            <div class="flavor-emoji">${flavorPhoto(f, "flavor-thumb", { width: 112, height: 112 })}</div>
+            <div class="flavor-emoji">${flavorPhoto(f, "flavor-thumb", { width: 240, height: 240, sizes: "56px" })}</div>
             <div class="flavor-info">
               <!-- the name opens the same detail sheet as on the home page -->
               <strong><button type="button" class="card-open" data-open-sheet aria-haspopup="dialog">${esc(f.name)}</button></strong>
               <span class="flavor-meta">
-                <span class="stock" data-stock hidden></span>
+                <span class="stock sticker" data-stock hidden></span>
                 ${f.surcharge > 0 ? `<span class="surcharge">+${peso(f.surcharge)} each</span>` : ""}
               </span>
             </div>

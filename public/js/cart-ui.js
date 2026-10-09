@@ -2,9 +2,15 @@
 // the slide-in drawer. Call initCartUI() once per page. Totals are display only.
 import * as cart from "./cart.js";
 import { CONFIG } from "./config.js";
-import { peso, esc, applyAssetVersions, trackBarHeight } from "./ui.js";
+import { peso, esc, applyAssetVersions, trackBarHeight, stickerSrc, mascotImg } from "./ui.js";
 
 let bar, drawer, overlay, closeBtn, lastFocus, barHeightSync;
+
+// A 56px cookie sticker for a flavor in the cart ("" if the flavor has no sticker)
+const thumb = (slug) => {
+  const src = stickerSrc({ slug }, 240);
+  return src ? `<img class="cart-thumb" src="${esc(src)}" width="56" height="56" alt="" loading="lazy" onerror="this.remove()">` : "";
+};
 
 // "2 × Chimp Chips, 2 × Bueno Mucho" (one per line)
 const breakdown = (box) => box.items.map((i) => `${i.qty} × ${esc(i.name)}`).join("<br>");
@@ -128,6 +134,7 @@ function boxesSection(boxes) {
           <strong>Box ${idx + 1}: box of ${b.size}</strong>
           <span class="price">${peso(b.price)}</span>
         </div>
+        <div class="cart-thumbs">${[...new Set(b.items.map((i) => i.slug))].map(thumb).join("")}</div>
         <p class="cart-box-items">${breakdown(b)}</p>
         ${b.giftNote ? `<p class="cart-box-note">🎁 ${esc(b.giftNote)}</p>` : ""}
         <button type="button" class="link-btn" data-remove-box="${esc(b.id)}">Remove</button>
@@ -142,6 +149,9 @@ function singlesSection(singles) {
       <h3 class="cart-section-title">Single cookies</h3>
       ${singles.map((s) => `
       <article class="cart-box">
+        <div class="cart-line-main">
+          ${thumb(s.slug)}
+          <div class="cart-line-body">
         <div class="cart-box-head">
           <strong>${esc(s.name)}</strong>
           <span class="price">${peso(s.unitPrice * s.qty)}</span>
@@ -154,6 +164,8 @@ function singlesSection(singles) {
           </div>
           <span class="cart-line-each">${s.qty} × ${peso(s.unitPrice)}</span>
           <button type="button" class="link-btn" data-remove-single="${esc(s.slug)}">Remove</button>
+        </div>
+          </div>
         </div>
       </article>`).join("")}
       <div class="subtotal"><span>Singles subtotal</span><span>${peso(cart.singlesTotal())}</span></div>
@@ -195,7 +207,7 @@ function render() {
   // Drawer body: boxes and singles as separate sections, each with a subtotal
   const body = drawer.querySelector(".drawer-body");
   body.innerHTML = empty
-    ? `<p class="drawer-empty">Your cart is empty. Pick a box or a few single cookies to get started!</p>`
+    ? `<p class="drawer-empty">${mascotImg(80)}Your cart is empty. Pick a box or a few single cookies to get started!</p>`
     : (boxes.length ? boxesSection(boxes) : "") + (singles.length ? singlesSection(singles) : "") + hintHtml();
 
   // Drawer footer: minimum message, total, add-more links, checkout

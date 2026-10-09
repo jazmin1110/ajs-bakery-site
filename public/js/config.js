@@ -6,6 +6,10 @@
 // Prices shown in the browser are for DISPLAY ONLY; the database recalculates
 // every total when an order is placed (see CLAUDE.md).
 
+// "AJ's pick": the flavor that gets the little mascot badge on the menu. Use the flavor's name as a slug
+// (Bueno Mucho -> "bueno-mucho"). Set it to null to hide the badge everywhere. Display only: nothing in the database.
+export const PICK_FLAVOR_SLUG = "bueno-mucho";
+
 export const CONFIG = {
   brandName: "AJ's Bakery",
   tagline: "Small-batch brown butter cookies, baked at home in Manila.",

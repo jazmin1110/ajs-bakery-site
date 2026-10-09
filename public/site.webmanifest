@@ -1,0 +1,13 @@
+{
+  "name": "AJ's",
+  "short_name": "AJ's",
+  "description": "Small-batch brown butter cookies, baked at home in Metro Manila.",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#2B4C93",
+  "background_color": "#F7EBD5",
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

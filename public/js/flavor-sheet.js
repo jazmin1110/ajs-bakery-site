@@ -43,12 +43,12 @@ export function flavorDetailHtml(flavor, { settings = {} } = {}) {
   const facts = [["Shelf life", flavor.shelf_life], ["Storage", flavor.storage_tip]].filter(([, v]) => v);
 
   return `
-    <div class="sheet-photo">${flavorPhoto(flavor, "sheet-img")}</div>
+    <div class="sheet-photo">${flavorPhoto(flavor, "sheet-img", { width: 480, height: 480, sizes: "240px" })}</div>
     <div class="sheet-main">
       <h2 id="sheet-title">${esc(flavor.name)}</h2>
       <p class="sheet-meta">
         ${flavor.weight_label ? `<span class="sheet-weight">${esc(flavor.weight_label)}</span>` : ""}
-        <span class="stock" data-sheet-stock hidden></span>
+        <span class="stock sticker" data-sheet-stock hidden></span>
       </p>
       <p class="sheet-status" data-sheet-status></p>
       ${flavor.long_description ? `<p class="sheet-desc">${esc(flavor.long_description)}</p>` : ""}

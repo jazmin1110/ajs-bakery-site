@@ -64,6 +64,16 @@ The cart lives in `localStorage` (falls back to `window.name`, then memory, if s
 
 **Commit after each finished step.** Small commits, clear messages. Don't batch several steps into one commit.
 
+## Look and feel (design pass)
+
+Hand-drawn die-cut sticker style, blue anchor. Tokens are at the top of `css/styles.css` (`--blue #2B4C93`, `--cream #F7EBD5`, `--paper #FDF6E8`, chocolate `--ink #5C3A22`; cookie dough `--accent #E2B074` is for fills only, never text). Fonts are **Baloo 2** (headings) and **Nunito Sans** (body), self-hosted in `assets/fonts/` and preloaded in every page's `<head>`. Radius scale: 8px / 16px / pill. Only one dashed border is left (the Bueno surcharge note).
+
+- **Flavor images are sticker cutouts** (`assets/stickers/<name>-sticker-240.webp` and `-480.webp`; the die-cut outline is baked in, so never add a border or background). The name comes from the flavor's `photo_url` file name; `photo_version` still busts the cache. If a cutout fails to load it falls back to `assets/flavors/<name>.jpg`, then the emoji.
+- `.sticker` is the reusable tag class (stock tags, cutoff banner). Everything else stays flat.
+- "AJ's pick" badge: `PICK_FLAVOR_SLUG` in `js/config.js` (flavor name as a slug; `null` hides it). Never say "Bestseller".
+- Mascot (`mascot-badge`) shows on the empty cart, the confirmation page and the 404 page. The header/footer badge is `logo-badge-128.webp`.
+- `design-lab.html` is an unlinked font-comparison page (noindex).
+
 ## 5. Layout
 
 **Photo rules.** Every flavor photo is shown in a fixed shape with `object-fit: cover`: 4:3 on menu cards and the detail sheet, 1:1 for builder thumbnails (with explicit `width`/`height` attributes so nothing jumps). `flavors.focus_x` / `focus_y` (0-100, default 50) say which point of the photo stays in the middle of the crop. Photos in `public/assets/flavors/` are at most 1200px wide and about 150KB each (JPEG); keep the untouched originals in `public/assets/originals/` (git-ignored). Cards sit straight: `--card-tilt` in `styles.css` is `0deg` (set it to e.g. `0.6deg` for a deliberate tilt).

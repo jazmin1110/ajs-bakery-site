@@ -5,8 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Order placed | AJ's Bakery</title>
   <meta name="robots" content="noindex, nofollow">
-  <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png?v=2">
-  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=2">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/icons/favicon-64.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <!-- The two fonts are self-hosted; preloading the Latin files means text is drawn in them from the first paint -->
+  <link rel="preload" href="assets/fonts/baloo-2-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/nunito-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="theme-color" content="#2B4C93">
   <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -16,7 +21,7 @@
   <header class="site-header">
     <div class="container">
       <a class="logo-link" href="index.html">
-        <img data-asset="logo" alt="AJ's Bakery" width="48" height="48" onerror="this.style.display='none'">
+        <img data-asset="logo" alt="AJ's Bakery" width="56" height="56" onerror="this.style.display='none'">
         <span>AJ's Bakery</span>
       </a>
       <div class="header-actions"><a class="nav-boxes" href="index.html#boxes">Boxes</a></div>
@@ -141,6 +146,8 @@
 
           <div id="gcash-area">${saved ? thanksHtml(saved) : formHtml()}</div>
         </section>` : ""}
+
+        <p class="signoff"><img class="mascot" src="assets/stickers/mascot-badge-96.webp" srcset="assets/stickers/mascot-badge-96.webp 96w, assets/stickers/mascot-badge.webp 256w" sizes="56px" width="56" height="56" alt=""> <span>- AJ 🐵</span></p>
 
         <p class="fine-print">Keep this page or save your code. It's the only way to look up your order. We'll message you on Instagram too.</p>`;
 
