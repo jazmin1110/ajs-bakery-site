@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://ajs-bakery-site.vercel.app/</loc></url>
-  <url><loc>https://ajs-bakery-site.vercel.app/box.html?size=3</loc></url>
-  <url><loc>https://ajs-bakery-site.vercel.app/box.html?size=6</loc></url>
-  <url><loc>https://ajs-bakery-site.vercel.app/box.html?size=12</loc></url>
+  <url><loc>https://ajs-bakery.vercel.app/</loc></url>
+  <url><loc>https://ajs-bakery.vercel.app/box.html?size=3</loc></url>
+  <url><loc>https://ajs-bakery.vercel.app/box.html?size=6</loc></url>
+  <url><loc>https://ajs-bakery.vercel.app/box.html?size=12</loc></url>
 </urlset>

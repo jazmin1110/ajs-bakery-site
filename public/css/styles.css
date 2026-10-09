@@ -111,7 +111,8 @@ section { padding: 2rem 0; }
   color: var(--blue-dark);
 }
 .logo-link { min-height: 44px; }
-.logo-link img { width: 48px; height: 48px; object-fit: contain; }
+.logo-link img { flex: none; width: 48px; height: 48px; object-fit: contain; border-radius: 12px; }   /* the logo is a blue square: soften its corners */
+.footer-logo { display: block; width: 40px; height: 40px; margin: 0 auto 0.6rem; border-radius: 10px; }
 
 .cart-btn {
   position: relative;
