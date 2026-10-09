@@ -17,3 +17,6 @@ node_modules/
 
 # Full-size original photos (18MB+). Kept on disk only; the site uses assets/flavors/*.jpg
 source-images/
+
+# Full-size flavor photos before compression (kept on disk; the site uses the compressed ones in assets/flavors/)
+public/assets/originals/

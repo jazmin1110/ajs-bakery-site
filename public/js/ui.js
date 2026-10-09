@@ -104,12 +104,18 @@ function flavorInfo(slug) {
 }
 
 // A flavor photo, or its emoji if there's no photo (or it fails to load).
-// cls = the CSS class for the <img>.
-export function flavorPhoto(slug, name, cls, url) {
-  const info = flavorInfo(slug);
-  const src = url || info.image;                       // the database's photo_url first, then the built-in one
+//   cls    = the CSS class for the <img> (the CSS gives it its shape and object-fit: cover)
+//   width/height = the shape the image is shown in (4:3 cards = 800x600, square thumbs = 96x96).
+//     They stop the page jumping while the photo loads. They're a RATIO hint: the CSS sets the real size.
+//   lazy   = true for photos below the fold (the browser loads them as they scroll into view)
+// focus_x / focus_y (0-100, from the database) pick which point of the photo stays in the middle of the crop.
+export function flavorPhoto(flavor, cls, { width = 800, height = 600, lazy = false } = {}) {
+  const info = flavorInfo(flavor.slug);
+  const src = flavor.photo_url || info.image;          // the database's photo_url first, then the built-in one
   if (!src) return `<span aria-hidden="true">${info.emoji}</span>`;
-  return `<img class="${cls}" src="${esc(src)}" alt="${esc(name)}" loading="lazy"
+  const pct = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 50; };
+  return `<img class="${cls}" src="${esc(src)}" alt="${esc(flavor.name)}" width="${width}" height="${height}"
+    style="object-position:${pct(flavor.focus_x)}% ${pct(flavor.focus_y)}%"${lazy ? ' loading="lazy" decoding="async"' : ""}
     onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${info.emoji}'}))">`;
 }
 
@@ -158,7 +164,7 @@ export function renderMenu(container, flavors, boxes = [], availability = {}) {
       const canSingle = f.single_price != null;
       return `
       <article class="card" data-slug="${esc(f.slug)}">
-        <div class="card-photo" data-open-sheet>${flavorPhoto(f.slug, f.name, "card-img", f.photo_url)}</div>
+        <div class="card-photo" data-open-sheet>${flavorPhoto(f, "card-img", { lazy: true })}</div>
         <div class="card-body">
           <h3><button type="button" class="card-open" data-open-sheet aria-haspopup="dialog">${esc(f.name)}</button>
             ${stock ? `<span class="stock${left <= 0 ? " stock-out" : ""}" data-stock>${stock}</span>` : `<span class="stock" data-stock hidden></span>`}</h3>

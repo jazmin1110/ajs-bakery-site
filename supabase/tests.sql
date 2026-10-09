@@ -993,3 +993,38 @@ begin
   raise notice 'PASS (n): an old box of 4 order is still visible to the admin';
 end $$;
 rollback;
+
+
+-- ===========================================================================
+-- (o) Photo focus (migration 011): focus_x / focus_y stay within 0-100, start on sensible
+-- values, are readable by visitors and editable by nobody but you.
+-- ===========================================================================
+begin;
+do $$
+begin
+  assert (select count(*) from public.flavors where focus_x between 0 and 100 and focus_y between 0 and 100) = (select count(*) from public.flavors),
+    'every flavor needs focus_x and focus_y between 0 and 100';
+  assert (select focus_x from public.flavors where slug = 'choc-chip') = 49 and (select focus_y from public.flavors where slug = 'kinder-bueno') = 50,
+    'starting focus values are set';
+  begin
+    update public.flavors set focus_x = 101 where slug = 'choc-chip';
+    raise exception 'FAIL (o): focus_x = 101 was accepted';
+  exception when check_violation then
+    raise notice 'PASS (o): focus values outside 0-100 are rejected';
+  end;
+  begin
+    update public.flavors set focus_y = -1 where slug = 'choc-chip';
+    raise exception 'FAIL (o): focus_y = -1 was accepted';
+  exception when check_violation then null; end;
+
+  set local role anon;
+  assert (select count(*) from public.flavors where focus_x is not null and focus_y is not null) = (select count(*) from public.flavors), 'visitors can read focus values';
+  begin
+    update public.flavors set focus_x = 0 where slug = 'choc-chip';
+    raise exception 'FAIL (o): a visitor changed a focus value';
+  exception when insufficient_privilege then
+    raise notice 'PASS (o): visitors can read focus values but cannot change them';
+  end;
+  reset role;
+end $$;
+rollback;

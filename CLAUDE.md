@@ -66,6 +66,8 @@ The cart lives in `localStorage` (falls back to `window.name`, then memory, if s
 
 ## 5. Layout
 
+**Photo rules.** Every flavor photo is shown in a fixed shape with `object-fit: cover`: 4:3 on menu cards and the detail sheet, 1:1 for builder thumbnails (with explicit `width`/`height` attributes so nothing jumps). `flavors.focus_x` / `focus_y` (0-100, default 50) say which point of the photo stays in the middle of the crop. Photos in `public/assets/flavors/` are at most 1200px wide and about 150KB each (JPEG); keep the untouched originals in `public/assets/originals/` (git-ignored). Cards sit straight: `--card-tilt` in `styles.css` is `0deg` (set it to e.g. `0.6deg` for a deliberate tilt).
+
 Only `public/` is deployed (`vercel.json` sets `outputDirectory: public`). Docs, SQL and original photos stay out of the live site.
 
 ```
@@ -84,9 +86,10 @@ public/                      <- what Vercel serves
   js/ui.js                   shared UI helpers, banner, "ordering is closed" card
   js/flavor-sheet.js         flavor detail bottom sheet (data-driven from the flavors columns; deep link #chimp-chips)
   js/admin.js                shared admin helpers (login guard, Sunday picker, totals math)
-  assets/                    flavors/*.jpg, gcash-qr.png, og-image.jpg
+  assets/                    flavors/*.jpg (compressed), gcash-qr.png, og-image.jpg
+  assets/originals/          full-size flavor photos before compression, git-ignored (NOT deployed)
   robots.txt, sitemap.xml
-supabase/                    migrations 001-010, seed.sql, tests.sql  (NOT deployed)
+supabase/                    migrations 001-011, seed.sql, tests.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers

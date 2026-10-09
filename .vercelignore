@@ -1,0 +1,2 @@
+# Don't upload the big original photos if you deploy with the Vercel CLI
+public/assets/originals

@@ -134,7 +134,7 @@
         <ul class="flavor-list">
           ${flavors.map((f) => `
           <li class="flavor-row" data-slug="${esc(f.slug)}">
-            <div class="flavor-emoji">${flavorPhoto(f.slug, f.name, "flavor-thumb", f.photo_url)}</div>
+            <div class="flavor-emoji">${flavorPhoto(f, "flavor-thumb", { width: 96, height: 96 })}</div>
             <div class="flavor-info">
               <strong>${esc(f.name)}</strong>
               <span class="flavor-meta">

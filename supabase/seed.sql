@@ -23,6 +23,12 @@ update public.flavors set photo_url = coalesce(photo_url, 'assets/flavors/coco-l
 update public.flavors set photo_url = coalesce(photo_url, 'assets/flavors/bueno-mucho.jpg'),
   long_description = coalesce(long_description, 'Nutty brown butter with Kinder Maxi chocolate and a bueno center.') where slug = 'kinder-bueno';
 
+-- Where to centre each photo in its crop (see migration 011). Only touches flavors still on the
+-- default 50/50, so a value you changed by hand is kept.
+update public.flavors set focus_x = 49, focus_y = 51 where slug = 'choc-chip'    and focus_x = 50 and focus_y = 50;
+update public.flavors set focus_x = 51, focus_y = 52 where slug = 'double-choc'  and focus_x = 50 and focus_y = 50;
+update public.flavors set focus_x = 48, focus_y = 50 where slug = 'kinder-bueno' and focus_x = 50 and focus_y = 50;
+
 -- Flat box prices. The box of 4 is retired (kept, switched off: old orders point at it).
 insert into public.boxes (size, price, active, description) values
   (3,  285,  true,  'A little treat, or a gift for one.'),

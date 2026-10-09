@@ -28,7 +28,7 @@ export function flavorDetailHtml(flavor, { boxEach = null } = {}) {
   const info = CONFIG.flavorInfo[flavor.slug] || { description: "" };
 
   return `
-    <div class="sheet-photo">${flavorPhoto(flavor.slug, flavor.name, "sheet-img", flavor.photo_url)}</div>
+    <div class="sheet-photo">${flavorPhoto(flavor, "sheet-img")}</div>
     <div class="sheet-main">
       <h2 id="sheet-title">${esc(flavor.name)} <span class="stock" data-sheet-stock hidden></span></h2>
       ${flavor.single_price != null

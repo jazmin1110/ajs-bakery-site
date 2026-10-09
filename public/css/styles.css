@@ -23,6 +23,7 @@
   --font-body: "Nunito", "Segoe UI", system-ui, sans-serif;
 
   /* --- Shape & shadow --- */
+  --card-tilt: 0deg;        /* menu/box cards sit straight. Set e.g. 0.6deg for a playful, deliberate tilt */
   --radius: 22px;
   --radius-sm: 14px;
   --shadow: 0 6px 18px rgba(90, 60, 30, 0.12);
@@ -191,14 +192,12 @@ section { padding: 2rem 0; }
   overflow: hidden;
   border: 2px solid var(--cream-dark);
 }
-/* tiny alternating tilt so cards feel hand-placed */
-.card-grid > .card:nth-child(odd)  { transform: rotate(-0.6deg); }
-.card-grid > .card:nth-child(even) { transform: rotate(0.6deg); }
+/* Optional alternating tilt. It is OFF (0deg); change --card-tilt in :root to turn it on. */
+.card-grid > .card:nth-child(odd)  { transform: rotate(calc(var(--card-tilt) * -1)); }
+.card-grid > .card:nth-child(even) { transform: rotate(var(--card-tilt)); }
 
 .card-photo {
-  aspect-ratio: 4 / 3;      /* compact 4:3 crop of the (tall) phone photos */
-  max-height: 30vh;         /* so the whole menu is about a screen and a half on a phone */
-  max-height: 30dvh;        /* dvh = the visible height as Safari's toolbars come and go (vh is the fallback) */
+  aspect-ratio: 4 / 3;      /* every flavor photo is cropped to the same 4:3 shape (object-fit: cover below) */
   overflow: hidden;
   cursor: pointer;
   display: grid;
@@ -206,7 +205,9 @@ section { padding: 2rem 0; }
   background: repeating-linear-gradient(45deg, var(--cream-dark), var(--cream-dark) 12px, var(--cream) 12px, var(--cream) 24px);
   font-size: 3rem;
 }
-.card-img { width: 100%; height: 100%; object-fit: cover; object-position: center 45%; }
+.card-photo { position: relative; }
+/* The photo fills the 4:3 frame exactly and is cropped to it (absolute, so its own shape can't resize the frame) */
+.card-img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }   /* object-position comes from the flavor (focus_x / focus_y) */
 .card-body { padding: 0.45rem 0.9rem 0.7rem; }
 .card-body { padding: 1rem 1.1rem 1.2rem; }
 .card-body h3 { margin-bottom: 0.35rem; }
@@ -382,7 +383,7 @@ body.has-builder-bar { padding-bottom: calc(var(--bottom-room) + 4.5rem); }
   box-shadow: var(--shadow);
 }
 .flavor-emoji { font-size: 1.6rem; width: 3rem; height: 3rem; text-align: center; flex: none; display: grid; place-items: center; }
-.flavor-thumb { width: 3rem; height: 3rem; object-fit: cover; border-radius: 12px; border: 2px solid var(--cream-dark); }
+.flavor-thumb { display: block; width: 3rem; height: 3rem; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 12px; border: 2px solid var(--cream-dark); }
 .flavor-info { flex: 1; min-width: 0; line-height: 1.25; }
 .flavor-info strong { display: block; font-family: var(--font-display); color: var(--blue-dark); font-size: 1rem; }
 .surcharge { font-size: 0.85rem; font-weight: 700; color: var(--accent-dark); }
@@ -689,8 +690,8 @@ body.sheet-open { overflow: hidden; }
 .sheet-root.open .sheet { transform: none; }
 .sheet-close { position: absolute; top: 8px; right: 8px; z-index: 2; width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--cream-dark); background: #fff; font-size: 1.1rem; cursor: pointer; color: var(--ink); }
 .sheet-scroll { overflow-y: auto; overscroll-behavior: contain; flex: 1; padding-bottom: 0.5rem; }
-.sheet-photo { aspect-ratio: 4 / 3; max-height: 40vh; max-height: 40dvh; overflow: hidden; border-top-left-radius: 26px; border-top-right-radius: 26px; background: var(--cream-dark); }
-.sheet-img { width: 100%; height: 100%; object-fit: cover; object-position: center 45%; }
+.sheet-photo { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-top-left-radius: 26px; border-top-right-radius: 26px; background: var(--cream-dark); }
+.sheet-img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
 .sheet-main { padding: 0.9rem 1.1rem 0.4rem; }
 .sheet-main h2 { font-size: 1.6rem; margin-bottom: 0.2rem; }
 .sheet-main h3 { font-size: 1.05rem; margin: 1rem 0 0.2rem; }
