@@ -47,7 +47,7 @@ Single source of truth for the numbers. The database is the enforcer and the sto
 
 ## Flavor details (the detail sheet)
 
-Each flavor row holds its own content: `long_description`, `ingredients`, `allergens`, `weight_g`, `shelf_life`, `storage_tip`, `nutrition_image_url`, `photo_url`. Anything empty shows "coming soon" on the sheet. **Never invent ingredients, allergens or nutrition numbers: the owner writes them** (template at the bottom of `supabase/seed.sql`). Tapping a menu card opens the sheet; `/#chimp-chips` (the flavor name as a slug) opens it from a link.
+Each flavor row holds its own content: `short_description`, `long_description`, `taste_notes`, `ingredients`, `contains`, `may_contain`, `weight_label`, `shelf_life`, `storage_tip`, `nutrition` (jsonb with exactly `serving`, `calories`, `total_carbohydrate_g`, `sugars_g`, `total_fat_g`, `protein_g`, nothing else) and the photo fields. Site-wide notes (`global_allergen_note`, `nutrition_note`) live in the `site_settings` table. **The wording and numbers come from `flavor-content.json` (repo root) and are never reworded or shortened**; `python3 supabase/build_seed_content.py` regenerates `supabase/seed_content.sql` from it. Keys starting with `_` in the JSON and the `verify` lists are not stored or shown. The nutrition values are calculated estimates, not lab tested. **Never invent ingredients, allergens or nutrition numbers: the owner writes them.** There is no nutrition label image. The words "diet", "healthy" and "guilt-free" are never used on the site.
 
 ## Saved cart (browser)
 
@@ -91,7 +91,7 @@ public/                      <- what Vercel serves
   assets/                    flavors/*.jpg (compressed), gcash-qr.png, og-image.jpg
   assets/originals/          full-size flavor photos before compression, git-ignored (NOT deployed)
   robots.txt, sitemap.xml
-supabase/                    migrations 001-012, seed.sql, tests.sql  (NOT deployed)
+supabase/                    migrations 001-013, seed.sql, tests.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers

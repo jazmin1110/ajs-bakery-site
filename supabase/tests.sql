@@ -858,10 +858,8 @@ begin
   select photo_url, long_description, ingredients, allergens, weight_g, shelf_life, storage_tip, nutrition_image_url
     into r from public.flavors where slug = 'choc-chip';
   assert r.photo_url = 'assets/flavors/chimp-chips.jpg' and r.long_description is not null, 'photo and description are seeded';
-  assert r.ingredients is null and r.allergens is null and r.weight_g is null
-     and r.shelf_life is null and r.storage_tip is null and r.nutrition_image_url is null,
-    'ingredients, allergens, weight, shelf life, storage tip and the nutrition label must start empty (never invented)';
-  raise notice 'PASS (m): detail columns are readable, photo/description seeded, facts left empty';
+  assert r.nutrition_image_url is null and r.allergens is null, 'no nutrition label image is made up, and the old allergens text column stays empty';
+  raise notice 'PASS (m): detail columns are readable, photo/description seeded, no label image invented';
 
   begin
     update public.flavors set allergens = 'none' where slug = 'choc-chip';
@@ -1052,5 +1050,46 @@ begin
     raise notice 'PASS (p): photo versions start at 1, are readable, and only the owner can bump them';
   end;
   reset role;
+end $$;
+rollback;
+
+
+-- ===========================================================================
+-- (q) Flavor content (migration 013 + seed_content.sql): the content is loaded, the nutrition
+-- object has exactly six keys, and the two site notes are readable but not editable by visitors.
+-- ===========================================================================
+begin;
+do $$
+declare r record;
+begin
+  set local role anon;
+  assert (select count(*) from public.flavors where short_description is not null and long_description is not null
+          and cardinality(taste_notes) = 3 and ingredients is not null and cardinality(contains) >= 4
+          and cardinality(may_contain) >= 1 and weight_label is not null and shelf_life is not null
+          and storage_tip is not null and nutrition is not null) = 3, 'all three flavors have all content';
+  select nutrition into r from public.flavors where slug = 'choc-chip';
+  assert (select count(*) from jsonb_object_keys(r.nutrition)) = 6, 'nutrition has exactly 6 keys';
+  assert not (r.nutrition ? 'sodium' or r.nutrition ? 'fiber_g' or r.nutrition ? 'saturated_fat_g' or r.nutrition ? 'trans_fat_g'), 'no extra nutrition keys';
+  assert (select nutrition ->> 'calories' from public.flavors where slug = 'kinder-bueno') = '400', 'Bueno Mucho calories';
+  assert (select count(*) from public.site_settings where key in ('global_allergen_note', 'nutrition_note')) = 2, 'both site notes readable';
+  begin
+    update public.site_settings set value = 'x';
+    raise exception 'FAIL (q): a visitor edited a site note';
+  exception when insufficient_privilege then null; end;
+  begin
+    insert into public.site_settings values ('x', 'y');
+    raise exception 'FAIL (q): a visitor added a site note';
+  exception when insufficient_privilege then null; end;
+  reset role;
+  -- an extra nutrition key (or a missing one) is refused
+  begin
+    update public.flavors set nutrition = nutrition || '{"sodium_mg": 100}'::jsonb where slug = 'choc-chip';
+    raise exception 'FAIL (q): an extra nutrition key was accepted';
+  exception when check_violation then null; end;
+  begin
+    update public.flavors set nutrition = nutrition - 'protein_g' where slug = 'choc-chip';
+    raise exception 'FAIL (q): a missing nutrition key was accepted';
+  exception when check_violation then null; end;
+  raise notice 'PASS (q): content loaded, nutrition limited to six keys, site notes read-only for visitors';
 end $$;
 rollback;

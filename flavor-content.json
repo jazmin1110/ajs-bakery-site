@@ -1,0 +1,105 @@
+{
+  "_readme": "Draft content for the AJ's Bakery flavor detail sheets. Nutrition is a CALCULATED ESTIMATE per cookie from the RD1 recipes, using the printed label values of Callebaut 811, Anchor unsalted butter, Kinder Maxi and Kinder Bueno, and standard values for flour, sugars, eggs, cocoa powder and vanilla (brands not recorded). Not lab tested. Allergens and ingredient lists follow those products' labels. VERIFY everything in each flavor's 'verify' list before launch. Copy is written in a plain, casual voice; edit freely.",
+  "global_allergen_note": "Made in a home kitchen that also handles milk, egg, wheat, soy and hazelnuts. If you have a serious allergy, message us before ordering.",
+  "nutrition_note": "Estimated per cookie. Calculated from our recipe and the labels of the ingredients we use, not lab tested. Actual values vary a little with each batch.",
+  "_nutrition_inputs_per_100g": {
+    "callebaut_811": {"kcal": 550, "fat_g": 36.6, "carbs_g": 45.8, "sugars_g": 43.1, "protein_g": 5.1, "source": "Barry Callebaut spec (kcal, fat, protein); carbs and sugars from UK distributor spec sheets of the same recipe 811"},
+    "anchor_unsalted_butter": {"kcal": 744, "fat_g": 82, "carbs_g": 0.6, "sugars_g": 0.6, "protein_g": 0.6, "source": "Anchor unsalted butter 200g UK pack label"},
+    "kinder_maxi": {"kcal": 566, "fat_g": 35, "carbs_g": 53.5, "sugars_g": 53.3, "protein_g": 8.7, "source": "Ferrero Kinder Maxi label"},
+    "kinder_bueno": {"kcal": 572, "fat_g": 37.3, "carbs_g": 49.5, "sugars_g": 41.2, "protein_g": 8.6, "source": "Ferrero Kinder Bueno 2x21.5g pack label"},
+    "all_purpose_flour": {"kcal": 364, "fat_g": 1.0, "carbs_g": 76.3, "sugars_g": 0.3, "protein_g": 10.3, "source": "standard value, brand not recorded"},
+    "dark_brown_sugar": {"kcal": 380, "fat_g": 0, "carbs_g": 98.1, "sugars_g": 97.0, "protein_g": 0.1, "source": "standard value, brand not recorded"},
+    "granulated_sugar": {"kcal": 387, "fat_g": 0, "carbs_g": 99.8, "sugars_g": 99.8, "protein_g": 0, "source": "standard value, brand not recorded"},
+    "dutch_cocoa_powder": {"kcal": 228, "fat_g": 13.7, "carbs_g": 57.9, "sugars_g": 1.75, "protein_g": 19.6, "source": "standard value for alkalized cocoa, brand not recorded"},
+    "eggs_1_whole_plus_1_yolk": {"kcal": 127, "fat_g": 9.3, "carbs_g": 1.0, "sugars_g": 0.3, "protein_g": 9.0, "source": "standard value for the whole batch quantity (not per 100g)"},
+    "vanilla_extract_1_5_tsp": {"kcal": 18, "fat_g": 0, "carbs_g": 0.8, "sugars_g": 0.8, "protein_g": 0, "source": "standard value for the whole batch quantity (not per 100g)"}
+  },
+  "flavors": [
+    {
+      "slug": "chimp-chips",
+      "name": "Chimp Chips",
+      "short_description": "Brown butter and lots of dark chocolate. Soft, chewy, a little nutty.",
+      "long_description": "Our classic. We brown the butter first, so every bite tastes nutty and a little caramel-y, then load the dough with dark chocolate. Soft and chewy, and a good place to start if it's your first AJ's cookie.",
+      "taste_notes": ["Nutty brown butter", "Dark chocolate", "Soft and chewy"],
+      "ingredients": "All-purpose wheat flour, dark chocolate (cocoa mass, sugar, cocoa butter, soy lecithin, natural vanilla flavouring), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt.",
+      "contains": ["Wheat (gluten)", "Milk", "Egg", "Soy"],
+      "may_contain": ["Hazelnuts and other tree nuts"],
+      "weight_g": 60,
+      "weight_label": "About 60g",
+      "shelf_life": "Best within 4-5 days.",
+      "storage_tip": "Keep in an airtight container at room temperature.",
+      "nutrition": {
+        "serving": "1 cookie (about 60g)",
+        "calories": 295,
+        "total_carbohydrate_g": 32,
+        "sugars_g": 20,
+        "total_fat_g": 17,
+        "protein_g": 3
+      },
+      "_calc": {"cookies_per_batch": 15, "batch_totals": {"kcal": 4428, "carbs_g": 487, "sugars_g": 307, "fat_g": 251, "protein_g": 44}},
+      "verify": [
+        "Check your Callebaut 811 pack against the values used (550 kcal, 36.6g fat, 5.1g protein per 100g from Barry Callebaut; 45.8g carbs and 43.1g sugars from UK distributor sheets of the same recipe). Update if your pack differs.",
+        "Check your Anchor butter pack matches the UK 200g label (744 kcal, 82g fat per 100g).",
+        "Flour, sugars, eggs and vanilla use standard values because the brands aren't recorded. Add the brands if you want it tighter.",
+        "Weigh 5 baked cookies and use the average. 60g is dough weight; baked weight is a bit lower. Per-cookie nutrition stays the same as long as you portion 60g each."
+      ]
+    },
+    {
+      "slug": "coco-loco",
+      "name": "Coco Loco",
+      "short_description": "Brown butter, cocoa and dark chocolate. Deep, rich and extra chocolatey.",
+      "long_description": "For the chocolate lovers. Same brown butter base, with Dutch cocoa in the dough and chunks of dark chocolate on top of that. Deep, rich, and the cocoa is mellow, not harsh.",
+      "taste_notes": ["Cocoa", "Dark chocolate", "Brown butter"],
+      "ingredients": "All-purpose wheat flour, dark chocolate (cocoa mass, sugar, cocoa butter, soy lecithin, natural vanilla flavouring), brown butter (unsalted butter), dark brown sugar, sugar, eggs, Dutch-process cocoa powder, vanilla extract, baking soda, salt.",
+      "contains": ["Wheat (gluten)", "Milk", "Egg", "Soy"],
+      "may_contain": ["Hazelnuts and other tree nuts"],
+      "weight_g": 60,
+      "weight_label": "About 60g",
+      "shelf_life": "Best within 4-5 days.",
+      "storage_tip": "Keep in an airtight container at room temperature.",
+      "nutrition": {
+        "serving": "1 cookie (about 60g)",
+        "calories": 295,
+        "total_carbohydrate_g": 32,
+        "sugars_g": 20,
+        "total_fat_g": 17,
+        "protein_g": 3
+      },
+      "_calc": {"cookies_per_batch": 15, "batch_totals": {"kcal": 4399, "carbs_g": 483, "sugars_g": 307, "fat_g": 253, "protein_g": 46}},
+      "verify": [
+        "Same Callebaut 811 and Anchor checks as Chimp Chips.",
+        "The 500g Dutch cocoa powder from All About Baking: read its pack for brand, per-100g nutrition and any allergen line. I used a standard alkalized cocoa value (228 kcal per 100g).",
+        "Weigh 5 baked cookies and use the average."
+      ]
+    },
+    {
+      "slug": "bueno-mucho",
+      "name": "Bueno Mucho",
+      "short_description": "Brown butter and milk chocolate with a Kinder Bueno hidden in the middle.",
+      "long_description": "The fun one. Brown butter dough with milk chocolate, wrapped around a piece of Kinder Bueno, so the middle has wafer crunch and hazelnut cream. It's a bit bigger than our other cookies.",
+      "taste_notes": ["Milk chocolate", "Hazelnut", "Wafer crunch"],
+      "ingredients": "Kinder Bueno (milk chocolate, sugar, palm oil, wheat flour, hazelnuts, milk powder, soy lecithin), all-purpose wheat flour, Kinder Maxi milk chocolate (sugar, milk powder, cocoa butter, cocoa mass, palm oil, soy lecithin), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt.",
+      "contains": ["Wheat (gluten)", "Milk", "Egg", "Soy", "Hazelnuts"],
+      "may_contain": ["Other tree nuts"],
+      "weight_g": 77,
+      "weight_label": "About 75g",
+      "shelf_life": "Best within 3-4 days.",
+      "storage_tip": "Keep in an airtight container at room temperature.",
+      "nutrition": {
+        "serving": "1 cookie (about 75g)",
+        "calories": 400,
+        "total_carbohydrate_g": 42,
+        "sugars_g": 29,
+        "total_fat_g": 23,
+        "protein_g": 5
+      },
+      "_calc": {"cookies_per_batch": 16, "dough_per_cookie_g": 56, "bueno_piece_g": 21.5, "dough_batch_totals": {"kcal": 4432, "carbs_g": 500, "sugars_g": 325, "fat_g": 246, "protein_g": 51}, "per_cookie_dough": {"kcal": 277, "carbs_g": 31.3, "sugars_g": 20.3, "fat_g": 15.4, "protein_g": 3.2}, "per_bueno_piece": {"kcal": 123, "carbs_g": 10.6, "sugars_g": 8.9, "fat_g": 8.0, "protein_g": 1.9}},
+      "verify": [
+        "Same Anchor check as Chimp Chips.",
+        "Read the Kinder Maxi pack (I used Ferrero's label: 566 kcal, 35g fat, 53.5g carbs, 53.3g sugars, 8.7g protein per 100g) and the Kinder Bueno pack (572 kcal, 37.3g fat, 49.5g carbs, 41.2g sugars, 8.6g protein per 100g). Update if your PH packs differ.",
+        "Confirm the center piece weighs about 21.5g and weigh 5 baked cookies. Dough is about 56g plus the center, so roughly 77g before baking loss.",
+        "Confirm the shelf life of 3-4 days on a batch you keep."
+      ]
+    }
+  ]
+}
