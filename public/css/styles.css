@@ -805,8 +805,8 @@ body.sheet-open { overflow: hidden; }
 
 .flavor-item { position: relative; border-top: 1px solid var(--cream-dark); }
 .flavor-item:first-child { border-top: 0; }
-.fi-body { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 12px; align-items: start; padding: 12px 14px 24px; cursor: pointer; }
-.fi-text { min-width: 0; }                                  /* lets long words wrap instead of widening the row */
+.fi-body { display: grid; grid-template-columns: minmax(0, 1fr) 96px; column-gap: 12px; row-gap: 0; align-items: start; padding: 12px 14px 24px; cursor: pointer; }   /* row 1 = badge tag (empty for most flavors), row 2 = text; the photo spans both */
+.fi-text { min-width: 0; grid-column: 1; grid-row: 2; }                                  /* lets long words wrap instead of widening the row */
 .fi-text h3 { font-size: 1.1rem; margin: 0; }
 .fi-text .card-open { min-height: 44px; padding: 0; display: inline-flex; align-items: center; overflow-wrap: anywhere; }
 .fi-desc { margin: -0.15rem 0 0.25rem; font-size: 0.92rem; line-height: 1.35; }
@@ -818,6 +818,7 @@ body.sheet-open { overflow: hidden; }
   position: relative; width: 96px; aspect-ratio: 1 / 1; border-radius: var(--r-md); overflow: hidden;
   background: repeating-linear-gradient(45deg, var(--cream-dark), var(--cream-dark) 12px, var(--cream) 12px, var(--cream) 24px);
   display: grid; place-items: center; font-size: 2rem;
+  grid-column: 2; grid-row: 1 / span 2;
 }
 /* The photo fills its frame and is cropped to it; the focus point (focus_x / focus_y) comes from the database */
 .card-img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -1078,17 +1079,19 @@ body.has-cart-bar .site-footer { padding-bottom: calc(1.2rem + var(--bar-h, 4.5r
    Flavor badges (monkey stamps): top-right of the cookie sticker, tilted -4deg, label underneath.
    Which flavor gets which badge: FLAVOR_BADGES in js/config.js. The chef-hat stamp is drawn larger because its detail blurs when small.
    ========================================================================== */
-.flavor-badge { position: absolute; top: -12px; right: -2px; z-index: 3; display: flex; flex-direction: column; align-items: center; transform: rotate(-4deg); pointer-events: none; }
-.flavor-badge img { width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(0 3px 5px rgba(92, 58, 34, 0.30)); }   /* the cream die-cut outline is baked into the image, like the cookie stickers */
-.flavor-badge-pick img { width: 46px; height: 46px; }
-.flavor-badge-label { margin-top: -7px; padding: 1px 8px; border-radius: 999px; font: 800 0.66rem/1.5 var(--font-body); white-space: nowrap; box-shadow: 0 2px 5px rgba(92, 58, 34, 0.25); }
+/* Phone: a tag above the flavor name (monkey + label side by side), in its own grid cell so it never touches the photo */
+.flavor-badge { display: flex; align-items: center; justify-self: start; grid-column: 1; grid-row: 1; margin-bottom: 2px; transform: rotate(-3deg); pointer-events: none; }
+.flavor-badge img { width: 36px; height: 36px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(92, 58, 34, 0.30)); }   /* the cream die-cut outline is baked into the image, like the cookie stickers */
+.flavor-badge-pick img { width: 40px; height: 40px; }
+.flavor-badge-label { margin-left: -6px; padding: 1px 9px; border-radius: 999px; font: 800 0.72rem/1.5 var(--font-body); white-space: nowrap; box-shadow: 0 2px 5px rgba(92, 58, 34, 0.25); }
 .flavor-badge-pick .flavor-badge-label { background: var(--accent); color: var(--ink); }      /* ink on cookie dough: 5.1:1 */
 .flavor-badge-bestseller .flavor-badge-label { background: var(--blue); color: var(--cream); }     /* cream on blue: 6.9:1 */
 @media (min-width: 700px) {
-  .flavor-badge { top: -6px; right: -6px; }
-  .flavor-badge img { width: 50px; height: 50px; }
-  .flavor-badge-pick img { width: 58px; height: 58px; }
-  .flavor-badge-label { font-size: 0.75rem; }
+  /* Cards: the corner of the card (the cookie sits in the middle of the photo, so the corner is empty) */
+  .flavor-badge { position: absolute; top: 6px; right: 6px; z-index: 3; flex-direction: column; margin: 0; transform: rotate(-4deg); }
+  .flavor-badge img { width: 44px; height: 44px; }
+  .flavor-badge-pick img { width: 50px; height: 50px; }
+  .flavor-badge-label { margin: -7px 0 0; font-size: 0.75rem; }
 }
 
 /* disabled buttons never react to hover */
