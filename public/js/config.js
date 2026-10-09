@@ -44,7 +44,7 @@ export const CONFIG = {
 
   // Cache-busting numbers for the photos that aren't flavor photos (those use flavors.photo_version in
   // the database). Replaced a file? Add 1 here, deploy. The site loads it as assets/logo.png?v=<number>.
-  assetVersions: { logo: 2, hero: 1, gcashQr: 1 },
+  assetVersions: { logo: 2, gcashQr: 1 },
 
   maxBoxesPerOrder: 3, // cart limit (the checkout step must respect this too)
   // Order minimums (copy only: the database enforces them): pickup = 1 cookie; delivery = 2 cookies OR ₱200.

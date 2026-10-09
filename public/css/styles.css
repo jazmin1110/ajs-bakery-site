@@ -116,9 +116,6 @@ section { padding: 2rem 0; }
 .header-actions { display: flex; align-items: center; gap: 0.3rem; }
 .nav-boxes { display: inline-flex; align-items: center; min-height: 44px; padding: 0 0.7rem; border-radius: 999px; font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; color: var(--blue-dark); text-decoration: none; }
 .nav-boxes:hover, .nav-boxes:focus-visible { background: var(--blue-soft); }
-/* Home hero photo: phones only, short enough that the flavor list still starts on the first screen */
-.hero-photo { display: block; width: 100%; max-width: 420px; height: 104px; margin: 0.6rem auto 0; object-fit: cover; object-position: 48% 49%; border-radius: 16px; }
-@media (min-width: 700px) { .hero-photo { display: none; } }
 .footer-logo { display: block; width: 40px; height: 40px; margin: 0 auto 0.6rem; border-radius: 10px; }
 
 .cart-btn {
@@ -884,3 +881,7 @@ body.sheet-open { overflow: hidden; }
 
 /* a tighter hero on phones so the flavor list starts higher (must come after the base .hero rule) */
 @media (max-width: 699px) { .hero { padding: 1.2rem 0 0.4rem; } }
+
+/* The logo in the hero: a little smaller on phones so the flavor list still starts on the first screen */
+.hero-logo { display: block; width: 96px; height: 96px; margin: 0.7rem auto 0; border-radius: 22px; box-shadow: var(--shadow); }
+@media (min-width: 700px) { .hero-logo { width: 120px; height: 120px; border-radius: 26px; } }

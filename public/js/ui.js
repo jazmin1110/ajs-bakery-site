@@ -118,7 +118,7 @@ export function trackBarHeight(bar) {
 }
 
 // Photos that aren't flavor photos, with their version from config.js (assetVersions)
-const ASSET_PATHS = { logo: "assets/logo.png", hero: "assets/flavors/bueno-mucho.jpg", gcashQr: "assets/gcash-qr.png" };
+const ASSET_PATHS = { logo: "assets/logo.png", gcashQr: "assets/gcash-qr.png" };
 export function assetUrl(name) {
   return withVersion(ASSET_PATHS[name], CONFIG.assetVersions[name]);
 }
