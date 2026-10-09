@@ -379,7 +379,7 @@ body.has-builder-bar { padding-bottom: calc(var(--bar-h, 4.5rem) + 1rem); }
 
 /* ---------- Box builder (box.html) ---------- */
 .builder { padding-top: 0.5rem; padding-bottom: 1rem; max-width: 640px; }
-.back-link { display: inline-block; margin-bottom: 0.25rem; padding: 0.7rem 0.3rem 0.7rem 0; font-weight: 700; }
+.back-link { display: inline-flex; align-items: center; min-height: 44px; margin-bottom: 0.25rem; padding: 0 0.3rem 0 0; font-weight: 700; }   /* 44px tall tap area, same look */
 
 .counter {
   background: var(--blue-soft);
