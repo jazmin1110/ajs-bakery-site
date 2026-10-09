@@ -165,7 +165,7 @@ function singlesSection(singles) {
             <output aria-label="${esc(s.name)} quantity">${s.qty}</output>
             <button type="button" data-single-step="1" data-slug="${esc(s.slug)}" aria-label="One more ${esc(s.name)}">+</button>
           </div>
-          <span class="cart-line-each">${s.qty} × ${peso(s.unitPrice)}</span>
+          <span class="cart-line-each">${s.qty > 1 ? `${s.qty} × ${peso(s.unitPrice)}` : ""}</span>
           <button type="button" class="link-btn" data-remove-single="${esc(s.slug)}">Remove</button>
         </div>
           </div>

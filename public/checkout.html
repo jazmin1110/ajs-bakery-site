@@ -193,8 +193,7 @@
               <strong>${s.qty} × ${esc(s.name)}</strong>
               <span class="price">${peso(s.unitPrice * s.qty)}</span>
             </div>
-            <p class="cart-box-items">${s.qty} × ${peso(s.unitPrice)}</p>
-
+            ${s.qty > 1 ? `<p class="cart-box-items">${s.qty} × ${peso(s.unitPrice)}</p>` : ""}
           </div>`).join("")}
         <div class="subtotal"><span>Singles subtotal</span><span>${peso(cart.singlesTotal())}</span></div>` : "";
 

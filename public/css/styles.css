@@ -1096,3 +1096,7 @@ body.has-cart-bar .site-footer { padding-bottom: calc(1.2rem + var(--bar-h, 4.5r
 
 /* page scroll lock while the cart drawer is open (set on <html> and <body> by js/cart-ui.js) */
 html.drawer-open, body.drawer-open { overflow: hidden; overscroll-behavior: none; }
+
+/* Checkout summary card: subtotal rows line up with the item rows above them (the drawer's side padding is for its inner boxes);
+   the item row above already draws a rule, so the subtotal doesn't add a second one */
+.summary .subtotal { padding-left: 0; padding-right: 0; border-top: 0; }
