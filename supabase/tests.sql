@@ -1004,7 +1004,7 @@ do $$
 begin
   assert (select count(*) from public.flavors where focus_x between 0 and 100 and focus_y between 0 and 100) = (select count(*) from public.flavors),
     'every flavor needs focus_x and focus_y between 0 and 100';
-  assert (select focus_x from public.flavors where slug = 'choc-chip') = 49 and (select focus_y from public.flavors where slug = 'kinder-bueno') = 50,
+  assert (select focus_x from public.flavors where slug = 'choc-chip') = 49 and (select focus_y from public.flavors where slug = 'kinder-bueno') = 49,
     'starting focus values are set';
   begin
     update public.flavors set focus_x = 101 where slug = 'choc-chip';

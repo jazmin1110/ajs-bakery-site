@@ -16,6 +16,6 @@ alter table public.flavors
 -- Starting values, picked by looking at each photo (where the middle of the cookie is, as a
 -- percentage across / down the picture). "and focus_x = 50 and focus_y = 50" means a value
 -- you've already changed by hand is never overwritten.
-update public.flavors set focus_x = 49, focus_y = 51 where slug = 'choc-chip'    and focus_x = 50 and focus_y = 50;
-update public.flavors set focus_x = 51, focus_y = 52 where slug = 'double-choc'  and focus_x = 50 and focus_y = 50;
-update public.flavors set focus_x = 48, focus_y = 50 where slug = 'kinder-bueno' and focus_x = 50 and focus_y = 50;
+update public.flavors set focus_x = 49, focus_y = 52 where slug = 'choc-chip'    and focus_x = 50 and focus_y = 50;
+update public.flavors set focus_x = 50, focus_y = 51 where slug = 'double-choc'  and focus_x = 50 and focus_y = 50;
+update public.flavors set focus_x = 48, focus_y = 49 where slug = 'kinder-bueno' and focus_x = 50 and focus_y = 50;
