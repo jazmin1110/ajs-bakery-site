@@ -205,8 +205,9 @@ export function boxSavings(box, flavors) {
   return saving > 0 ? saving : null;
 }
 
-// The monkey stamp for a flavor: a small round badge with its label. It sits OUTSIDE the photo so the cookie is never
-// covered: a tag above the flavor name on phones, the top-right corner of the card from 700px (see styles.css). Which flavor gets which badge is FLAVOR_BADGES in js/config.js ("" = no badge).
+// The monkey stamp for a flavor: a small round badge with its label, tilted to the right, overlapping the top-right
+// edge of the cookie a little (placement for phone and cards is in styles.css).
+// Which flavor gets which badge is FLAVOR_BADGES in js/config.js ("" = no badge).
 function flavorBadge(flavor) {
   const type = BADGE_TYPES[FLAVOR_BADGES[flavorHash(flavor)]];
   if (!type) return "";

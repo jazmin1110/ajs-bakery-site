@@ -1079,19 +1079,21 @@ body.has-cart-bar .site-footer { padding-bottom: calc(1.2rem + var(--bar-h, 4.5r
    Flavor badges (monkey stamps): top-right of the cookie sticker, tilted -4deg, label underneath.
    Which flavor gets which badge: FLAVOR_BADGES in js/config.js. The chef-hat stamp is drawn larger because its detail blurs when small.
    ========================================================================== */
-/* Phone: a tag above the flavor name (monkey + label side by side), in its own grid cell so it never touches the photo */
-.flavor-badge { display: flex; align-items: center; justify-self: start; grid-column: 1; grid-row: 1; margin-bottom: 2px; transform: rotate(-3deg); pointer-events: none; }
-.flavor-badge img { width: 36px; height: 36px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(92, 58, 34, 0.30)); }   /* the cream die-cut outline is baked into the image, like the cookie stickers */
-.flavor-badge-pick img { width: 40px; height: 40px; }
-.flavor-badge-label { margin-left: -6px; padding: 1px 9px; border-radius: 999px; font: 800 0.72rem/1.5 var(--font-body); white-space: nowrap; box-shadow: 0 2px 5px rgba(92, 58, 34, 0.25); }
+/* The stamp sits on the top-right of the cookie, overlapping its edge a little, tilted to the right (it sits on the right side).
+   Phone: placed against the row (.fi-body is positioned) at the thumbnail's top-right corner. Cards: the card's top-right area. */
+.fi-body { position: relative; }
+.flavor-badge { position: absolute; top: 2px; right: 8px; z-index: 3; display: flex; flex-direction: column; align-items: center; transform: rotate(4deg); pointer-events: none; }
+.flavor-badge img { width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(0 3px 5px rgba(92, 58, 34, 0.30)); }   /* the cream die-cut outline is baked into the image, like the cookie stickers */
+.flavor-badge-pick img { width: 46px; height: 46px; }
+.flavor-badge-label { margin-top: -7px; padding: 1px 8px; border-radius: 999px; font: 800 0.68rem/1.5 var(--font-body); white-space: nowrap; box-shadow: 0 2px 5px rgba(92, 58, 34, 0.25); }
 .flavor-badge-pick .flavor-badge-label { background: var(--accent); color: var(--ink); }      /* ink on cookie dough: 5.1:1 */
 .flavor-badge-bestseller .flavor-badge-label { background: var(--blue); color: var(--cream); }     /* cream on blue: 6.9:1 */
 @media (min-width: 700px) {
-  /* Cards: the corner of the card (the cookie sits in the middle of the photo, so the corner is empty) */
-  .flavor-badge { position: absolute; top: 6px; right: 6px; z-index: 3; flex-direction: column; margin: 0; transform: rotate(-4deg); }
-  .flavor-badge img { width: 44px; height: 44px; }
-  .flavor-badge-pick img { width: 50px; height: 50px; }
-  .flavor-badge-label { margin: -7px 0 0; font-size: 0.75rem; }
+  .fi-body { position: static; }   /* cards: the badge positions against the card itself */
+  .flavor-badge { top: 14px; right: 9%; }   /* a % of the card width, so it overlaps the cookie edge by the same small amount on narrow and wide cards */
+  .flavor-badge img { width: 50px; height: 50px; }
+  .flavor-badge-pick img { width: 58px; height: 58px; }
+  .flavor-badge-label { font-size: 0.75rem; }
 }
 
 /* disabled buttons never react to hover */
