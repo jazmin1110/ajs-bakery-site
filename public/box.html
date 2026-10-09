@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Build your box | AJ's Bakery</title>
   <meta name="description" content="Build a box of 4 or 6 brown butter cookies. Pick your flavors and order for Sunday pickup or delivery in Metro Manila.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%AA%3C/text%3E%3C/svg%3E">
@@ -43,10 +43,10 @@
     </div>
   </header>
 
-  <div class="order-banner" id="order-banner">Checking this week's Sunday...</div>
+  <div class="order-banner compact" id="order-banner">Checking this week's Sunday...</div>
 
   <main class="container builder" id="builder" tabindex="-1">
-    <a class="back-link" href="index.html#boxes">&larr; All boxes</a>
+    <a class="back-link-sm" href="index.html#boxes">&larr; Boxes</a>
     <p class="loading">Loading your box...</p>
   </main>
 
@@ -57,14 +57,14 @@
     import * as cart from "./js/cart.js";
     import { initCartUI, openCart } from "./js/cart-ui.js";
 
-    initCartUI();
+    initCartUI({ showBar: false });   // the builder has its own sticky bar; the header cart button still opens the cart
     const root = document.getElementById("builder");
 
     // Banner loads on its own; the builder doesn't depend on it
     fetchSundayInfo()
       .then((info) => {
         const ordering = orderingSunday(info);
-        renderBanner(document.getElementById("order-banner"), ordering);
+        renderBanner(document.getElementById("order-banner"), ordering, { compact: true });
         cart.rememberSunday(ordering.date);   // so checkout can warn if the Sunday changes later
       })
       .catch((err) => { console.error(err); renderBannerError(document.getElementById("order-banner")); });
@@ -87,7 +87,7 @@
     // No (or unknown) ?size= in the URL: let them pick one
     function showSizePicker(boxes) {
       root.innerHTML = `
-        <a class="back-link" href="index.html#boxes">&larr; All boxes</a>
+        <a class="back-link-sm" href="index.html#boxes">&larr; Boxes</a>
         <h1>Pick a box size</h1>
         <div class="card-grid">${boxes.map((b) => `
           <article class="card box-card"><div class="card-body">
@@ -108,14 +108,19 @@
         availability && availability[slug] ? Math.max(0, availability[slug].remaining - cart.flavorQty(slug)) : box.size;
 
       root.innerHTML = `
-        <a class="back-link" href="index.html#boxes">&larr; All boxes</a>
-        <h1>Build your box of ${box.size}</h1>
-        <p class="section-sub">Pick any mix of flavors. Your box needs exactly ${box.size} cookies.</p>
+        <div class="builder-head">
+          <a class="back-link-sm" href="index.html#boxes" aria-label="Back to all boxes">&larr; Boxes</a>
+          <h1>Build your box of ${box.size}</h1>
+        </div>
 
         <div class="counter" aria-live="polite">
-          <span><strong id="chosen">0</strong> of ${box.size} chosen</span>
+          <div class="counter-top">
+            <span><strong id="chosen">0</strong> of ${box.size} chosen</span>
+            <small>Pick any mix of flavors. Exactly ${box.size} cookies.</small>
+          </div>
           <div class="progress" aria-hidden="true"><div id="progress-fill"></div></div>
         </div>
+        <p class="builder-msg" id="builder-msg" aria-live="polite"></p>
 
         <ul class="flavor-list">
           ${flavors.map((f) => `
@@ -123,29 +128,49 @@
             <div class="flavor-emoji">${flavorPhoto(f.slug, f.name, "flavor-thumb", f.photo_url)}</div>
             <div class="flavor-info">
               <strong>${esc(f.name)}</strong>
-              <span class="stock" data-stock hidden></span>
-              <small class="soldout-note" data-soldout-note hidden>Unpaid orders release after 24 hours, so check back.</small>
-              ${f.surcharge > 0 ? `<span class="surcharge">+${peso(f.surcharge)} each</span>` : ""}
+              <span class="flavor-meta">
+                <span class="stock" data-stock hidden></span>
+                ${f.surcharge > 0 ? `<span class="surcharge">+${peso(f.surcharge)} each</span>` : ""}
+              </span>
             </div>
             <div class="stepper">
               <button type="button" data-step="-1" aria-label="Remove one ${esc(f.name)}">&minus;</button>
               <output aria-label="${esc(f.name)} quantity">0</output>
               <button type="button" data-step="1" aria-label="Add one ${esc(f.name)}">+</button>
             </div>
+            <small class="soldout-note" data-soldout-note hidden>Unpaid orders release after 24 hours, so check back.</small>
           </li>`).join("")}
         </ul>
 
-        <label class="gift-label" for="gift-note">Gift note <span>(optional)</span></label>
-        <textarea id="gift-note" maxlength="500" rows="3" placeholder="Happy birthday, Tita! Love, Ana"></textarea>
+        <button type="button" class="link-btn gift-toggle" id="gift-toggle" aria-expanded="false" aria-controls="gift-wrap">+ Add a gift note</button>
+        <div id="gift-wrap" hidden>
+          <label class="gift-label" for="gift-note">Gift note <span>(optional)</span></label>
+          <textarea id="gift-note" maxlength="500" rows="3" placeholder="Happy birthday, Tita! Love, Ana"></textarea>
+        </div>`;
 
-        <div class="live-price">
-          <span class="price" id="price">${peso(box.price)}</span>
+      // The sticky bottom bar: "2 of 4 chosen · ₱440 · [Add to cart]". The button stays disabled until the count matches.
+      document.querySelector(".builder-bar")?.remove();
+      const bar = document.createElement("div");
+      bar.className = "builder-bar";
+      bar.innerHTML = `
+        <div class="builder-bar-info">
+          <div><strong id="bar-count">0 of ${box.size}</strong> chosen · <span id="bar-price">${peso(box.price)}</span></div>
           <small id="price-note"></small>
         </div>
-        <button type="button" class="btn btn-block" id="add-btn" disabled></button>
-        <p class="builder-msg" id="builder-msg" aria-live="polite"></p>`;
+        <button type="button" class="btn" id="add-btn" disabled>Add to cart</button>`;
+      document.body.append(bar);
+      document.body.classList.add("has-builder-bar");
 
       const $ = (id) => document.getElementById(id);
+
+      // Gift note stays out of the way until asked for
+      $("gift-toggle").addEventListener("click", () => {
+        const open = $("gift-wrap").hidden;
+        $("gift-wrap").hidden = !open;
+        $("gift-toggle").setAttribute("aria-expanded", String(open));
+        $("gift-toggle").textContent = open ? "− Hide gift note" : ($("gift-note").value ? "+ Gift note added (tap to edit)" : "+ Add a gift note");
+        if (open) $("gift-note").focus();
+      });
 
       // Items in the cart's format, from the current quantities
       const items = () => flavors.map((f) => ({ slug: f.slug, name: f.name, surcharge: f.surcharge, qty: qty[f.slug] }));
@@ -157,8 +182,9 @@
         const surcharge = cart.priceFor(box.price, items()) - box.price;
 
         $("chosen").textContent = n;
+        $("bar-count").textContent = `${n} of ${box.size}`;
         $("progress-fill").style.width = `${(n / box.size) * 100}%`;
-        $("price").textContent = peso(cart.priceFor(box.price, items()));
+        $("bar-price").textContent = peso(cart.priceFor(box.price, items()));
         const extras = flavors.filter((f) => f.surcharge > 0 && qty[f.slug] > 0).map((f) => f.name);
         $("price-note").textContent = surcharge > 0 ? `includes ${peso(surcharge)} extra for ${extras.join(" + ")}` : "";
 
@@ -186,9 +212,9 @@
         const addBtn = $("add-btn");
         const cartFull = cart.isFull();
         addBtn.disabled = !full || cartFull || notEnough;
-        addBtn.textContent = cartFull ? "Your cart is full"
+        addBtn.textContent = cartFull ? "Cart full"
           : notEnough ? "Not enough left"
-          : full ? `Add to cart · ${peso(cart.priceFor(box.price, items()))}`
+          : full ? "Add to cart"
           : `Pick ${box.size - n} more`;
         $("builder-msg").textContent = notEnough
           ? (available === 0 ? "Sold out for this Sunday." : `Only ${available} cookie${available === 1 ? "" : "s"} left, not enough for a box of ${box.size}.`)
@@ -221,6 +247,7 @@
         // Reset the builder so they can make another box, then show the cart
         flavors.forEach((f) => (qty[f.slug] = 0));
         $("gift-note").value = "";
+        $("gift-wrap").hidden = true; $("gift-toggle").setAttribute("aria-expanded", "false"); $("gift-toggle").textContent = "+ Add a gift note";
         refresh();
         openCart();
       });

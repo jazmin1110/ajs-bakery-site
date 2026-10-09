@@ -68,12 +68,13 @@ export function orderingSunday(info) {
 
 // ---- Banner -------------------------------------------------------------------
 
-export function renderBanner(el, ordering) {
+export function renderBanner(el, ordering, { compact = false } = {}) {
   const lead = ordering.isFull
     ? `This Sunday is full, ordering for <strong>${esc(ordering.label)}</strong>`
     : `Now ordering for <strong>${esc(ordering.label)}</strong>`;
   const small = `Orders by ${esc(ordering.cutoffLabel)} go to this Sunday · ${CONFIG.weeklyCapPerFlavor} of each flavor, once they're gone, they're gone`;
-  el.innerHTML = `${lead}<small>${small}</small>`;
+  // compact = one line (the box builder wants its screen space for the flavors)
+  el.innerHTML = compact ? `${lead} <span class="banner-by">· by ${esc(ordering.cutoffLabel)}</span>` : `${lead}<small>${small}</small>`;
 }
 
 // Shown when we can't reach the database: ordering by Instagram DM is the fallback
