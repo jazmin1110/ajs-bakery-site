@@ -957,7 +957,7 @@ p, li { max-width: 66ch; }                                                /* com
   white-space: normal; overflow: visible; text-overflow: clip;
 }
 .order-banner.sticker small { display: block; font-weight: 600; opacity: 1; color: var(--ink-soft); font-size: 0.82rem; }
-.order-banner.compact.sticker { padding: 0.3rem 0.9rem; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.order-banner.compact.sticker { padding: 0.3rem 0.9rem; font-size: 0.88rem; line-height: 1.3; white-space: normal; overflow: visible; text-overflow: clip; }   /* wraps instead of cutting off "by Wed 9pm" on narrow phones */
 
 /* ---- Header: the circular badge, text hidden under 700px ---- */
 .site-header { border-bottom: 1px solid var(--line); }
