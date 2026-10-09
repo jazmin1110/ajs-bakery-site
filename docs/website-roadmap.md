@@ -1,78 +1,114 @@
 # AJ's Bakery Ordering Site: Roadmap, Accounts, Pages
 
-Target: rough MVP by Tue Oct 13, 2026. Stack: plain HTML/CSS/JS + Supabase + Vercel (built with Claude Code).
+Last updated: Fri Oct 9, 2026. Stack: plain HTML/CSS/JS + Supabase + Vercel (built with Claude Code).
+Live site: https://ajs-bakery.vercel.app. Repo: jazmin1110/ajs-bakery-site (only `public/` is deployed).
+Target: soft launch Mon-Tue Oct 12-13, 2026. Christmas launch is the real deadline.
 
-## MVP scope (what's IN vs OUT)
+## Status snapshot
 
-IN: menu, order builder with live total, checkout, GCash payment screen, auto-assigned Sunday, admin orders list with paid toggle, flavor totals per Sunday.
-OUT (later): shopping list from recipes, payment screenshot upload, emails/SMS, PayMongo, cap auto-close, domain.
+| Area | Status |
+|---|---|
+| Storefront (menu, flavor detail sheet, box builder, cart, checkout, GCash confirmation) | Done, on `main` |
+| Database, RLS, order logic (migrations 001-013) | Done |
+| Admin (login, orders, packing view, totals) | Done |
+| Singles, per-flavor caps, sold-out, minimums | Done |
+| Boxes 3 / 6 / 12 (box of 4 retired) | Done |
+| Nutrition, ingredients, allergens per flavor | Done (calculated estimates, not lab tested) |
+| Design pass (blue/cream/chocolate, Baloo 2 + Nunito Sans, sticker cutouts, mascot) | Done, on `main` |
+| UI polish (button centering, FAQ closed, note widths, step cards, footer clearance, disabled button) | Done, on `main` |
+| Blue nav bar + new circular logo + flavor badges | Done, on `main`. Follow-up on branch `fix/ui-polish-nav-badges` (badge moves, transparent cart button, Boxes link removed, new home-screen icons), awaiting OK to merge |
+| Family live test | Next |
+| Pre-launch review pass (security + edge cases) | Re-run after the nav/badge merge |
+| Share image (og-image-v2.jpg exists, pages still point to og-image.jpg) | Open |
+| Cookie care FAQ item (storage + reheating) | Open |
 
-## Roadmap
+## Locked business rules
 
-| When | Goal | Output |
-|---|---|---|
-| Tue Oct 6 (tonight) | Accounts + decisions | Accounts below done, prices/flavors locked, GCash QR saved as image |
-| Wed Oct 7 | Database | Supabase tables + security rules, test data |
-| Thu Oct 8 | Storefront | Menu, how-it-works, order builder with live total (static, no saving yet) |
-| Fri Oct 9 | Checkout | Customer form saves order to Supabase, confirmation page with GCash QR + reference code |
-| Sat Oct 10 | Admin | Login, orders list, paid toggle, flavor totals per Sunday |
-| Sun Oct 11 | Test | Place 5 fake orders on your phone, fix what breaks |
-| Mon-Tue Oct 12-13 | Soft launch | Send link to 3-5 friends/family, fix issues, put in IG bio |
+These live in the database and in `CLAUDE.md` in the site folder. If one changes, change it there first.
 
-Buffer note: this is tight. If you slip, cut the admin to a plain orders table and do flavor totals by hand.
+| Thing | Value |
+|---|---|
+| Flavors | Chimp Chips (brown butter choc chip), Coco Loco (double chocolate), Bueno Mucho (Kinder Bueno) |
+| Boxes | 3 = ₱285, 6 = ₱570, 12 = ₱1,080. Box of 4 is retired (switched off, old orders still point at it) |
+| Bueno Mucho surcharge | +₱30 per cookie inside a box |
+| Singles | Chimp Chips ₱105, Coco Loco ₱110, Bueno Mucho ₱135 |
+| Minimum order | Pickup: 1 cookie. Delivery: 2 cookies OR ₱200 |
+| Cap | 15 of each flavor per Sunday (boxes and singles both count). A flavor at 15 shows Sold out. All three sold out moves ordering to the next Sunday |
+| Order limits | Up to 3 boxes plus any singles, per order |
+| Cutoff | Wednesday 9:00pm Asia/Manila (a Sunday accepts orders until 4 days before at 9pm) |
+| Fulfillment | Sunday 3-6pm. Pickup at Corinthian Gardens Village, QC, or customer-booked Lalamove/Grab |
+| Payment | GCash QR, customer enters the reference number, you verify by hand |
+| Unpaid orders | Expire after 24 hours and free their slots |
+| Shelf life shown to customers | Chimp Chips and Coco Loco 4-5 days, Bueno Mucho 2-3 days |
 
-## Accounts to set up
+## Brand and look
 
-1. **Supabase** (have): new project "ajs-bakery". Free tier is fine.
-2. **Vercel** (have): hosting. Free hobby tier.
-3. **GitHub** (needed): Vercel deploys from a repo. Make a private repo "ajs-bakery-site".
-4. **GCash** (have personal): save your QR as an image. Consider GCash for Business later if volume grows.
-5. **Domain** (optional, skip for MVP): ~P700-1,000/yr. Use the free vercel.app link first.
-6. **Resend** (later): free email tier for order notifications.
-7. **Instagram** (have): link goes in bio.
+- Hand-drawn die-cut sticker style, blue anchor. Blue `#2B4C93`, cream `#F7EBD5`, paper `#FDF6E8`, chocolate text `#5C3A22`, cookie-dough accent `#E2B074` (fills only, never text).
+- Fonts: Baloo 2 (headings) + Nunito Sans (body), self-hosted.
+- Header: blue bar, cream text and icons, circular monkey badge logo.
+- Badges (set in `FLAVOR_BADGES` in `js/config.js`, no markup to touch): chef-hat monkey = "AJ's Pick" on Coco Loco; tongue-out monkey = "Best seller" on Bueno Mucho (the owner's choice); Chimp Chips has none.
+- Never use "diet", "healthy" or "guilt-free".
 
-## Decisions to lock before coding
+## Accounts
 
-- Box sizes and prices: 4 = P380, 6 = P570.
-- Bueno surcharge: +P30 per Bueno cookie (or reprice boxes). Pick one.
-- Cap per Sunday: 45.
-- Cutoff: Wed 9pm Asia/Manila. Orders after go to next Sunday.
-- Flavors for launch: Brown Butter Choc Chip, Double Chocolate, Kinder Bueno.
-- Pickup address area + Sunday window 3-6pm.
-- 3 product photos (even phone photos on a clean surface).
+1. Supabase: project `ajs-bakery`. Free tier. Only the anon key goes in the site code.
+2. Vercel: project `ajs-bakery`, deploys from the GitHub repo. (An older duplicate project was removed, so only one URL now.)
+3. GitHub: private repo `ajs-bakery-site`.
+4. GCash: personal QR saved as `assets/gcash-qr.png`. Consider GCash for Business if volume grows.
+5. Instagram: link in bio.
+6. Later: Resend (email notifications), domain (~₱700-1,000/yr).
 
 ## Database (Supabase)
 
-- `weeks`: id, sunday_date, cap, status (open/full/closed)
-- `orders`: id, ref_code, week_id, name, ig_handle, phone, fulfillment (pickup/delivery), address, gift_note, total, paid (bool), created_at
-- `order_items`: id, order_id, flavor, qty
-- `flavors`: id, name, price, active
-- `recipes` + `recipe_ingredients`: later phase
+Migrations `supabase/migrations/001`-`013`, plus `seed.sql`, `seed_content.sql` (generated from `flavor-content.json`) and `tests.sql`.
 
-Security: turn on row-level security. Public can only INSERT orders/items and read flavors/weeks. Only the logged-in admin (Supabase Auth, your email) can read orders. Sunday assignment is computed server-side (Supabase function), timezone Asia/Manila.
+- `flavors`: name, slug, box price, single price, surcharge, weekly cap, photo and focus fields, plus the detail-sheet content (descriptions, ingredients, allergens, shelf life, storage, nutrition).
+- `boxes`: size, price, active.
+- `orders` and `order_items`: ref code, Sunday, customer details, fulfillment, total, status, GCash reference, expiry.
+- `site_settings`: site-wide allergen and nutrition notes.
+- `admins`: who can use the admin pages.
+
+Security: RLS on every table. Anon can read flavors, boxes and settings, and call a handful of functions (`place_order`, `submit_gcash_ref`, `get_order_status`, Sunday/capacity lookup). Anon cannot read orders. Price, cap, minimums and Sunday assignment are all computed in the database. The browser never sends a price.
 
 ## Pages
 
-### Public
-1. **/ (home/storefront)**: hero with logo + "Ordering for Sunday, [date]" banner and cutoff countdown; menu cards (photo, notes, price, macro label); how it works; order builder; footer with IG + FAQ.
-2. **/checkout**: summary, name, IG handle, phone, pickup/delivery, address, gift note. Submit saves to Supabase.
-3. **/confirmed?ref=XXXX**: order reference code, total, GCash QR, instruction "send payment with your ref code as the message", delivery date, note that order is confirmed once paid.
+Public: `/` (menu, boxes, how it works, FAQ), `/box.html` (box builder), `/checkout.html`, `/confirmed.html?ref=AJ-XXXX`, `/404.html`.
+Admin (login required, noindex): `/admin/login.html`, `/admin/orders.html` (filter, mark paid or cancel, packing view), `/admin/totals.html` (cookies per flavor, batches needed, box counts).
+Not linked: `/design-lab.html` (font comparison, noindex).
 
-### Admin (login required)
-4. **/admin/login**: Supabase Auth.
-5. **/admin/orders**: filter by Sunday, list of orders, paid toggle, fulfillment type, address, gift note. Print-friendly packing view.
-6. **/admin/totals**: cookies per flavor for the selected Sunday, batches needed (round up per flavor), box counts.
-7. **/admin/shopping-list** (phase 2): recipes x batches minus stock.
+## Roadmap from here
 
-## Claude Code workflow
+| When | Goal | Output |
+|---|---|---|
+| Fri Oct 9 | Preview and merge nav/badges | Check the Vercel preview on your phone, then say OK to merge |
+| Fri-Sat Oct 9-10 | Family live test | 3-5 real orders on the live link, on mobile data. Fix what they hit |
+| Sat-Sun Oct 10-11 | Pre-launch pass | Re-run the security and edge-case review. Fix share image, add care FAQ |
+| Mon-Tue Oct 12-13 | Soft launch | Link in IG bio, pinned post about the Wednesday 9pm cutoff |
+| After launch | Watch week one | Note confusing wording, wrong payments, wrong-Sunday questions |
 
-1. Open Claude Code in the AJ COOKIES folder (it reads CLAUDE.md).
-2. Tell it: "Build from context/website-roadmap.md, one day's section at a time. Plain HTML/CSS/JS, Supabase, Vercel. Comment non-obvious code."
-3. After each step: deploy, click through on your phone.
-4. Explicitly tell it: RLS on, admin behind Supabase Auth, server-side Sunday logic, Asia/Manila timezone, log/email each new order as a backup.
+## Before you tell people the link
+
+- Place a full order on your phone using mobile data, not wifi: box, singles, pickup and delivery.
+- Try a bad GCash reference and a reused one (both must be rejected).
+- Log in to admin, mark paid, and confirm the customer page flips to Paid.
+- Check the nav on a real phone at 375px and 430px widths.
+- Confirm a sold-out flavor can't be added and the other flavors still can.
+- Share the link in an IG DM to yourself and check the preview image and title.
+
+## Later (in this order)
+
+1. Recipes and shopping list in admin (recipes x batches, rounded to purchase units).
+2. Email or SMS alert to you on every new order.
+3. Payment proof screenshot upload.
+4. PayMongo or Xendit for automatic GCash matching.
+5. A "look up your order" page (decide if worth it once real customers ask).
+6. Custom domain.
+7. Joint pop-up with Rocwood (The 7th Street market) once online ordering is steady.
 
 ## Risks
 
-- Customer expects the wrong Sunday: show the date on every page and in the confirmation.
-- Unpaid orders clogging the cap: no payment within 24h = release the slot.
-- Outage = lost orders: keep an IG DM fallback and a backup notification.
+- Customer expects the wrong Sunday: the date is on every page and in the confirmation.
+- Unpaid orders clogging a flavor's 15 slots: 24-hour expiry releases them.
+- Outage = lost orders: keep an IG DM fallback and a manual sheet for the first 2 weeks.
+- Nutrition numbers are estimates: keep the "calculated estimate, not lab tested" note visible.
+- Never put the service_role key in the repo or the browser.

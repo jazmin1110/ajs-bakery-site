@@ -70,7 +70,7 @@ Hand-drawn die-cut sticker style, blue anchor. The nav is brand blue with cream 
 
 - **Flavor images are sticker cutouts** (`assets/stickers/<name>-sticker-240.webp` and `-480.webp`; the die-cut outline is baked in, so never add a border or background). The name comes from the flavor's `photo_url` file name; `photo_version` still busts the cache. If a cutout fails to load it falls back to `assets/flavors/<name>.jpg`, then the emoji.
 - `.sticker` is the reusable tag class (stock tags, cutoff banner). Everything else stays flat.
-- **Flavor badges** (monkey stamps, top-right of the cookie sticker): `FLAVOR_BADGES` in `js/config.js` maps a flavor's name-slug to a badge type (`pick` = "AJ's Pick", `fresh` = "Fresh bake"); a flavor not listed gets none, and `BADGE_TYPES` holds the labels and images. Display only, nothing in the database. Never use "Best seller" / "Crowd favorite" until there is real sales data.
+- **Flavor badges** (monkey stamps, top-right of the cookie sticker): `FLAVOR_BADGES` in `js/config.js` maps a flavor's name-slug to a badge type (`pick` = "AJ's Pick" on Coco Loco, `bestseller` = "Best seller" on Bueno Mucho); a flavor not listed (Chimp Chips) gets none, and `BADGE_TYPES` holds the labels and images. The "Best seller" label is the owner's choice. The cream die-cut outline is baked into the badge images. Display only, nothing in the database.
 - Mascot (`mascot-badge`) shows on the empty cart, the confirmation page and the 404 page. The header/footer badge is `logo-badge-new-96.webp / -192.webp`.
 - `design-lab.html` is an unlinked font-comparison page (noindex).
 
