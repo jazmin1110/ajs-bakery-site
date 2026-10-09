@@ -1028,3 +1028,29 @@ begin
   reset role;
 end $$;
 rollback;
+
+
+-- ===========================================================================
+-- (p) Photo versions (migration 012): start at 1, visitors can read them, only you can bump them.
+-- ===========================================================================
+begin;
+do $$
+begin
+  assert (select count(*) from public.flavors where photo_version = 1 and nutrition_version = 1) = (select count(*) from public.flavors), 'versions start at 1';
+  update public.flavors set photo_version = photo_version + 1 where slug = 'choc-chip';
+  assert (select photo_version from public.flavors where slug = 'choc-chip') = 2, 'bumping works';
+  begin
+    update public.flavors set photo_version = 0 where slug = 'choc-chip';
+    raise exception 'FAIL (p): version 0 accepted';
+  exception when check_violation then null; end;
+  set local role anon;
+  assert (select count(*) from public.flavors where photo_version >= 1) = (select count(*) from public.flavors), 'visitors can read versions';
+  begin
+    update public.flavors set photo_version = 99;
+    raise exception 'FAIL (p): a visitor bumped a version';
+  exception when insufficient_privilege then
+    raise notice 'PASS (p): photo versions start at 1, are readable, and only the owner can bump them';
+  end;
+  reset role;
+end $$;
+rollback;

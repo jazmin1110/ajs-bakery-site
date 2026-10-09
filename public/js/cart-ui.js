@@ -2,7 +2,7 @@
 // the slide-in drawer. Call initCartUI() once per page. Totals are display only.
 import * as cart from "./cart.js";
 import { CONFIG } from "./config.js";
-import { peso, esc } from "./ui.js";
+import { peso, esc, applyAssetVersions } from "./ui.js";
 
 let bar, drawer, overlay, closeBtn, lastFocus;
 
@@ -237,6 +237,7 @@ export function closeCart() {
 
 // showBar: false on the checkout page (the bar's Checkout button would point at itself)
 export function initCartUI({ showBar = true } = {}) {
+  applyAssetVersions();                            // the logo (and any other data-asset image) with its ?v= number
   build(showBar);
   render();
   showNotices();                                   // e.g. an old cart was cleared during render()

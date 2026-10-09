@@ -10,7 +10,7 @@
 //  * Focus stays inside it while open; it is a labelled dialog for screen readers.
 //  * It never touches localStorage/sessionStorage, so it works with storage blocked.
 import { CONFIG } from "./config.js";
-import { esc, peso, stockLabel, flavorPhoto, flavorHash } from "./ui.js";
+import { esc, peso, stockLabel, flavorPhoto, flavorHash, withVersion } from "./ui.js";
 
 const COMING_SOON = {
   ingredients: "Ingredients coming soon.",
@@ -51,7 +51,7 @@ export function flavorDetailHtml(flavor, { boxEach = null } = {}) {
 
       <h3>Nutrition label</h3>
       ${flavor.nutrition_image_url
-        ? `<img class="sheet-label" src="${esc(flavor.nutrition_image_url)}" alt="Nutrition label for ${esc(flavor.name)}" loading="lazy"
+        ? `<img class="sheet-label" src="${esc(withVersion(flavor.nutrition_image_url, flavor.nutrition_version))}" alt="Nutrition label for ${esc(flavor.name)}" loading="lazy"
              onerror="this.replaceWith(Object.assign(document.createElement('p'),{className:'soon',textContent:'Label coming soon'}))">`
         : `<p class="soon">Label coming soon</p>`}
     </div>`;

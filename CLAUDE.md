@@ -68,6 +68,8 @@ The cart lives in `localStorage` (falls back to `window.name`, then memory, if s
 
 **Photo rules.** Every flavor photo is shown in a fixed shape with `object-fit: cover`: 4:3 on menu cards and the detail sheet, 1:1 for builder thumbnails (with explicit `width`/`height` attributes so nothing jumps). `flavors.focus_x` / `focus_y` (0-100, default 50) say which point of the photo stays in the middle of the crop. Photos in `public/assets/flavors/` are at most 1200px wide and about 150KB each (JPEG); keep the untouched originals in `public/assets/originals/` (git-ignored). Cards sit straight: `--card-tilt` in `styles.css` is `0deg` (set it to e.g. `0.6deg` for a deliberate tilt).
 
+**Publishing a new photo (cache busting).** `vercel.json` makes everything under `/assets/` revalidate on every visit, and the site adds `?v=<number>` to each photo URL so a replaced file can never show stale. Flavor photos use `flavors.photo_version`, nutrition labels use `flavors.nutrition_version`; the logo, hero and GCash QR use `assetVersions` in `js/config.js`. To publish: replace the file, deploy, then run `update public.flavors set photo_version = photo_version + 1 where slug = '<slug>';`.
+
 Only `public/` is deployed (`vercel.json` sets `outputDirectory: public`). Docs, SQL and original photos stay out of the live site.
 
 ```
@@ -89,7 +91,7 @@ public/                      <- what Vercel serves
   assets/                    flavors/*.jpg (compressed), gcash-qr.png, og-image.jpg
   assets/originals/          full-size flavor photos before compression, git-ignored (NOT deployed)
   robots.txt, sitemap.xml
-supabase/                    migrations 001-011, seed.sql, tests.sql  (NOT deployed)
+supabase/                    migrations 001-012, seed.sql, tests.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers

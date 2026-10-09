@@ -99,6 +99,23 @@ export function showError(container, message) {
   container.innerHTML = `<p class="load-error">${esc(message)}</p>`;
 }
 
+// "assets/x.jpg" + 3 -> "assets/x.jpg?v=3". A new number is a new URL, so browsers fetch the new file
+// instead of showing their cached copy. (No number: the URL is returned unchanged.)
+export function withVersion(url, version) {
+  if (!url || version == null) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}v=${encodeURIComponent(version)}`;
+}
+
+// Photos that aren't flavor photos, with their version from config.js (assetVersions)
+const ASSET_PATHS = { logo: "assets/logo.png", hero: "assets/hero.jpg", gcashQr: "assets/gcash-qr.png" };
+export function assetUrl(name) {
+  return withVersion(ASSET_PATHS[name], CONFIG.assetVersions[name]);
+}
+// Give every <img data-asset="logo"> its versioned src (they start without a src on purpose)
+export function applyAssetVersions() {
+  document.querySelectorAll("img[data-asset]").forEach((img) => { img.src = assetUrl(img.dataset.asset); });
+}
+
 function flavorInfo(slug) {
   return CONFIG.flavorInfo[slug] || { emoji: "🍪", description: "" };
 }
@@ -111,8 +128,9 @@ function flavorInfo(slug) {
 // focus_x / focus_y (0-100, from the database) pick which point of the photo stays in the middle of the crop.
 export function flavorPhoto(flavor, cls, { width = 800, height = 600, lazy = false } = {}) {
   const info = flavorInfo(flavor.slug);
-  const src = flavor.photo_url || info.image;          // the database's photo_url first, then the built-in one
-  if (!src) return `<span aria-hidden="true">${info.emoji}</span>`;
+  const path = flavor.photo_url || info.image;         // the database's photo_url first, then the built-in one
+  const src = withVersion(path, flavor.photo_version); // ?v=N so a replaced photo shows up straight away
+  if (!path) return `<span aria-hidden="true">${info.emoji}</span>`;
   const pct = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 50; };
   return `<img class="${cls}" src="${esc(src)}" alt="${esc(flavor.name)}" width="${width}" height="${height}"
     style="object-position:${pct(flavor.focus_x)}% ${pct(flavor.focus_y)}%"${lazy ? ' loading="lazy" decoding="async"' : ""}
