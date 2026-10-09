@@ -7,17 +7,17 @@
 // every total when an order is placed (see CLAUDE.md).
 
 // Flavor badges (the little monkey stamps on the menu). Config-driven: change this list, no markup to touch.
-//   key   = the flavor's name as a slug (Chimp Chips -> "chimp-chips"). A flavor not listed gets no badge.
+//   key   = the flavor's name as a slug (Coco Loco -> "coco-loco"). A flavor not listed gets no badge.
 //   value = a badge type from BADGE_TYPES below. Delete a line to remove that badge.
-// Display only: nothing in the database. Do NOT use "Best seller" / "Crowd favorite" labels until there is real sales data.
+// Display only: nothing in the database.
 export const FLAVOR_BADGES = {
-  "chimp-chips": "pick",    // AJ's Pick
-  "bueno-mucho": "fresh",   // Fresh bake (it keeps the least time, so it is the one to eat soonest)
-  // "coco-loco": none
+  "coco-loco": "pick",          // AJ's Pick
+  "bueno-mucho": "bestseller",  // Best seller (the owner's choice)
+  // "chimp-chips": none
 };
 export const BADGE_TYPES = {
-  pick:  { label: "AJ's Pick",  image: "badge-aj-pick" },   // chef-hat monkey (a bit larger in the CSS: its detail blurs when small)
-  fresh: { label: "Fresh bake", image: "badge-tongue" },    // tongue-out monkey
+  pick:       { label: "AJ's Pick",   image: "badge-aj-pick" },   // chef-hat monkey (drawn a bit larger in the CSS: its detail blurs when small)
+  bestseller: { label: "Best seller", image: "badge-tongue" },    // tongue-out monkey
 };
 
 export const CONFIG = {
