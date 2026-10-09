@@ -200,8 +200,13 @@ section { padding: 2rem 0; }
 
 /* ---------- Buttons ---------- */
 .btn {
-  display: inline-block;
-  padding: 12px 26px;
+  display: inline-flex;            /* flex centres the label both ways, however wide the button gets */
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.2;
+  min-height: 48px;
+  padding: 13px 26px 11px;        /* Baloo 2 sits ~1px high in its line box, so 1px more on top evens the space around the letters */
   border-radius: 999px;
   border: 0;
   background: var(--blue);
@@ -280,13 +285,13 @@ section { padding: 2rem 0; }
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: 0.9rem 1rem 0.9rem 3.6rem;
+  min-height: 3.6rem;
 }
 .steps li::before {
   content: counter(step);
   position: absolute;
   left: 0.9rem;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0.9rem;                    /* level with the title row (the title row below is 36px tall too) */
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -297,7 +302,7 @@ section { padding: 2rem 0; }
   display: grid;
   place-items: center;
 }
-.steps strong { font-family: var(--font-display); color: var(--blue-dark); display: block; }
+.steps strong { font-family: var(--font-display); color: var(--blue-dark); display: flex; align-items: center; min-height: 36px; margin-bottom: 0.1rem; }   /* title centred on the circle, body text underneath */
 
 .cutoff-note {
   background: var(--accent);
@@ -363,8 +368,9 @@ button.cart-btn { border: 0; cursor: pointer; font: inherit; padding: 0; }
 .builder-bar-info { flex: 1; min-width: 0; font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; line-height: 1.2; }
 .builder-bar-info small { display: block; font-family: var(--font-body); font-weight: 600; font-size: 0.78rem; opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .builder-bar-info small:empty { display: none; }
-.builder-bar .btn { flex: none; background: var(--accent); color: var(--ink); box-shadow: 0 4px 0 var(--accent-dark); padding: 10px 20px; min-height: 48px; }
-.builder-bar .btn:disabled { background: #b9c8dc; color: #2d3a4d; box-shadow: none; opacity: 1; }
+.builder-bar .btn { flex: none; background: var(--accent); color: var(--ink); box-shadow: 0 4px 0 var(--accent-dark); padding: 11px 20px 9px; min-height: 48px; }
+/* disabled: an outlined, see-through button with white text (clearly "off", but easy to read: about 7:1) */
+.builder-bar .btn:disabled { background: rgba(255, 255, 255, 0.14); color: #fff; border: 2px solid rgba(255, 255, 255, 0.55); box-shadow: none; opacity: 1; }
 body.has-builder-bar { padding-bottom: calc(var(--bar-h, 4.5rem) + 1rem); }
 .gift-toggle { color: var(--blue-dark); font-weight: 800; }
 #gift-wrap { margin-bottom: 0.5rem; }
@@ -449,7 +455,7 @@ textarea#gift-note:focus { outline: 3px solid var(--blue-soft); border-color: va
 .builder-msg { text-align: center; color: #8a2b22; font-weight: 600; margin: 0 0 0.5rem; }
 .builder-msg:empty { display: none; }
 
-.btn-block { display: block; width: 100%; text-align: center; }
+.btn-block { display: flex; width: 100%; text-align: center; }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; transform: none; }
 
 /* ---------- Sticky cart bar ---------- */
@@ -476,7 +482,7 @@ textarea#gift-note:focus { outline: 3px solid var(--blue-soft); border-color: va
   font-family: var(--font-display); font-size: 1.15rem; font-weight: 600;
   padding: 0.5rem 0; cursor: pointer;
 }
-.cart-bar .btn { background: var(--accent); color: var(--ink); box-shadow: 0 4px 0 var(--accent-dark); padding: 10px 22px; }
+.cart-bar .btn { background: var(--accent); color: var(--ink); box-shadow: 0 4px 0 var(--accent-dark); padding: 11px 22px 9px; }
 body.has-cart-bar { padding-bottom: calc(var(--bar-h, 4.5rem) + 1rem); }  /* --bar-h = the bar's real height (measured by ui.js trackBarHeight) */
 
 /* ---------- Cart drawer (slides in from the right) ---------- */
@@ -577,7 +583,7 @@ body.has-cart-bar { padding-bottom: calc(var(--bar-h, 4.5rem) + 1rem); }  /* --b
 .ref-card { text-align: center; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem 1rem; margin-bottom: 1.25rem; box-shadow: var(--shadow); }
 .ref-label { display: block; font-size: 0.9rem; color: var(--ink-soft); }
 .ref-code { font-family: var(--font-display); font-weight: 700; font-size: 2.4rem; letter-spacing: 0.06em; color: var(--blue-dark); margin: 0.2rem 0 0.6rem; overflow-wrap: anywhere; }
-.btn-small { padding: 10px 20px; font-size: 0.95rem; min-height: 44px; }
+.btn-small { padding: 11px 20px 9px; font-size: 0.95rem; min-height: 44px; }
 .ref-sunday { margin: 0.9rem 0 0; font-size: 1.1rem; }
 
 .expiry-warning { background: var(--butter); border-radius: var(--radius-sm); padding: 0.7rem 0.9rem; margin: 0 0 1rem; }
@@ -925,7 +931,7 @@ h2 { font-size: 1.9rem; line-height: 1.1; }
 h3 { font-size: 1.2rem; font-weight: 600; color: var(--ink); }          /* chocolate: only h1/h2 are blue */
 p, li { max-width: 66ch; }                                                /* comfortable line length */
 .section-sub { max-width: 62ch; }
-.loading, .closed-card p { max-width: none; }
+.loading, .closed-card p, .cutoff-note, .box-note { max-width: none; }   /* these two notes fill the whole content width */
 
 /* ---- Buttons: blue fill = primary, outline = secondary ---- */
 .btn-ghost { background: transparent; color: var(--blue-dark); border: 2px solid var(--blue); box-shadow: none; }
@@ -1030,7 +1036,7 @@ p, li { max-width: 66ch; }                                                /* com
 
 /* ---- Footer: tighter, badge at 48px, link clear of the cart bar ---- */
 .site-footer { margin-top: 1rem; padding: 1.2rem var(--gutter) calc(1.2rem + env(safe-area-inset-bottom)); border-top-left-radius: var(--r-md); border-top-right-radius: var(--r-md); }
-body.has-cart-bar .site-footer { padding-bottom: calc(1.2rem + var(--bar-h, 4.5rem) + 0.5rem); }
+body.has-cart-bar .site-footer { padding-bottom: calc(1.2rem + var(--bar-h, 4.5rem) + 1.2rem); }   /* extra clearance: the sticky bar never sits on the footer text */
 .footer-logo { width: 48px; height: 48px; border-radius: 50%; margin: 0 auto 0.4rem; box-shadow: none; }
 .site-footer p { margin: 0 auto 0.2rem; max-width: none; }
 .site-footer a { padding: 0.6rem 0.4rem; }
