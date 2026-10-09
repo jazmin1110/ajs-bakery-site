@@ -106,8 +106,19 @@ export function withVersion(url, version) {
   return `${url}${url.includes("?") ? "&" : "?"}v=${encodeURIComponent(version)}`;
 }
 
+// Keep the CSS variable --bar-h equal to the real height of a sticky bottom bar (the cart bar or the box builder's bar),
+// so the page's bottom padding is always exactly enough for the bar never to cover the footer or the last row.
+// The bar's height changes (a second line of text, the iOS safe area, a rotated phone): ResizeObserver tells us.
+export function trackBarHeight(bar) {
+  const set = () => document.documentElement.style.setProperty("--bar-h", bar.hidden ? "0px" : `${bar.offsetHeight}px`);
+  set();
+  if ("ResizeObserver" in window) new ResizeObserver(set).observe(bar);
+  window.addEventListener("resize", set);
+  return set;
+}
+
 // Photos that aren't flavor photos, with their version from config.js (assetVersions)
-const ASSET_PATHS = { logo: "assets/logo.png", hero: "assets/hero.jpg", gcashQr: "assets/gcash-qr.png" };
+const ASSET_PATHS = { logo: "assets/logo.png", hero: "assets/flavors/bueno-mucho.jpg", gcashQr: "assets/gcash-qr.png" };
 export function assetUrl(name) {
   return withVersion(ASSET_PATHS[name], CONFIG.assetVersions[name]);
 }

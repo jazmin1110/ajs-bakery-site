@@ -7,7 +7,7 @@
 //
 // Shape of the saved cart:
 //   {
-//     savedAt: 1760000000000,                // when the cart was last changed (ms). Older than 48h = thrown away
+//     savedAt: 1760000000000,                // when the cart was last changed (ms). Older than 24h = thrown away
 //     sunday:  "2026-10-18",                 // the ordering Sunday the customer last saw (to warn if it changes)
 //     boxes:   [{ id, size, boxPrice, price, giftNote, items: [{ slug, name, qty, surcharge }] }],
 //     singles: [{ slug, name, qty, unitPrice, surcharge }],      // loose cookies
@@ -20,7 +20,7 @@
 import { CONFIG } from "./config.js";
 
 const KEY = "ajs-cart-v1";
-const MAX_AGE_MS = 48 * 60 * 60 * 1000;   // carts older than 48 hours are discarded
+const MAX_AGE_MS = 24 * 60 * 60 * 1000;   // carts untouched for more than 24 hours are dropped (silently)
 // If localStorage is blocked (some private modes), the cart is parked in window.name
 // instead. window.name survives moving between pages in the SAME tab, so the cart
 // still reaches checkout. (It is cleared when you navigate to another website.)
@@ -105,17 +105,17 @@ function checkAge(cart) {
   if (!hasItems) return cart;
   if (cart.savedAt === undefined || cart.savedAt > now + 5 * 60 * 1000) {
     // No timestamp (a cart from before this feature) or one from the future (clock was changed):
-    // start the 48 hours from now rather than guessing
+    // start the 24 hours from now rather than guessing
     cart.savedAt = now;
     persist(cart);
     return cart;
   }
   if (now - cart.savedAt > MAX_AGE_MS) {
-    // Too old: prices and availability have probably moved on. Start fresh.
+    // Too old: prices and availability have probably moved on. Start fresh, with no message
+    // (a returning customer just sees an empty cart rather than a notice about something they forgot).
     const fresh = emptyCart();
     fresh.boxMenu = cart.boxMenu;
     persist(fresh);
-    notify("Your saved cart was more than 2 days old, so we cleared it. Prices and flavors may have changed.");
     return fresh;
   }
   return cart;

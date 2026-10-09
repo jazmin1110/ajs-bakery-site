@@ -19,13 +19,16 @@
         <img data-asset="logo" alt="AJ's Bakery" width="48" height="48" onerror="this.style.display='none'">
         <span>AJ's Bakery</span>
       </a>
-      <button type="button" class="cart-btn" data-open-cart aria-label="Open your cart">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/>
-          <path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 7H6"/>
-        </svg>
-        <span class="cart-count" id="cart-count">0</span>
-      </button>
+      <div class="header-actions">
+        <a class="nav-boxes" href="index.html#boxes">Boxes</a>
+        <button type="button" class="cart-btn" data-open-cart aria-label="Open your cart">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/>
+            <path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 7H6"/>
+          </svg>
+          <span class="cart-count" id="cart-count">0</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -63,8 +66,10 @@
 
       <fieldset class="field" data-field="fulfillment">
         <legend>Pickup or delivery?</legend>
-        <label class="choice"><input type="radio" name="fulfillment" value="pickup"> <span>Pickup</span></label>
-        <label class="choice"><input type="radio" name="fulfillment" value="delivery"> <span>Delivery</span></label>
+        <!-- The stored values stay "pickup" and "delivery" (the database checks those exact words); only the labels changed -->
+        <label class="choice"><input type="radio" name="fulfillment" value="pickup"> <span>Pickup (free)</span></label>
+        <label class="choice"><input type="radio" name="fulfillment" value="delivery"> <span>Send a rider (Lalamove/Grab, you pay the fare)</span></label>
+        <p class="field-hint">Pickup or rider, both on Sunday 3-6pm. We message you the exact address after your payment is confirmed.</p>
         <p class="field-error" id="fulfillment-error" role="alert"></p>
       </fieldset>
 
@@ -74,7 +79,7 @@
 
       <div id="delivery-fields" hidden>
         <div class="field" data-field="address">
-          <label for="address">Delivery address</label>
+          <label for="address">Where is it going? (for our records)</label>
           <textarea id="address" name="address" rows="3" maxlength="300" autocomplete="street-address"
                     placeholder="Unit / street / barangay / city"></textarea>
           <p class="field-error" id="address-error" role="alert"></p>
@@ -465,7 +470,12 @@
         const order = await placeOrder({ ...payload, idempotencyKey: keyFor(payload) });
         done = true;
         cart.clear();                            // only after the database accepted it
-        try { localStorage.setItem("ajs-last-ref", order.ref_code); sessionStorage.removeItem("ajs-order-key"); } catch (e) { /* storage blocked: fine */ }
+        try {
+          localStorage.setItem("ajs-last-ref", order.ref_code);
+          // The confirmation page doesn't get the pickup/rider choice from the database, so remember it here
+          localStorage.setItem("ajs-last-fulfillment", JSON.stringify({ ref: order.ref_code, fulfillment: values.fulfillment }));
+          sessionStorage.removeItem("ajs-order-key");
+        } catch (e) { /* storage blocked: fine */ }
         location.href = `confirmed.html?ref=${encodeURIComponent(order.ref_code)}`;
         // (button stays disabled while the browser navigates)
       } catch (err) {

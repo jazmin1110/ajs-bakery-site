@@ -39,13 +39,16 @@
         <img data-asset="logo" alt="AJ's Bakery" width="48" height="48" onerror="this.style.display='none'">
         <span>AJ's Bakery</span>
       </a>
-      <button type="button" class="cart-btn" data-open-cart aria-label="Open your cart">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/>
-          <path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 7H6"/>
-        </svg>
-        <span class="cart-count" id="cart-count">0</span>
-      </button>
+      <div class="header-actions">
+        <a class="nav-boxes" href="index.html#boxes">Boxes</a>
+        <button type="button" class="cart-btn" data-open-cart aria-label="Open your cart">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/>
+            <path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 7H6"/>
+          </svg>
+          <span class="cart-count" id="cart-count">0</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -58,6 +61,8 @@
     <section class="hero">
       <div class="container">
         <h1>Warm cookies, made at home.</h1>
+        <!-- Phones only (hidden from 700px up). Same Bueno Mucho photo as the menu; its version number is assetVersions.hero in js/config.js -->
+        <img class="hero-photo" data-asset="hero" alt="A Bueno Mucho cookie with a piece of Kinder Bueno in the middle" width="560" height="104">
         <p data-config="tagline"></p>
         <div class="hero-actions">
           <a class="btn" href="#menu">Order cookies</a>
@@ -94,23 +99,30 @@
           <li><strong>Pickup or delivery</strong>Sundays, <span data-config="pickupWindow"></span>.</li>
         </ol>
         <p class="cutoff-note">
-          🕘 Orders close every <span data-cutoff></span> (Manila time) for that Sunday.
+          Orders close every <span data-cutoff></span> (Manila time) for that Sunday.
           Order after that and your cookies go out the <em>following</em> Sunday.
           We bake <span data-weekly-cap></span> of each flavor per Sunday. Once they're gone, they're gone.
         </p>
       </div>
     </section>
 
+    <section id="pickup-delivery">
+      <div class="container">
+        <h2>Pickup &amp; delivery</h2>
+        <p class="section-sub">Pickup or rider pickup, Sundays 3-6pm. Metro Manila only for now. We send the exact address after your payment is confirmed.</p>
+      </div>
+    </section>
+
     <section id="faq" class="faq">
       <div class="container">
         <h2>FAQ</h2>
+        <details open>
+          <summary>Pickup or delivery?</summary>
+          <p>Pickup is free. Or book your own Lalamove/Grab rider to collect from us on Sunday 3-6pm and pay the fare in the app. We send the pickup address once your payment is confirmed, and it's all within Metro Manila for now. We pack everything so it travels safely.</p>
+        </details>
         <details>
           <summary>When do I get my cookies?</summary>
           <p>Every Sunday, 3-6pm. Order by Wednesday 9pm for that Sunday; later orders go to the next one.</p>
-        </details>
-        <details>
-          <summary>Pickup or delivery?</summary>
-          <p>Both. You choose at checkout. Delivery is booked by you for the same Sunday window. (Details coming soon.)</p>
         </details>
         <details>
           <summary>How do I pay?</summary>

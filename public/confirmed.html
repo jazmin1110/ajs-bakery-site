@@ -19,6 +19,7 @@
         <img data-asset="logo" alt="AJ's Bakery" width="48" height="48" onerror="this.style.display='none'">
         <span>AJ's Bakery</span>
       </a>
+      <div class="header-actions"><a class="nav-boxes" href="index.html#boxes">Boxes</a></div>
     </div>
   </header>
 
@@ -36,6 +37,15 @@
     import { getOrderStatus, submitGcashRef } from "./js/supabase.js";
     import { formatSunday, peso, esc, assetUrl, applyAssetVersions } from "./js/ui.js";
     applyAssetVersions();   // the logo with its ?v= number
+
+    // Did THIS browser place this order as a "send a rider" one? (checkout.html saves the choice; the database
+    // status call doesn't return it.) On another device we don't know, so we show only the pickup line.
+    function riderOrder(ref) {
+      try {
+        const saved = JSON.parse(localStorage.getItem("ajs-last-fulfillment") || "null");
+        return !!saved && saved.ref === ref && saved.fulfillment === "delivery";
+      } catch (e) { return false; }
+    }
 
     const root = document.getElementById("confirmed");
     const POLL_MS = 15000;
@@ -108,6 +118,9 @@
           <button type="button" class="btn btn-small" id="copy-btn">Copy code</button>
           <p class="ref-sunday">Ready <strong>${esc(sunday)}</strong>, ${esc(CONFIG.pickupWindow)}</p>
         </div>
+
+        <p class="pickup-msg">We'll message you the pickup address on Instagram once your payment is confirmed.
+          ${riderOrder(order.ref_code) ? "<br>Book your Lalamove/Grab for Sunday between 3 and 6pm." : ""}</p>
 
         ${showPay ? `
         <section class="pay">

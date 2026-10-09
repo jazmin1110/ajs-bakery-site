@@ -2,9 +2,9 @@
 // the slide-in drawer. Call initCartUI() once per page. Totals are display only.
 import * as cart from "./cart.js";
 import { CONFIG } from "./config.js";
-import { peso, esc, applyAssetVersions } from "./ui.js";
+import { peso, esc, applyAssetVersions, trackBarHeight } from "./ui.js";
 
-let bar, drawer, overlay, closeBtn, lastFocus;
+let bar, drawer, overlay, closeBtn, lastFocus, barHeightSync;
 
 // "2 × Chimp Chips, 2 × Bueno Mucho" (one per line)
 const breakdown = (box) => box.items.map((i) => `${i.qty} × ${esc(i.name)}`).join("<br>");
@@ -78,6 +78,7 @@ function build(showBar) {
     <footer class="drawer-foot"></footer>`;
 
   document.body.append(bar, overlay, drawer);
+  barHeightSync = trackBarHeight(bar);
   closeBtn = drawer.querySelector(".drawer-close");
 
   // Open from the sticky bar or any header cart button
@@ -174,6 +175,7 @@ function render() {
   const barOn = !empty && !bar.dataset.off;      // checkout page turns the bar off
   bar.hidden = !barOn;
   document.body.classList.toggle("has-cart-bar", barOn);
+  if (barHeightSync) barHeightSync();                // re-measure now that the bar is shown or hidden
   bar.querySelector(".cart-bar-summary").textContent = `${cart.summaryText()} · ${peso(cart.total())}`;
   const go = bar.querySelector(".cart-bar-checkout");
   if (canCheckout) {

@@ -34,13 +34,16 @@
         <img data-asset="logo" alt="AJ's Bakery" width="48" height="48" onerror="this.style.display='none'">
         <span>AJ's Bakery</span>
       </a>
-      <button type="button" class="cart-btn" data-open-cart aria-label="Open your cart">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/>
-          <path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 7H6"/>
-        </svg>
-        <span class="cart-count" id="cart-count">0</span>
-      </button>
+      <div class="header-actions">
+        <a class="nav-boxes" href="index.html#boxes">Boxes</a>
+        <button type="button" class="cart-btn" data-open-cart aria-label="Open your cart">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/>
+            <path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 7H6"/>
+          </svg>
+          <span class="cart-count" id="cart-count">0</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -53,10 +56,11 @@
 
   <script type="module">
     import { CONFIG } from "./js/config.js";
-    import { fetchMenu, fetchSundayInfo, fetchAvailability } from "./js/supabase.js";
-    import { orderingSunday, renderBanner, renderBannerError, renderClosed, flavorPhoto, stockLabel, peso, esc, boxSavings } from "./js/ui.js";
+    import { fetchMenu, fetchSundayInfo, fetchAvailability, fetchSiteSettings } from "./js/supabase.js";
+    import { orderingSunday, renderBanner, renderBannerError, renderClosed, flavorPhoto, stockLabel, peso, esc, boxSavings, trackBarHeight } from "./js/ui.js";
     import * as cart from "./js/cart.js";
     import { initCartUI, openCart } from "./js/cart-ui.js";
+    import { initFlavorSheet } from "./js/flavor-sheet.js";
 
     initCartUI({ showBar: false });   // the builder has its own sticky bar; the header cart button still opens the cart
     const root = document.getElementById("builder");
@@ -72,16 +76,17 @@
 
     try {
       // The availability call is optional: if it fails the builder still works (the database enforces the caps anyway)
-      const [{ flavors, boxes }, stock] = await Promise.all([
+      const [{ flavors, boxes }, stock, settings] = await Promise.all([
         fetchMenu(),
         fetchAvailability().catch((err) => { console.error(err); return null; }),
+        fetchSiteSettings().catch((err) => { console.error(err); return {}; }),   // optional: the sheet leaves the notes out if this fails
       ]);
       cart.syncWithMenu({ flavors, boxes });   // keep the cart's names/prices in line with today's menu
       // Only sizes in the boxes table (active ones) can be built. Anything else, including an old
       // ?size=4 link, gets a friendly message and a way back to all the boxes.
       const asked = new URLSearchParams(location.search).get("size");
       const box = boxes.find((b) => String(b.size) === asked);
-      if (box) startBuilder(box, flavors, stock ? stock.bySlug : null);
+      if (box) startBuilder(box, flavors, stock ? stock.bySlug : null, settings);
       else showSizePicker(boxes, asked, flavors);
     } catch (err) {
       console.error(err);
@@ -107,7 +112,7 @@
         <p><a href="index.html#boxes">&larr; Back to all boxes</a></p>`;
     }
 
-    function startBuilder(box, flavors, availability) {
+    function startBuilder(box, flavors, availability, settings) {
       document.title = `Build your box of ${box.size} | AJ's Bakery`;
       const qty = Object.fromEntries(flavors.map((f) => [f.slug, 0]));
       const chosen = () => Object.values(qty).reduce((a, b) => a + b, 0);
@@ -135,9 +140,10 @@
         <ul class="flavor-list">
           ${flavors.map((f) => `
           <li class="flavor-row" data-slug="${esc(f.slug)}">
-            <div class="flavor-emoji">${flavorPhoto(f, "flavor-thumb", { width: 96, height: 96 })}</div>
+            <div class="flavor-emoji">${flavorPhoto(f, "flavor-thumb", { width: 112, height: 112 })}</div>
             <div class="flavor-info">
-              <strong>${esc(f.name)}</strong>
+              <!-- the name opens the same detail sheet as on the home page -->
+              <strong><button type="button" class="card-open" data-open-sheet aria-haspopup="dialog">${esc(f.name)}</button></strong>
               <span class="flavor-meta">
                 <span class="stock" data-stock hidden></span>
                 ${f.surcharge > 0 ? `<span class="surcharge">+${peso(f.surcharge)} each</span>` : ""}
@@ -170,6 +176,7 @@
         <button type="button" class="btn" id="add-btn" disabled>Add to cart</button>`;
       document.body.append(bar);
       document.body.classList.add("has-builder-bar");
+      trackBarHeight(bar);
 
       const $ = (id) => document.getElementById(id);
 
@@ -205,7 +212,7 @@
           const limit = limitFor(slug);
           available += limit;
           const left = availability && availability[slug] ? availability[slug].remaining : null;
-          const label = stockLabel(left);
+          const label = left !== null && left <= 0 ? "Sold out" : left !== null && left <= 5 ? `Only ${left} left` : "";
           const badge = row.querySelector("[data-stock]");
           badge.textContent = label; badge.hidden = !label;
           badge.classList.toggle("stock-out", left !== null && left <= 0);
@@ -233,8 +240,20 @@
           : "";
       }
 
-      // One listener for every + / - button
+      // The same detail sheet as the home page, opened by tapping a flavor's name.
+      // (Its stepper adds loose single cookies to the cart; the box itself is built with the + / - buttons.)
+      const sheet = initFlavorSheet({
+        flavors,
+        getRemaining: (slug) => (availability && availability[slug] ? availability[slug].remaining : null),
+        getLimit: (slug) => (availability && availability[slug] ? Math.max(0, availability[slug].remaining - cart.flavorQty(slug)) : CONFIG.maxCookiesInCart),
+        settings,
+        add: (flavor, qty) => cart.addSingle(flavor, qty),
+      });
+
+      // One listener for every + / - button (and the flavor names)
       root.querySelector(".flavor-list").addEventListener("click", (e) => {
+        const nameBtn = e.target.closest("[data-open-sheet]");
+        if (nameBtn) return sheet.open(nameBtn.closest(".flavor-row").dataset.slug);
         const btn = e.target.closest("[data-step]");
         if (!btn) return;
         const slug = btn.closest(".flavor-row").dataset.slug;
@@ -262,7 +281,7 @@
         openCart();
       });
 
-      window.addEventListener("cart:changed", refresh); // cart-full state can change (e.g. Remove)
+      window.addEventListener("cart:changed", () => { refresh(); sheet.refresh(); }); // cart-full state can change (e.g. Remove)
       refresh();
     }
   </script>

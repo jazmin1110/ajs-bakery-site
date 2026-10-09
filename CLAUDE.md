@@ -51,7 +51,7 @@ Each flavor row holds its own content: `short_description`, `long_description`, 
 
 ## Saved cart (browser)
 
-The cart lives in `localStorage` (falls back to `window.name`, then memory, if storage is blocked). It stores a `savedAt` time and is thrown away after **48 hours**. Every page that loads the menu checks the saved cart against it: retired flavors are removed, prices refreshed, and a notice tells the customer. Checkout warns if the ordering Sunday changed since the cart was built. Prices in the cart are display only.
+The cart lives in `localStorage` (falls back to `window.name`, then memory, if storage is blocked). It stores a `savedAt` time (updated on every change) and is thrown away silently after **24 hours**. It is also cleared right after an order is placed. Every page that loads the menu checks the saved cart against it: retired flavors are removed, prices refreshed, and a notice tells the customer. Checkout warns if the ordering Sunday changed since the cart was built. Prices in the cart are display only.
 
 ## 3. Security rules
 
