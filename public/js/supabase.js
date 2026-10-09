@@ -41,7 +41,7 @@ export async function fetchMenu() {
   const sb = getClient();
   const [flavorsRes, boxesRes] = await Promise.all([
     sb.from("flavors")
-      .select("id, slug, name, surcharge, single_price, short_description, long_description, ingredients, allergens, weight_g, shelf_life, storage_tip, nutrition_image_url, photo_url, focus_x, focus_y, photo_version, nutrition_version")
+      .select("id, slug, name, surcharge, single_price, short_description, long_description, taste_notes, ingredients, contains, may_contain, weight_label, shelf_life, storage_tip, nutrition, photo_url, focus_x, focus_y, photo_version, nutrition_version")
       .eq("active", true).order("id"),
     sb.from("boxes").select("id, size, price, description").eq("active", true).order("size"),
   ]);
@@ -57,6 +57,13 @@ export async function fetchMenu() {
     })),
     boxes: boxesRes.data.map((b) => ({ ...b, price: Number(b.price) })),
   };
+}
+
+// The site-wide notes (allergen note, nutrition note) as { key: value }. Optional: the sheet just leaves them out if this fails.
+export async function fetchSiteSettings() {
+  const { data, error } = await getClient().from("site_settings").select("key, value");
+  if (error) throw error;
+  return Object.fromEntries(data.map((r) => [r.key, r.value]));
 }
 
 // How many of each flavor are left for the current ordering Sunday (15 of each per Sunday).

@@ -48,17 +48,6 @@ on conflict (size) do update
 -- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------
--- FLAVOR DETAILS TO FILL IN (migration 009). The website shows "coming soon" for
--- anything left empty. Nothing here is guessed: these are YOURS to write.
--- Copy one block per flavor into the SQL editor, replace the text, and run it.
--- (Or edit the same columns by hand: Supabase > Table Editor > flavors.)
---
---   update public.flavors set
---     ingredients         = '<write the full ingredient list>',
---     allergens           = '<write every allergen: people rely on this>',
---     weight_g            = <grams per cookie, a number>,
---     shelf_life          = '<how long they keep>',
---     storage_tip         = '<how to store or reheat>',
---     nutrition_image_url = 'assets/nutrition/<file>.jpg'   -- add the picture to public/assets/nutrition/ first
---   where slug = 'choc-chip';        -- choc-chip = Chimp Chips, double-choc = Coco Loco, kinder-bueno = Bueno Mucho
+-- Flavor content (descriptions, taste notes, ingredients, allergens, weight, shelf life, storage and
+-- the nutrition estimate) is loaded by supabase/seed_content.sql from flavor-content.json. Run that after this file.
 -- ---------------------------------------------------------------------------

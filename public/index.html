@@ -125,7 +125,7 @@
         </details>
         <details>
           <summary>Do you have nutrition info?</summary>
-          <p>Yes. Every flavor will come with a nutrition label. They're on the way!</p>
+          <p>Yes. Open any cookie to see its ingredients, allergens, calories, carbs, sugar, fat and protein. Values are estimates calculated from our recipes.</p>
         </details>
       </div>
     </section>
@@ -139,10 +139,10 @@
   <!-- type="module" lets us import from js/ files (no build step needed) -->
   <script type="module">
     import { CONFIG } from "./js/config.js";
-    import { fetchMenu, fetchSundayInfo, fetchAvailability } from "./js/supabase.js";
+    import { fetchMenu, fetchSundayInfo, fetchAvailability, fetchSiteSettings } from "./js/supabase.js";
     import {
       orderingSunday, renderBanner, renderBannerError,
-      renderMenu, renderBoxes, renderConfigText, renderClosed, stockLabel, boxEachPrice, clampDescriptions,
+      renderMenu, renderBoxes, renderConfigText, renderClosed, stockLabel, clampDescriptions,
     } from "./js/ui.js";
     import { initCartUI } from "./js/cart-ui.js";
     import { initFlavorSheet } from "./js/flavor-sheet.js";
@@ -268,6 +268,8 @@
           reloadAvailability();
           return;
         }
+        // "Nutrition info" opens the sheet scrolled to the nutrition table
+        if (e.target.closest("[data-open-nutrition]")) { if (sheet) sheet.open(slug, { section: "nutrition" }); return; }
         // A tap anywhere else on the row (photo, name, text) opens the detail sheet
         if (!e.target.closest(".fi-add") && sheet) sheet.open(slug);
       });
@@ -287,8 +289,12 @@
       .catch((err) => { console.error(err); renderBannerError(document.getElementById("order-banner")); });
 
     // The availability call is optional: if it fails the menu still works (the database enforces the caps anyway)
-    Promise.all([fetchMenu(), fetchAvailability().catch((err) => { console.error(err); return null; })])
-      .then(([{ flavors, boxes }, stock]) => {
+    Promise.all([
+      fetchMenu(),
+      fetchAvailability().catch((err) => { console.error(err); return null; }),
+      fetchSiteSettings().catch((err) => { console.error(err); return {}; }),     // optional: the sheet leaves the notes out if this fails
+    ])
+      .then(([{ flavors, boxes }, stock, settings]) => {
         availability = stock ? stock.bySlug : null;
         renderMenu(document.getElementById("menu-grid"), flavors, boxes, availability || {});
         wireSingles(document.getElementById("menu-grid"), flavors);
@@ -297,7 +303,7 @@
           flavors,
           getRemaining: (slug) => (availability && availability[slug] ? availability[slug].remaining : null),
           getLimit: limitFor,
-          boxEach: (f) => boxEachPrice(f, boxes),
+          settings,
           add: (flavor, qty) => { const r = cart.addSingle(flavor, qty); if (r.ok) reloadAvailability(); return r; },
         });
         refreshStock();

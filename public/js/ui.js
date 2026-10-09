@@ -193,7 +193,10 @@ export function renderMenu(container, flavors, boxes = [], availability = {}) {
               ? `<p class="fi-price"><span class="price">${peso(f.single_price)}</span> <small>each</small></p>`
               : `<p class="fi-price"><span class="price">Box only</span></p>`}
             <p class="box-each">${esc(inBox)}</p>
-            <p class="fi-stock"><span class="stock${left !== null && left <= 0 ? " stock-out" : ""}" data-stock${stock ? "" : " hidden"}>${stock}</span></p>
+            <p class="fi-extra">
+              <span class="stock${left !== null && left <= 0 ? " stock-out" : ""}" data-stock${stock ? "" : " hidden"}>${stock}</span>
+              ${f.nutrition ? `<button type="button" class="nutri-link" data-open-nutrition aria-haspopup="dialog" aria-label="Nutrition info for ${esc(f.name)}">Nutrition info</button>` : ""}
+            </p>
           </div>
           <div class="fi-photo">${flavorPhoto(f, "card-img", { lazy: true })}</div>
         </div>

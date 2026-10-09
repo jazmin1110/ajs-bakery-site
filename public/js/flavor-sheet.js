@@ -1,59 +1,69 @@
-// The flavor detail sheet: a bottom sheet with the photo, long description, ingredients,
-// allergens, weight, shelf life, storage tip and nutrition label for one flavor.
+// The flavor detail sheet: a bottom sheet with the photo, description, taste notes, allergens,
+// ingredients, a simple nutrition table, shelf life and storage for one flavor.
 //
-// It is DATA-DRIVEN: everything comes from the flavor object (the columns on the `flavors`
-// table), and `flavorDetailHtml()` turns one flavor into HTML without touching the page. So
-// when the sheet becomes its own page later, that page can call the same function.
+// It is DATA-DRIVEN: everything comes from the flavor object (the columns on the `flavors` table) and
+// the two site-wide notes (the `site_settings` table), and `flavorDetailHtml()` turns one flavor into HTML
+// without touching the page. So when the sheet becomes its own page later, that page can call the same function.
 //
-//  * Opens from a tap on a menu card, or from the URL hash (#chimp-chips), and writes the hash
+//  * Opens from a tap on a menu row, or from the URL hash (#chimp-chips), and writes the hash
 //    when it opens. The phone's back button and Escape close it.
 //  * Focus stays inside it while open; it is a labelled dialog for screen readers.
 //  * It never touches localStorage/sessionStorage, so it works with storage blocked.
-import { CONFIG } from "./config.js";
-import { esc, peso, stockLabel, flavorPhoto, flavorHash, withVersion } from "./ui.js";
+//  * The nutrition numbers are estimates shown for transparency. Only five values are shown.
+import { esc, peso, stockLabel, flavorPhoto, flavorHash } from "./ui.js";
 
-const COMING_SOON = {
-  ingredients: "Ingredients coming soon.",
-  allergens: "Allergen info coming soon. If you have a food allergy, please DM us before you order.",
-  weight: "Coming soon",
-  shelf_life: "Coming soon",
-  storage_tip: "Coming soon",
-};
+const g = (n) => `${n} g`;
+
+// The nutrition table: the serving line, Calories (large), Carbs, "of which sugars" (indented), Fat, Protein.
+// Nothing else, and no "% daily value" column. Returns "" if the flavor has no nutrition data.
+function nutritionTable(n) {
+  if (!n || typeof n !== "object") return "";
+  return `
+    <table class="nutri-table">
+      <caption>${esc(n.serving)}</caption>
+      <tbody>
+        <tr class="nutri-cal"><th scope="row">Calories</th><td>${esc(n.calories)}</td></tr>
+        <tr><th scope="row">Carbs</th><td>${esc(g(n.total_carbohydrate_g))}</td></tr>
+        <tr class="nutri-sub"><th scope="row">of which sugars</th><td>${esc(g(n.sugars_g))}</td></tr>
+        <tr><th scope="row">Fat</th><td>${esc(g(n.total_fat_g))}</td></tr>
+        <tr><th scope="row">Protein</th><td>${esc(g(n.protein_g))}</td></tr>
+      </tbody>
+    </table>`;
+}
 
 // ---- Pure: one flavor in, HTML out -----------------------------------------------------------
-// `boxEach` = the "from ₱95 each in a box" price (or null). No buttons here: those are page-specific.
-export function flavorDetailHtml(flavor, { boxEach = null } = {}) {
-  const fact = (label, value, soon) => `<dt>${label}</dt><dd>${value ? esc(value) : `<span class="soon">${soon}</span>`}</dd>`;
-  const text = (value, soon) => (value ? `<p>${esc(value).replace(/\n/g, "<br>")}</p>` : `<p class="soon">${soon}</p>`);
-  const info = CONFIG.flavorInfo[flavor.slug] || { description: "" };
+// settings = { global_allergen_note, nutrition_note } (either may be missing). No buttons here: those are page-specific.
+// Sections with no data are left out (nothing is made up).
+export function flavorDetailHtml(flavor, { settings = {} } = {}) {
+  const list = (a) => (Array.isArray(a) ? a.filter(Boolean) : []);
+  const notes = list(flavor.taste_notes);
+  const contains = list(flavor.contains);
+  const mayContain = list(flavor.may_contain);
+  const table = nutritionTable(flavor.nutrition);
+  const facts = [["Shelf life", flavor.shelf_life], ["Storage", flavor.storage_tip]].filter(([, v]) => v);
 
   return `
     <div class="sheet-photo">${flavorPhoto(flavor, "sheet-img")}</div>
     <div class="sheet-main">
-      <h2 id="sheet-title">${esc(flavor.name)} <span class="stock" data-sheet-stock hidden></span></h2>
-      ${flavor.single_price != null
-        ? `<p class="sheet-price"><span class="price">${peso(flavor.single_price)} <small>each</small></span>
-             ${boxEach != null ? `<span class="box-each">or from ${peso(boxEach)} each in a box</span>` : ""}</p>`
-        : `<p class="sheet-price"><span class="price">Box only</span>${boxEach != null ? `<span class="box-each">from ${peso(boxEach)} each in a box</span>` : ""}</p>`}
+      <h2 id="sheet-title">${esc(flavor.name)}</h2>
+      <p class="sheet-meta">
+        ${flavor.weight_label ? `<span class="sheet-weight">${esc(flavor.weight_label)}</span>` : ""}
+        <span class="stock" data-sheet-stock hidden></span>
+      </p>
       <p class="sheet-status" data-sheet-status></p>
-      <p class="sheet-desc">${esc(flavor.long_description || info.description || "")}</p>
+      ${flavor.long_description ? `<p class="sheet-desc">${esc(flavor.long_description)}</p>` : ""}
+      ${notes.length ? `<ul class="taste-chips" aria-label="Taste notes">${notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
 
-      <dl class="sheet-facts">
-        ${fact("Weight", flavor.weight_g ? `${flavor.weight_g} g per cookie` : "", COMING_SOON.weight)}
-        ${fact("Shelf life", flavor.shelf_life, COMING_SOON.shelf_life)}
-        ${fact("Storage", flavor.storage_tip, COMING_SOON.storage_tip)}
-      </dl>
+      ${contains.length ? `<p class="allergen-line allergen-contains"><strong>Contains:</strong> ${esc(contains.join(", "))}</p>` : ""}
+      ${mayContain.length ? `<p class="allergen-line"><strong>May contain:</strong> ${esc(mayContain.join(", "))}</p>` : ""}
 
-      <h3>Ingredients</h3>
-      ${text(flavor.ingredients, COMING_SOON.ingredients)}
-      <h3>Allergens</h3>
-      ${text(flavor.allergens, COMING_SOON.allergens)}
+      ${flavor.ingredients ? `<h3>Ingredients</h3><p class="sheet-ingredients">${esc(flavor.ingredients)}</p>` : ""}
 
-      <h3>Nutrition label</h3>
-      ${flavor.nutrition_image_url
-        ? `<img class="sheet-label" src="${esc(withVersion(flavor.nutrition_image_url, flavor.nutrition_version))}" alt="Nutrition label for ${esc(flavor.name)}" loading="lazy"
-             onerror="this.replaceWith(Object.assign(document.createElement('p'),{className:'soon',textContent:'Label coming soon'}))">`
-        : `<p class="soon">Label coming soon</p>`}
+      ${table ? `<h3 id="sheet-nutrition">Nutrition</h3>${table}
+        ${settings.nutrition_note ? `<p class="sheet-small">${esc(settings.nutrition_note)}</p>` : ""}` : ""}
+
+      ${facts.length ? `<dl class="sheet-facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}
+      ${settings.global_allergen_note ? `<p class="sheet-small sheet-allergen-note">${esc(settings.global_allergen_note)}</p>` : ""}
     </div>`;
 }
 
@@ -61,9 +71,9 @@ export function flavorDetailHtml(flavor, { boxEach = null } = {}) {
 // flavors      : the menu's flavors (with the detail columns)
 // getRemaining : slug -> cookies left this Sunday, or null if unknown
 // getLimit     : slug -> how many MORE can go in the cart (remaining minus what's already there)
-// boxEach      : flavor -> "from ₱X each in a box" price, or null
+// settings     : { global_allergen_note, nutrition_note } from the site_settings table
 // add          : (flavor, qty) -> { ok, error }   (adds single cookies to the cart)
-export function initFlavorSheet({ flavors, getRemaining, getLimit, boxEach, add }) {
+export function initFlavorSheet({ flavors, getRemaining, getLimit, settings = {}, add }) {
   const root = document.createElement("div");
   root.className = "sheet-root";
   root.hidden = true;
@@ -93,14 +103,14 @@ export function initFlavorSheet({ flavors, getRemaining, getLimit, boxEach, add 
 
   // ---- drawing -------------------------------------------------------------------------------
   function paintStatic() {
-    content.innerHTML = flavorDetailHtml(current, { boxEach: boxEach(current) });
+    content.innerHTML = flavorDetailHtml(current, { settings });
     actions.innerHTML = current.single_price != null
       ? `<div class="stepper">
            <button type="button" data-sheet-step="-1" aria-label="One fewer ${esc(current.name)}">&minus;</button>
            <output aria-live="polite" aria-label="${esc(current.name)} quantity">${qty}</output>
            <button type="button" data-sheet-step="1" aria-label="One more ${esc(current.name)}">+</button>
          </div>
-         <button type="button" class="btn" data-sheet-add>Add to cart</button>`
+         <button type="button" class="btn" data-sheet-add>Add</button>`
       : `<p class="soon">This flavor is sold in boxes only.</p>
          <a class="btn" href="index.html#boxes" data-sheet-close>See boxes</a>`;
   }
@@ -133,12 +143,12 @@ export function initFlavorSheet({ flavors, getRemaining, getLimit, boxEach, add 
     const addBtn = actions.querySelector("[data-sheet-add]");
     if (!addBtn.dataset.busy) {                         // (don't overwrite the "Added ✓" flash)
       addBtn.disabled = limit <= 0;
-      addBtn.textContent = soldOut ? "Sold out" : limit <= 0 ? "All in your cart" : "Add to cart";
+      addBtn.textContent = soldOut ? "Sold out" : limit <= 0 ? "All in your cart" : `Add · ${peso(current.single_price)}`;
     }
   }
 
   // ---- open / close (the UI part) --------------------------------------------------------------
-  function openUI(flavor) {
+  function openUI(flavor, section) {
     current = flavor; qty = 1;
     opener = document.activeElement;
     paintStatic(); refresh();
@@ -151,6 +161,9 @@ export function initFlavorSheet({ flavors, getRemaining, getLimit, boxEach, add 
     inerted.forEach((el) => el.setAttribute("inert", ""));
     content.scrollTop = 0;
     panel.querySelector(".sheet-close").focus();
+    // "Nutrition info" link on a row: open scrolled to the table
+    const target = section === "nutrition" ? content.querySelector("#sheet-nutrition") : null;
+    if (target) content.scrollTop = target.getBoundingClientRect().top - content.getBoundingClientRect().top + content.scrollTop - 12;
   }
 
   function closeUI() {
@@ -165,12 +178,12 @@ export function initFlavorSheet({ flavors, getRemaining, getLimit, boxEach, add 
   }
 
   // ---- open / close (the history part: hash + back button) ---------------------------------------
-  function open(slug) {
+  function open(slug, { section } = {}) {
     const flavor = flavors.find((f) => f.slug === slug);
     if (!flavor || current) return;
     history.pushState({ flavorSheet: true }, "", "#" + flavorHash(flavor));
     pushed = true;
-    openUI(flavor);
+    openUI(flavor, section);
   }
 
   function close() {

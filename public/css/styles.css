@@ -761,14 +761,12 @@ body.sheet-open { overflow: hidden; }
 .fi-body { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 12px; align-items: start; padding: 12px 14px 24px; cursor: pointer; }
 .fi-text { min-width: 0; }                                  /* lets long words wrap instead of widening the row */
 .fi-text h3 { font-size: 1.1rem; margin: 0; }
-.fi-text .card-open { min-height: 36px; padding: 0; display: inline-flex; align-items: center; overflow-wrap: anywhere; }
+.fi-text .card-open { min-height: 44px; padding: 0; display: inline-flex; align-items: center; overflow-wrap: anywhere; }
 .fi-desc { margin: -0.15rem 0 0.25rem; font-size: 0.92rem; line-height: 1.35; }
 .fi-price { margin: 0; }
 .fi-price .price { font-size: 1.2rem; }
 .fi-price small { font-size: 0.85rem; color: #7a665c; }
 .fi-text .box-each { margin: 0; font-size: 0.88rem; }
-.fi-stock { margin: 0.25rem 0 0; min-height: 0; }
-.fi-stock .stock { margin-left: 0; }
 .fi-photo {
   position: relative; width: 96px; aspect-ratio: 1 / 1; border-radius: 16px; overflow: hidden;
   background: repeating-linear-gradient(45deg, var(--cream-dark), var(--cream-dark) 12px, var(--cream) 12px, var(--cream) 24px);
@@ -842,4 +840,27 @@ body.sheet-open { overflow: hidden; }
   .box-item .bi-cta-text { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
   .box-item .bi-chevron { display: none; }
 }
-.fi-stock:has(.stock[hidden]) { display: none; }   /* no empty gap when there's no stock label */
+.fi-extra { margin: 0.1rem 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0 0.7rem; }
+.fi-extra .stock { margin-left: 0; }
+.nutri-link { background: none; border: 0; padding: 0; margin: 0; min-height: 44px; display: inline-flex; align-items: center; font: 700 0.9rem var(--font-body); color: var(--blue-dark); text-decoration: underline; cursor: pointer; }
+
+
+/* ---------- Detail sheet content (section order: photo, name, weight + stock, description, taste notes,
+   allergens, ingredients, nutrition table, shelf life + storage, allergen note) ---------- */
+.sheet-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; margin: 0 0 0.3rem; color: #6b574d; font-weight: 700; }
+.sheet-meta .stock { margin-left: 0; }
+.taste-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 0.9rem; padding: 0; }
+.taste-chips li { padding: 3px 12px; border-radius: 999px; background: var(--blue-soft); color: var(--blue-dark); border: 1.5px solid var(--blue); font-size: 0.85rem; font-weight: 700; }
+.allergen-line { margin: 0 0 0.25rem; overflow-wrap: anywhere; }
+.allergen-contains { font-weight: 800; }
+.sheet-ingredients { margin: 0; overflow-wrap: anywhere; }   /* long ingredient lists wrap instead of widening the sheet */
+.nutri-table { width: 100%; border-collapse: collapse; background: #fff; border: 2px solid var(--cream-dark); border-radius: var(--radius-sm); overflow: hidden; }
+.nutri-table caption { text-align: left; padding: 0.5rem 0.2rem; font-weight: 700; color: #6b574d; caption-side: top; }
+.nutri-table th, .nutri-table td { padding: 0.45rem 0.8rem; border-top: 1px solid var(--cream-dark); text-align: left; font-weight: 600; }
+.nutri-table td { text-align: right; white-space: nowrap; }
+.nutri-table .nutri-cal th, .nutri-table .nutri-cal td { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; color: var(--blue-dark); }
+.nutri-table .nutri-sub th { padding-left: 1.8rem; font-weight: 400; color: #6b574d; }
+.nutri-table .nutri-sub td { font-weight: 400; color: #6b574d; }
+.sheet-small { margin: 0.5rem 0 0; font-size: 0.82rem; color: #6b574d; overflow-wrap: anywhere; }
+.sheet-facts { margin-top: 0.9rem; }
+.sheet-allergen-note { margin: 0.9rem 0 0.4rem; padding: 0.6rem 0.8rem; border-radius: var(--radius-sm); background: #fff3d6; border: 2px solid var(--accent); color: var(--ink); font-size: 0.9rem; }
