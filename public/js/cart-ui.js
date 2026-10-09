@@ -21,7 +21,7 @@ export function hintHtml() {
   if (!h) return "";
   return `<p class="hint-save">💡 <strong>Save ${peso(h.saving)} in a box.</strong>
     ${h.size} of your cookies cost ${peso(h.asSingles)} as singles, but a box of ${h.size} is ${peso(h.asBox)}.
-    <a href="index.html#boxes">See boxes</a></p>`;
+    <a href="/#boxes" data-goto="boxes">See boxes</a></p>`;
 }
 
 // Delivery has a minimum (2 cookies or ₱200); pickup doesn't. A gentle note, not a blocker:
@@ -96,6 +96,9 @@ function build(showBar) {
 
   // Buttons inside the drawer (event delegation: they're re-drawn on every change)
   drawer.addEventListener("click", (e) => {
+    // "+ Singles", "+ Box", "Browse the menu": close the drawer FIRST (that also gives the page its scrolling back), then go there
+    const go = e.target.closest("[data-goto]");
+    if (go) { e.preventDefault(); return goToSection(go.dataset.goto); }
     const rm = e.target.closest("[data-remove-box]");
     if (rm) return cart.remove(rm.dataset.removeBox);
     const rs = e.target.closest("[data-remove-single]");
@@ -213,20 +216,25 @@ function render() {
   // Drawer footer: minimum message, total, add-more links, checkout
   const foot = drawer.querySelector(".drawer-foot");
   if (empty) {
-    foot.innerHTML = `<a class="btn btn-block" href="index.html#menu">Browse the menu</a>`;
+    foot.innerHTML = `<a class="btn btn-block" href="/#menu" data-goto="menu">Browse the menu</a>`;
   } else {
+    // Compact, top to bottom: delivery note (only if needed), total, Checkout, "+ Singles" / "+ Box", then one small row
     foot.innerHTML = `
       ${minimumHtml()}
       <div class="drawer-total"><span>Total</span><span class="price">${peso(cart.total())}</span></div>
-      <a class="drawer-add" href="index.html#menu">+ Add single cookies</a>
-      ${cart.isFull()
-        ? `<p class="drawer-limit">That's the max of ${CONFIG.maxBoxesPerOrder} boxes per order.</p>`
-        : `<a class="drawer-add" href="index.html#boxes">+ Add another box</a>`}
       ${canCheckout
         ? `<a class="btn btn-block" href="checkout.html">Checkout</a>`
         : `<button type="button" class="btn btn-block" disabled>Checkout</button>`}
-      <button type="button" class="link-btn drawer-clear" data-clear-cart>Clear cart</button>
-      <small class="drawer-fine">Final price is confirmed when you place your order.</small>`;
+      <div class="drawer-add-row">
+        <a class="drawer-add-btn" href="/#menu" data-goto="menu">+ Singles</a>
+        ${cart.isFull()
+          ? `<p class="drawer-limit">Max ${CONFIG.maxBoxesPerOrder} boxes per order</p>`
+          : `<a class="drawer-add-btn" href="/#boxes" data-goto="boxes">+ Box</a>`}
+      </div>
+      <div class="drawer-small">
+        <button type="button" class="link-btn drawer-clear" data-clear-cart>Clear cart</button>
+        <small class="drawer-fine">Final price confirmed at checkout.</small>
+      </div>`;
   }
 
   // If the button the user just pressed was re-drawn, put focus back on it (or inside the drawer)
@@ -238,15 +246,35 @@ export function openCart() {
   lastFocus = document.activeElement;
   drawer.classList.add("open");
   overlay.classList.add("open");
-  document.body.style.overflow = "hidden"; // stop the page scrolling behind it
+  // Stop the page scrolling behind the drawer (html AND body: iOS Safari scrolls the page unless both are locked)
+  document.documentElement.classList.add("drawer-open");
+  document.body.classList.add("drawer-open");
   closeBtn.focus();
 }
 
 export function closeCart() {
   drawer.classList.remove("open");
   overlay.classList.remove("open");
-  document.body.style.overflow = "";
+  document.documentElement.classList.remove("drawer-open");
+  document.body.classList.remove("drawer-open");
   if (lastFocus && lastFocus.focus) lastFocus.focus();
+}
+
+// Go to a section of the home page ("menu" or "boxes") from the drawer.
+//  * Already on the home page: the link would only change the URL hash and the drawer would stay open,
+//    so close the drawer, then smooth-scroll (or jump, if the visitor prefers less motion) on the next frame.
+//  * On another page (box, checkout, confirmed): load the home page at that section.
+function goToSection(id) {
+  closeCart();
+  const onHome = location.pathname === "/" || /\/index\.html$/.test(location.pathname);
+  if (!onHome) { location.href = `/#${id}`; return; }
+  requestAnimationFrame(() => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
+    history.pushState(null, "", `${location.pathname}${location.search}#${id}`);
+  });
 }
 
 // showBar: false on the checkout page (the bar's Checkout button would point at itself)

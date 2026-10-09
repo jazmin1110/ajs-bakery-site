@@ -493,9 +493,10 @@ body.has-cart-bar { padding-bottom: calc(var(--bar-h, 4.5rem) + 1rem); }  /* --b
 .drawer-overlay.open { opacity: 1; visibility: visible; transition: opacity 0.25s; }
 
 .drawer {
-  position: fixed; top: 0; right: 0; bottom: 0; z-index: 40;
+  position: fixed; top: 0; right: 0; z-index: 40;
+  height: 100vh; height: 100dvh;    /* dvh = the visible height as Safari's toolbars come and go (vh is the fallback) */
   width: min(92vw, 400px);
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: column;   /* header, a scrolling body, a compact footer */
   background: var(--cream);
   border-top-left-radius: var(--r-md); border-bottom-left-radius: var(--r-md);
   box-shadow: var(--shadow-lg);
@@ -505,28 +506,34 @@ body.has-cart-bar { padding-bottom: calc(var(--bar-h, 4.5rem) + 1rem); }  /* --b
 }
 .drawer.open { transform: none; visibility: visible; transition: transform 0.25s; }
 
-.drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.1rem 0.5rem; }
+.drawer-head { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0.7rem 1.1rem 0.3rem; }
 .drawer-head h2 { margin: 0; }
 .drawer-close {
   width: 44px; height: 44px; border-radius: 50%;
   border: 2px solid var(--cream-dark); background: #fff;
   font-size: 1.1rem; cursor: pointer; color: var(--ink);
 }
-.drawer-body { flex: 1; overflow-y: auto; padding: 0.5rem 1.1rem; display: grid; gap: 0.8rem; align-content: start; }
+/* min-height: 0 is what lets a flex child scroll instead of growing; overscroll-behavior stops the page behind from scrolling */
+.drawer-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 0.5rem 1.1rem; display: flex; flex-direction: column; gap: 0.6rem; }
 .drawer-empty { text-align: center; color: var(--ink-soft); padding: 2rem 0; }
 
-.cart-box { background: #fff; border: 2px solid var(--cream-dark); border-radius: var(--radius-sm); padding: 0.8rem 0.9rem; }
+.cart-box { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.7rem 0.9rem; }
 .cart-box-head { display: flex; justify-content: space-between; gap: 0.5rem; align-items: baseline; }
 .cart-box-head strong { font-family: var(--font-display); color: var(--blue-dark); }
 .cart-box-items { margin: 0.4rem 0; font-size: 0.95rem; }
 .cart-box-note { margin: 0.2rem 0 0.4rem; font-size: 0.9rem; color: var(--ink-soft); overflow-wrap: anywhere; }
 .link-btn { background: none; border: 0; padding: 0.7rem 0.3rem; min-height: 44px; color: #8a2b22; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
 
-.drawer-foot { padding: 0.9rem 1.1rem calc(1rem + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); display: grid; gap: 0.6rem; }
-.drawer-total { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--font-display); font-size: 1.2rem; }
-.drawer-add { text-align: center; font-weight: 700; padding: 0.8rem 0.4rem; }
-.drawer-limit { margin: 0; text-align: center; font-size: 0.9rem; color: var(--ink-soft); }
-.drawer-fine { text-align: center; color: var(--ink-soft); }
+.drawer-foot { flex: none; padding: 0.6rem 1.1rem calc(0.6rem + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); display: grid; gap: 0.5rem; background: var(--cream); }
+.drawer-total { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--font-display); font-size: 1.2rem; line-height: 1.2; }
+.drawer-foot .min-msg { margin: 0; padding: 0.4rem 0.7rem; font-size: 0.85rem; line-height: 1.3; }
+.drawer-add-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.drawer-add-btn { display: flex; align-items: center; justify-content: center; min-height: 44px; border: 2px solid var(--blue); border-radius: 999px; color: var(--blue-dark); font: 700 0.95rem var(--font-body); text-decoration: none; text-align: center; }
+.drawer-add-btn:hover { background: var(--blue-soft); }
+.drawer-limit { margin: 0; align-self: center; text-align: center; font-size: 0.85rem; line-height: 1.2; color: var(--ink-soft); }   /* the one-line max note sits where "+ Box" would be */
+.drawer-small { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.drawer-small .link-btn { flex: none; padding: 0 0.3rem; }
+.drawer-fine { font-size: 0.72rem; line-height: 1.2; text-align: right; color: var(--ink-soft); }
 
 /* ---------- Checkout form ---------- */
 .checkout, .confirmed { padding-top: 1rem; padding-bottom: 3rem; max-width: 560px; }
@@ -670,9 +677,9 @@ body.has-cart-bar { padding-bottom: calc(var(--bar-h, 4.5rem) + 1rem); }  /* --b
 .box-each { margin: -0.2rem 0 0.6rem; color: var(--ink-soft); font-size: 0.95rem; }
 .box-each:empty { display: none; }
 
-.cart-section { margin-bottom: 0.4rem; }
-.cart-section-title { font-size: 1.05rem; margin: 0.5rem 0 0.4rem; color: var(--blue-dark); }
-.subtotal { display: flex; justify-content: space-between; padding: 0.4rem 0.2rem 0.2rem; font-weight: 700; border-top: 1px solid var(--line); }
+.cart-section { display: grid; gap: 0.6rem; }   /* the same 0.6rem between boxes, singles and subtotals */
+.cart-section-title { font-size: 1.05rem; margin: 0.2rem 0 0; color: var(--blue-dark); }
+.subtotal { display: flex; justify-content: space-between; padding: 0.4rem calc(0.9rem + 1px) 0.2rem; font-weight: 700; border-top: 1px solid var(--line); }   /* side padding = the cart box's, so subtotal amounts line up with the line prices */
 .cart-line-controls { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.3rem; }
 .cart-line-each { color: var(--ink-soft); font-size: 0.92rem; flex: 1; }
 
@@ -750,7 +757,7 @@ body.sheet-open { overflow: hidden; }
 .cart-notice-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.6rem; padding-top: 0.6rem; padding-bottom: 0.6rem; font-size: 0.95rem; }
 .cart-notice ul { margin: 0.2rem 0 0; padding-left: 1.1rem; }
 .cart-notice .link-btn { color: var(--blue-dark); font-weight: 800; }
-.drawer-clear { align-self: center; }
+.drawer-clear { align-self: auto; }
 
 /* ---------- "Ordering is closed" card, 404, cart warnings ---------- */
 .closed-card { grid-column: 1 / -1; text-align: center; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem 1.2rem; box-shadow: var(--shadow); }
@@ -957,21 +964,21 @@ p, li { max-width: 66ch; }                                                /* com
 .order-banner.sticker small { display: block; font-weight: 600; opacity: 1; color: var(--ink-soft); font-size: 0.82rem; }
 .order-banner.compact.sticker { padding: 0.3rem 0.9rem; font-size: 0.88rem; line-height: 1.3; white-space: normal; overflow: visible; text-overflow: clip; }   /* wraps instead of cutting off "by Wed 9pm" on narrow phones */
 
-/* ---- Header: the circular badge, text hidden under 700px ---- */
+/* ---- Header: the circular badge with "AJ's Bakery" next to it, at every width ---- */
 .site-header { border-bottom: 1px solid var(--line); }
 .logo-link { gap: 10px; }
 .logo-link img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; }
 .logo-link { min-height: 56px; }
-@media (max-width: 699px) {
-  /* the badge already says "AJ's", so the text is for screen readers only */
-  .logo-link span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-}
+/* The name: cream Baloo 2, one line. min-width: 0 lets the link shrink instead of pushing the cart off the screen. */
+.logo-link { min-width: 0; flex: 0 1 auto; }
+.logo-link span { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; line-height: 1.1; white-space: nowrap; color: var(--cream); }
+@media (min-width: 700px) { .logo-link span { font-size: 1.3rem; } }
 
 /* ---- Hero: big tilted Bueno sticker beside the headline ---- */
-.hero { text-align: left; padding: 1rem 0 0.4rem; }
+.hero { text-align: left; padding: 1rem 0 0.4rem; overflow-x: clip; }   /* the tilted sticker must never make the page scroll sideways */
 .hero .container { display: grid; grid-template-columns: minmax(0, 1fr) 150px; grid-template-areas: "title pic" "text text" "actions actions"; column-gap: 0.4rem; align-items: center; }
 .hero h1 { grid-area: title; font-size: 2.6rem; line-height: 1.02; margin: 0; }
-.hero-sticker { grid-area: pic; justify-self: end; width: 186px; max-width: none; height: auto; margin: -0.4rem -0.5rem -0.2rem 0; transform: rotate(8deg); filter: drop-shadow(0 8px 14px rgba(92, 58, 34, 0.22)); position: relative; z-index: 1; }
+.hero-sticker { grid-area: pic; justify-self: end; width: 186px; max-width: none; height: auto; margin: -0.4rem 0 -0.2rem 0; transform: rotate(8deg); filter: drop-shadow(0 8px 14px rgba(92, 58, 34, 0.22)); position: relative; z-index: 1; }
 .hero p { grid-area: text; font-size: 1.1rem; max-width: 34ch; margin: 0.4rem 0 1rem; }
 .hero-actions { grid-area: actions; justify-content: flex-start; }
 @media (min-width: 700px) {
@@ -1086,3 +1093,6 @@ body.has-cart-bar .site-footer { padding-bottom: calc(1.2rem + var(--bar-h, 4.5r
 
 /* disabled buttons never react to hover */
 .btn:disabled:hover, .btn.is-disabled:hover { transform: none; }
+
+/* page scroll lock while the cart drawer is open (set on <html> and <body> by js/cart-ui.js) */
+html.drawer-open, body.drawer-open { overflow: hidden; overscroll-behavior: none; }
