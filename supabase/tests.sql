@@ -12,8 +12,8 @@
 -- is what proves the rules hold for real customers (the SQL editor itself
 -- runs as the all-powerful postgres user).
 --
--- Orders are now a list of boxes, e.g. a box of 4 with 2 choc chip + 2 bueno:
---   '[{"size":4,"items":[{"flavor_slug":"choc-chip","qty":2},{"flavor_slug":"kinder-bueno","qty":2}]}]'
+-- Orders are now a list of boxes, e.g. a box of 3 with 2 choc chip + 1 bueno:
+--   '[{"size":3,"items":[{"flavor_slug":"choc-chip","qty":2},{"flavor_slug":"kinder-bueno","qty":1}]}]'
 
 
 -- ===========================================================================
@@ -64,9 +64,9 @@ rollback;
 
 
 -- ===========================================================================
--- (b) A bad flavor sum is rejected (box of 4 with only 3 cookies). A valid
+-- (b) A bad flavor sum is rejected (box of 3 with only 2 cookies). A valid
 -- two-box order works, and the DB computes the total itself:
---   box of 4 with 2 Bueno = 380 + 2*30 = 440, plus box of 6 = 570  ->  1010
+--   box of 3 with 2 Bueno = 285 + 2*30 = 345, plus box of 6 = 570  ->  915
 -- ===========================================================================
 begin;
 do $$
@@ -76,17 +76,17 @@ begin
 
   begin
     perform 1 from public.place_order('Test', '@test', '09171234567', 'pickup', null,
-      '[{"size":4,"items":[{"flavor_slug":"choc-chip","qty":2},{"flavor_slug":"double-choc","qty":1}]}]'::jsonb);
-    raise exception 'FAIL (b): a 3-cookie box of 4 was accepted';
+      '[{"size":3,"items":[{"flavor_slug":"choc-chip","qty":1},{"flavor_slug":"double-choc","qty":1}]}]'::jsonb);
+    raise exception 'FAIL (b): a 2-cookie box of 3 was accepted';
   exception when others then
     if sqlerrm not like '%needs exactly%' then raise; end if;   -- re-raise the FAIL above
     raise notice 'PASS (b): bad sum rejected -> %', sqlerrm;
   end;
 
   select * into r from public.place_order('Test', '@test', '09171234567', 'pickup', null,
-    '[{"size":4,"gift_note":"For Tita","items":[{"flavor_slug":"choc-chip","qty":2},{"flavor_slug":"kinder-bueno","qty":2}]},
+    '[{"size":3,"gift_note":"For Tita","items":[{"flavor_slug":"choc-chip","qty":1},{"flavor_slug":"kinder-bueno","qty":2}]},
       {"size":6,"items":[{"flavor_slug":"double-choc","qty":6}]}]'::jsonb);
-  assert r.total = 1010, 'total should be 440 + 570 = 1010, got ' || r.total;
+  assert r.total = 915, 'total should be 345 + 570 = 915, got ' || r.total;
   raise notice 'PASS (b): two-box order accepted, ref %, total %, Sunday %', r.ref_code, r.total, r.sunday_date;
   reset role;
 end $$;
@@ -145,11 +145,11 @@ begin
     raise notice 'PASS (c): sold-out flavor -> %', sqlerrm;
   end;
 
-  -- Box cookies count against the same flavor: a box with 2 Chimp Chips + 2 Coco Loco is rejected too,
+  -- Box cookies count against the same flavor: a box with 2 Chimp Chips + 1 Coco Loco is rejected too,
   -- and nothing is partly saved
   begin
     perform 1 from public.place_order('Cap', null, '09176660005', 'pickup', null,
-      '[{"size":4,"items":[{"flavor_slug":"choc-chip","qty":2},{"flavor_slug":"double-choc","qty":2}]}]'::jsonb);
+      '[{"size":3,"items":[{"flavor_slug":"choc-chip","qty":2},{"flavor_slug":"double-choc","qty":1}]}]'::jsonb);
     raise exception 'FAIL (c): a box with a sold-out flavor was accepted';
   exception when others then
     if sqlerrm not like '%Chimp Chips is sold out%' then raise; end if;
@@ -180,9 +180,9 @@ begin
   values ('AJ-FIXTURE', v_sunday, 'Fixture', '09170000000', 'pickup', 0, 'paid') returning id into v_order;
   insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, v_bueno, 10 - v_have, 135);
   set local role anon;
-  -- Bueno Mucho reserved = 10 (5 left). A box with 3 Bueno + 2 singles = 5: fits exactly.
+  -- Bueno Mucho reserved = 10 (5 left). A box of 3 Bueno + 2 singles = 5: fits exactly.
   select * into r from public.place_order('Mix', null, '09176660010', 'pickup', null,
-    '[{"size":4,"items":[{"flavor_slug":"kinder-bueno","qty":3},{"flavor_slug":"choc-chip","qty":1}]}]'::jsonb, null,
+    '[{"size":3,"items":[{"flavor_slug":"kinder-bueno","qty":3}]}]'::jsonb, null,
     '[{"flavor_slug":"kinder-bueno","qty":2}]'::jsonb);
   -- 1 more Bueno single: over the cap
   begin
@@ -266,9 +266,9 @@ begin
   set local role anon;
 
   select * into a from public.place_order('Ana', null, '09171234567', 'pickup', null,
-    '[{"size":4,"items":[{"flavor_slug":"choc-chip","qty":4}]}]'::jsonb);
+    '[{"size":3,"items":[{"flavor_slug":"choc-chip","qty":3}]}]'::jsonb);
   select * into b from public.place_order('Ben', null, '09179876543', 'pickup', null,
-    '[{"size":4,"items":[{"flavor_slug":"double-choc","qty":4}]}]'::jsonb);
+    '[{"size":3,"items":[{"flavor_slug":"double-choc","qty":3}]}]'::jsonb);
 
   perform public.submit_gcash_ref(a.ref_code, '1234567890123');
   raise notice 'PASS (d): first use of the GCash ref saved';
@@ -305,7 +305,7 @@ begin
 
   begin
     perform 1 from public.place_order('Cara', null, '09171234567', 'delivery', '  ',
-      '[{"size":4,"items":[{"flavor_slug":"choc-chip","qty":4}]}]'::jsonb);
+      '[{"size":3,"items":[{"flavor_slug":"choc-chip","qty":3}]}]'::jsonb);
     raise exception 'FAIL (e): delivery without address accepted';
   exception when others then
     if sqlerrm not like '%delivery address%' then raise; end if;
@@ -344,7 +344,7 @@ begin
     raise notice 'PASS (f): anon blocked from cookies_taken';
   end;
   begin
-    perform public.quote_box(4, '[{"flavor_slug":"choc-chip","qty":4}]'::jsonb);
+    perform public.quote_box(3, '[{"flavor_slug":"choc-chip","qty":3}]'::jsonb);
     raise exception 'FAIL (f): anon could call quote_box';
   exception when insufficient_privilege then
     raise notice 'PASS (f): anon blocked from quote_box';
@@ -365,25 +365,25 @@ begin;
 do $$
 declare
   r record;
-  box4 text := '{"size":4,"items":[{"flavor_slug":"kinder-bueno","qty":4}]}';
+  box3 text := '{"size":3,"items":[{"flavor_slug":"kinder-bueno","qty":3}]}';
 begin
   set local role anon;
 
   -- 4 boxes: rejected.
   begin
     perform 1 from public.place_order('Dan', null, '09171234567', 'pickup', null,
-      ('[' || box4 || ',' || box4 || ',' || box4 || ',' || box4 || ']')::jsonb);
+      ('[' || box3 || ',' || box3 || ',' || box3 || ',' || box3 || ']')::jsonb);
     raise exception 'FAIL (g): 4 boxes accepted';
   exception when others then
     if sqlerrm not like '%at most 3 boxes%' then raise; end if;
     raise notice 'PASS (g): 4 boxes rejected -> %', sqlerrm;
   end;
 
-  -- 3 boxes with the same flavor in each: allowed. 3 x (380 + 4*30) = 1500.
+  -- 3 boxes with the same flavor in each: allowed. 3 x (285 + 3*30) = 1125.
   select * into r from public.place_order('Dan', null, '09171234567', 'pickup', null,
-    ('[' || replace(box4, '{"size":4', '{"size":4,"gift_note":"A"') || ',' ||
-            replace(box4, '{"size":4', '{"size":4,"gift_note":"B"') || ',' || box4 || ']')::jsonb);
-  assert r.total = 1500, 'three bueno boxes should total 1500, got ' || r.total;
+    ('[' || replace(box3, '{"size":3', '{"size":3,"gift_note":"A"') || ',' ||
+            replace(box3, '{"size":3', '{"size":3,"gift_note":"B"') || ',' || box3 || ']')::jsonb);
+  assert r.total = 1125, 'three bueno boxes should total 1125, got ' || r.total;
   reset role;
 
   assert (select count(*) from public.order_boxes ob join public.orders o on o.id = ob.order_id where o.ref_code = r.ref_code) = 3;
@@ -405,7 +405,7 @@ do $$
 declare
   k1 uuid := gen_random_uuid(); k2 uuid := gen_random_uuid();
   a record; b record; c record;
-  boxes jsonb := '[{"size":4,"items":[{"flavor_slug":"choc-chip","qty":4}]}]';
+  boxes jsonb := '[{"size":3,"items":[{"flavor_slug":"choc-chip","qty":3}]}]';
 begin
   set local role anon;
   select * into a from public.place_order('Eve', null, '09171234567', 'pickup', null, boxes, k1);
@@ -441,7 +441,7 @@ begin
   -- A customer places an order.
   set local role anon;
   select * into o from public.place_order('Zed', '@zed', '09171234567', 'delivery', '1 Test St',
-    '[{"size":4,"gift_note":"Hi","items":[{"flavor_slug":"choc-chip","qty":2},{"flavor_slug":"kinder-bueno","qty":2}]}]'::jsonb);
+    '[{"size":3,"gift_note":"Hi","items":[{"flavor_slug":"choc-chip","qty":2},{"flavor_slug":"kinder-bueno","qty":1}]}]'::jsonb);
   v_sunday := o.sunday_date;
 
   -- Not logged in: can't even call it.
@@ -549,9 +549,9 @@ end $$;
 begin;
 do $$
 declare
-  boxes jsonb := '[{"size":4,"items":[{"flavor_slug":"choc-chip","qty":4}]}]';
-  boxes2 jsonb := '[{"size":4,"items":[{"flavor_slug":"double-choc","qty":4}]}]';
-  boxes3 jsonb := '[{"size":4,"items":[{"flavor_slug":"kinder-bueno","qty":4}]}]';
+  boxes jsonb := '[{"size":3,"items":[{"flavor_slug":"choc-chip","qty":3}]}]';
+  boxes2 jsonb := '[{"size":3,"items":[{"flavor_slug":"double-choc","qty":3}]}]';
+  boxes3 jsonb := '[{"size":3,"items":[{"flavor_slug":"kinder-bueno","qty":3}]}]';
   admin_id uuid := gen_random_uuid(); r record; j jsonb;
 begin
   set local role anon;
@@ -613,12 +613,12 @@ begin
   assert r.total = 210, 'two Chimp Chips should be 210, got ' || r.total;
   raise notice 'PASS (k): single-only order total = % (2 x 105)', r.total;
 
-  -- Mixed order: box of 4 (2 Chimp + 2 Bueno = 380 + 60 = 440) + singles (1 Coco 110 + 1 Bueno 135 = 245) = 685
+  -- Mixed order: box of 3 (2 Chimp + 1 Bueno = 285 + 30 = 315) + singles (1 Coco 110 + 1 Bueno 135 = 245) = 560
   select * into r from public.place_order('Sam', null, '09175550002', 'pickup', null,
-    '[{"size":4,"items":[{"flavor_slug":"choc-chip","qty":2},{"flavor_slug":"kinder-bueno","qty":2}]}]'::jsonb, null,
+    '[{"size":3,"items":[{"flavor_slug":"choc-chip","qty":2},{"flavor_slug":"kinder-bueno","qty":1}]}]'::jsonb, null,
     '[{"flavor_slug":"double-choc","qty":1},{"flavor_slug":"kinder-bueno","qty":1}]'::jsonb);
-  assert r.total = 685, 'box 440 + singles 245 should be 685, got ' || r.total;
-  raise notice 'PASS (k): box + singles total = % (440 + 245)', r.total;
+  assert r.total = 560, 'box 315 + singles 245 should be 560, got ' || r.total;
+  raise notice 'PASS (k): box + singles total = % (315 + 245)', r.total;
 
   -- Duplicate slugs are merged; 3 Coco Loco = 330
   select * into r from public.place_order('Sam', null, '09175550003', 'pickup', null, '[]'::jsonb, null,
@@ -757,9 +757,9 @@ begin
   set local role anon;
   -- extra "price" fields on singles and on a box, and a fake "total", are never read
   select * into r from public.place_order('Cheat', null, '09175550007', 'pickup', null,
-    '[{"size":4,"price":1,"total":1,"items":[{"flavor_slug":"choc-chip","qty":4,"price":1}]}]'::jsonb, null,
+    '[{"size":3,"price":1,"total":1,"items":[{"flavor_slug":"choc-chip","qty":3,"price":1}]}]'::jsonb, null,
     '[{"flavor_slug":"choc-chip","qty":2,"price":1,"unit_price":1,"single_price":1,"total":1}]'::jsonb);
-  assert r.total = 380 + 210, 'tampered prices must be ignored: expected 590, got ' || r.total;
+  assert r.total = 285 + 210, 'tampered prices must be ignored: expected 495, got ' || r.total;
   reset role;
   select count(*) into n from public.order_items where unit_price = 1;
   assert n = 0, 'no item may carry the tampered price';
@@ -780,7 +780,7 @@ begin
   end;
   -- ...but it can still go in a box
   perform public.place_order('Cheat', null, '09175550009', 'pickup', null,
-    '[{"size":4,"items":[{"flavor_slug":"kinder-bueno","qty":4}]}]'::jsonb);
+    '[{"size":3,"items":[{"flavor_slug":"kinder-bueno","qty":3}]}]'::jsonb);
   reset role;
 end $$;
 rollback;
@@ -870,5 +870,126 @@ begin
     raise notice 'PASS (m): visitors cannot edit flavor details';
   end;
   reset role;
+end $$;
+rollback;
+
+
+-- ===========================================================================
+-- (n) Box sizes (migration 010): only 3, 6 and 12 are sold. The box of 4 is retired but
+-- kept. Prices come from the boxes table; the flavor caps and delivery minimum still apply.
+-- ===========================================================================
+begin;
+do $$
+declare
+  r record; v_sunday date := public.ordering_sunday();
+  v_have int; v_choc bigint := (select id from public.flavors where slug = 'choc-chip');
+  v_order bigint; admin_id uuid := gen_random_uuid(); j jsonb;
+begin
+  -- The boxes table: 3, 6, 12 on sale; 4 kept but off
+  assert (select array_agg(size order by size) from public.boxes where active) = array[3, 6, 12], 'active sizes should be 3, 6, 12';
+  assert (select not active from public.boxes where size = 4), 'the box of 4 should be kept but switched off';
+  assert (select price from public.boxes where size = 3) = 285 and (select price from public.boxes where size = 6) = 570
+     and (select price from public.boxes where size = 12) = 1080, 'box prices should be 285 / 570 / 1080';
+  set local role anon;
+  assert (select array_agg(size order by size) from public.boxes) = array[3, 6, 12], 'visitors should see only 3, 6, 12';
+  assert (select count(*) from public.boxes where description is not null) = 3, 'each box has a description';
+  begin
+    update public.boxes set price = 1 where size = 3;
+    raise exception 'FAIL (n): a visitor changed a box price';
+  exception when insufficient_privilege then null; end;
+  raise notice 'PASS (n): visitors see boxes 3, 6, 12 only, with descriptions, and cannot edit them';
+
+  -- Totals come from the table. Box of 3 = 285 (choc chip only, no surcharge)
+  select * into r from public.place_order('N', null, '09175551001', 'pickup', null,
+    '[{"size":3,"items":[{"flavor_slug":"choc-chip","qty":3}]}]'::jsonb);
+  assert r.total = 285, 'box of 3 should be 285, got ' || r.total;
+  -- Box of 3 with Bueno: 285 + 3 x 30 = 375
+  select * into r from public.place_order('N', null, '09175551002', 'pickup', null,
+    '[{"size":3,"items":[{"flavor_slug":"kinder-bueno","qty":3}]}]'::jsonb);
+  assert r.total = 375, 'box of 3 of Bueno should be 375, got ' || r.total;
+  -- Box of 12 = 1080; with 4 Bueno: 1080 + 120 = 1200
+  select * into r from public.place_order('N', null, '09175551003', 'pickup', null,
+    '[{"size":12,"items":[{"flavor_slug":"choc-chip","qty":4},{"flavor_slug":"double-choc","qty":4},{"flavor_slug":"kinder-bueno","qty":4}]}]'::jsonb);
+  assert r.total = 1200, 'box of 12 with 4 Bueno should be 1200, got ' || r.total;
+  raise notice 'PASS (n): totals are 285 (box of 3), 375 (3 Bueno) and 1200 (box of 12 with 4 Bueno)';
+
+  -- A box of 12 needs exactly 12
+  begin
+    perform 1 from public.place_order('N', null, '09175551005', 'pickup', null,
+      '[{"size":12,"items":[{"flavor_slug":"choc-chip","qty":6},{"flavor_slug":"double-choc","qty":5}]}]'::jsonb);
+    raise exception 'FAIL (n): an 11-cookie box of 12 was accepted';
+  exception when others then
+    if sqlerrm not like '%needs exactly 12%' then raise; end if;
+    raise notice 'PASS (n): a box of 12 needs exactly 12 cookies';
+  end;
+
+  -- The retired box of 4, and sizes that never existed, are refused
+  begin
+    perform 1 from public.place_order('N', null, '09175551006', 'pickup', null,
+      '[{"size":4,"items":[{"flavor_slug":"choc-chip","qty":4}]}]'::jsonb);
+    raise exception 'FAIL (n): the retired box of 4 was accepted';
+  exception when others then
+    if sqlerrm not like '%box size isn''t available%' then raise; end if;
+    raise notice 'PASS (n): a box of 4 is rejected -> %', sqlerrm;
+  end;
+  begin
+    perform 1 from public.place_order('N', null, '09175551007', 'pickup', null,
+      '[{"size":5,"items":[{"flavor_slug":"choc-chip","qty":5}]}]'::jsonb);
+    raise exception 'FAIL (n): a box of 5 was accepted';
+  exception when others then
+    if sqlerrm not like '%box size isn''t available%' then raise; end if;
+  end;
+  raise notice 'PASS (n): a box of 5 is rejected too';
+
+  -- Delivery minimum is unchanged: 1 cookie under P200 is refused, a box of 3 and 2 singles are fine
+  begin
+    perform 1 from public.place_order('N', null, '09175551008', 'delivery', '1 Test St', '[]'::jsonb, null,
+      '[{"flavor_slug":"choc-chip","qty":1}]'::jsonb);
+    raise exception 'FAIL (n): delivery with 1 cookie under 200 was accepted';
+  exception when others then
+    if sqlerrm not like '%Delivery orders need at least 2 cookies%' then raise; end if;
+  end;
+  perform public.place_order('N', null, '09175551009', 'delivery', '1 Test St', '[]'::jsonb, null, '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
+  perform public.place_order('N', null, '09175551010', 'delivery', '1 Test St',
+    '[{"size":3,"items":[{"flavor_slug":"double-choc","qty":3}]}]'::jsonb);
+  perform public.place_order('N', null, '09175551011', 'pickup', null, '[]'::jsonb, null, '[{"flavor_slug":"choc-chip","qty":1}]'::jsonb);
+  raise notice 'PASS (n): delivery minimum still applies (1 cookie refused; 2 cookies and a box of 3 fine); pickup 1 cookie fine';
+  reset role;
+
+  -- The per-flavor cap still applies to the big box: top Chimp Chips up to 10 reserved, then ask for 11
+  select reserved into v_have from public.flavor_reserved(v_sunday) where slug = 'choc-chip';
+  insert into public.orders (ref_code, sunday_date, name, phone, fulfillment, total, status)
+  values ('AJ-NFIXTR', v_sunday, 'Fixture', '09170000001', 'pickup', 0, 'paid') returning id into v_order;
+  if v_have < 10 then
+    insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price)
+    values (v_order, null, v_choc, 10 - v_have, 105);
+  end if;
+  set local role anon;
+  begin
+    perform 1 from public.place_order('N', null, '09175551012', 'pickup', null,
+      '[{"size":12,"items":[{"flavor_slug":"choc-chip","qty":11},{"flavor_slug":"double-choc","qty":1}]}]'::jsonb);
+    raise exception 'FAIL (n): a box of 12 went past the Chimp Chips cap';
+  exception when others then
+    if sqlerrm not like '%only 5 Chimp Chips left%' then raise; end if;
+    raise notice 'PASS (n): the flavor cap applies to a box of 12 -> %', sqlerrm;
+  end;
+  select * into r from public.place_order('N', null, '09175551013', 'pickup', null,
+    '[{"size":12,"items":[{"flavor_slug":"choc-chip","qty":5},{"flavor_slug":"double-choc","qty":7}]}]'::jsonb);
+  assert r.total = 1080, 'the last 5 Chimp Chips in a box of 12 should work (1080), got ' || r.total;
+  reset role;
+
+  -- Old orders keep their box of 4: the admin view still shows it
+  insert into auth.users (id) values (admin_id);
+  insert into public.admins (user_id) values (admin_id);
+  insert into public.orders (ref_code, sunday_date, name, phone, fulfillment, total, status)
+  values ('AJ-OLD4XX', v_sunday, 'Old', '09170000002', 'pickup', 380, 'paid') returning id into v_order;
+  insert into public.order_boxes (order_id, position, size, price) values (v_order, 1, 4, 380);
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', admin_id)::text, true);
+  j := public.admin_orders(v_sunday);
+  assert exists (select 1 from jsonb_array_elements(j) o, jsonb_array_elements(o -> 'boxes') b where o ->> 'ref_code' = 'AJ-OLD4XX' and (b ->> 'size')::int = 4),
+    'the admin should still see the old box of 4';
+  reset role;
+  raise notice 'PASS (n): an old box of 4 order is still visible to the admin';
 end $$;
 rollback;

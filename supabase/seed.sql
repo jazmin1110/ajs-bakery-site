@@ -23,12 +23,14 @@ update public.flavors set photo_url = coalesce(photo_url, 'assets/flavors/coco-l
 update public.flavors set photo_url = coalesce(photo_url, 'assets/flavors/bueno-mucho.jpg'),
   long_description = coalesce(long_description, 'Nutty brown butter with Kinder Maxi chocolate and a bueno center.') where slug = 'kinder-bueno';
 
--- Flat box prices.
-insert into public.boxes (size, price, active) values
-  (4, 380, true),
-  (6, 570, true)
+-- Flat box prices. The box of 4 is retired (kept, switched off: old orders point at it).
+insert into public.boxes (size, price, active, description) values
+  (3,  285,  true,  'A little treat, or a gift for one.'),
+  (4,  380,  false, null),
+  (6,  570,  true,  'Share it (or don''t).'),
+  (12, 1080, true,  'The party box. Best for gifting a crowd.')
 on conflict (size) do update
-  set price = excluded.price, active = excluded.active;
+  set price = excluded.price, active = excluded.active, description = excluded.description;
 
 -- ---------------------------------------------------------------------------
 -- Make yourself an admin (do this by hand, NOT in this file):

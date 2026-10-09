@@ -43,7 +43,7 @@ export async function fetchMenu() {
     sb.from("flavors")
       .select("id, slug, name, surcharge, single_price, long_description, ingredients, allergens, weight_g, shelf_life, storage_tip, nutrition_image_url, photo_url")
       .eq("active", true).order("id"),
-    sb.from("boxes").select("id, size, price").eq("active", true).order("size"),
+    sb.from("boxes").select("id, size, price, description").eq("active", true).order("size"),
   ]);
   if (flavorsRes.error) throw flavorsRes.error;
   if (boxesRes.error) throw boxesRes.error;

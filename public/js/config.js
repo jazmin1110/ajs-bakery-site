@@ -42,12 +42,6 @@ export const CONFIG = {
     },
   },
 
-  // One-liner for each box, keyed by box size.
-  boxBlurbs: {
-    4: "A little treat for you, or a gift for one.",
-    6: "Share it (or don't). Best for gifting.",
-  },
-
   maxBoxesPerOrder: 3, // cart limit (the checkout step must respect this too)
   // Order minimums (copy only: the database enforces them): pickup = 1 cookie; delivery = 2 cookies OR ₱200.
   minPickupCookies: 1,

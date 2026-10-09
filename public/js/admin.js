@@ -197,7 +197,7 @@ export function summarize(orders, flavors) {
 
 // How to pack loose single cookies: a bag for a few, a box from this many up.
 // (Change it here if you pack differently.)
-export const SINGLES_BOX_FROM = 4;
+export const SINGLES_BOX_FROM = 3;
 export function singlesPack(n) {
   return `${n >= SINGLES_BOX_FROM ? "Box" : "Bag"} of ${n}`;
 }

@@ -23,8 +23,10 @@ Single source of truth for the numbers. The database is the enforcer and the sto
 
 | Thing | Value |
 |---|---|
-| Box of 4 | ₱380 (₱95 per cookie) |
+| Box of 3 | ₱285 (₱95 per cookie) |
 | Box of 6 | ₱570 (₱95 per cookie) |
+| Box of 12 | ₱1,080 (₱90 per cookie) |
+| Box of 4 | **Retired** (kept in the `boxes` table, switched off: old orders point at it) |
 | Bueno surcharge | +₱30 per Bueno Mucho cookie inside a box (so ₱125 each in a box) |
 | **Single cookie: Chimp Chips** (brown butter choc chip) | **₱105** |
 | **Single cookie: Coco Loco** (double chocolate) | **₱110** |
@@ -84,7 +86,7 @@ public/                      <- what Vercel serves
   js/admin.js                shared admin helpers (login guard, Sunday picker, totals math)
   assets/                    flavors/*.jpg, gcash-qr.png, og-image.jpg
   robots.txt, sitemap.xml
-supabase/                    migrations 001-009, seed.sql, tests.sql  (NOT deployed)
+supabase/                    migrations 001-010, seed.sql, tests.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers

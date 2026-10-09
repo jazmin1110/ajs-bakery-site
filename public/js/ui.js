@@ -126,11 +126,22 @@ export function stockLabel(remaining) {
 }
 
 // The cheapest a cookie gets inside a box: the best box's per-cookie price plus the flavor's
-// box surcharge (e.g. 380 / 4 = 95; Bueno Mucho adds 30 -> 125). For the "or from ₱95 each" label.
+// box surcharge (e.g. 1080 / 12 = 90; Bueno Mucho adds 30 -> 120). For the "or from ₱90 each" label.
 export function boxEachPrice(flavor, boxes) {
   if (!boxes.length) return null;
   const perCookie = Math.min(...boxes.map((b) => b.price / b.size));
   return Math.round((perCookie + flavor.surcharge) * 100) / 100;
+}
+
+// "Save ₱30 vs singles" for one box: what the SAME number of cookies would cost as singles,
+// minus the box price. Flavors cost different amounts, so this uses the worst case (the flavor
+// where a box saves least, after its box surcharge): the saving is never overstated, whatever
+// mix the customer picks. null when a box wouldn't save anything. Display only.
+export function boxSavings(box, flavors) {
+  const perCookie = flavors.filter((f) => f.single_price != null).map((f) => f.single_price - f.surcharge);
+  if (!perCookie.length) return null;
+  const saving = Math.round(box.size * Math.min(...perCookie) - box.price);
+  return saving > 0 ? saving : null;
 }
 
 // One compact card per flavor. Everything needed to order is visible without opening anything:
@@ -181,7 +192,8 @@ export function renderBoxes(container, noteEl, boxes, flavors) {
         <div class="card-body">
           <div class="box-size">Box of ${b.size}</div>
           <div class="price">${peso(b.price)}</div>
-          <p>${esc(CONFIG.boxBlurbs[b.size] || "")}</p>
+          ${boxSavings(b, flavors) ? `<span class="save-badge">Save ${peso(boxSavings(b, flavors))} vs singles</span>` : ""}
+          <p class="box-desc">${esc(b.description || "")}</p>
           <p class="box-left" data-box-left hidden></p>
           <a class="btn" data-box-cta href="box.html?size=${b.size}">Build this box</a>
         </div>

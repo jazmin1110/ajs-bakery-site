@@ -383,9 +383,15 @@ export function syncWithMenu({ flavors, boxes }) {
   const peso = (n) => "₱" + n.toLocaleString("en-PH");
   const removed = [];
 
+  const retired = [];                                // box sizes that are no longer sold (e.g. the old box of 4)
   cart.boxes = cart.boxes.filter((b, idx) => {
     const menuBox = boxes.find((x) => x.size === b.size);
-    const gone = menuBox ? [] : [`the box of ${b.size}`];
+    if (!menuBox) {
+      // A size we stopped selling: say so, and point at the closest size that is on sale
+      if (!retired.includes(b.size)) retired.push(b.size);
+      return false;
+    }
+    const gone = [];
     for (const i of b.items) if (!flavors.some((f) => f.slug === i.slug)) gone.push(i.name);
     if (gone.length) { removed.push(`Box ${idx + 1} (${gone.join(", ")})`); return false; }
 
@@ -411,8 +417,14 @@ export function syncWithMenu({ flavors, boxes }) {
     return true;
   });
 
+  // One short line per retired size: "Box of 4 is retired, pick a Box of 3 instead."
+  retired.forEach((size) => {
+    const near = boxes.length ? boxes.reduce((a, b) => (Math.abs(b.size - size) < Math.abs(a.size - size) ? b : a)).size : null;
+    notices.unshift(`Box of ${size} is retired${near ? `, pick a Box of ${near} instead` : ""}.`);
+  });
+  changed = changed || retired.length > 0;
   if (removed.length) notices.unshift(`Removed from your cart because they're no longer available: ${removed.join("; ")}.`);
-  changed = removed.length > 0 || notices.length > 0;
+  changed = changed || removed.length > 0 || notices.length > 0;
 
   if (changed) write(cart);               // saves + refreshes the drawer, bar and badge
   else if (menuChanged) persist(cart);    // quiet housekeeping
