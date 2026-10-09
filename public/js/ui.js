@@ -155,6 +155,7 @@ export function renderMenu(container, flavors, boxes = [], availability = {}) {
                </div>`
             : `<div class="price">Box only</div>
                <p class="box-each">${esc(inBox)}</p>`}
+          <p class="soldout-note" data-soldout-note hidden>Unpaid orders release after 24 hours, so check back.</p>
           <span class="tag">Macro label coming soon</span>
         </div>
       </article>`;
@@ -166,12 +167,13 @@ export function renderBoxes(container, noteEl, boxes, flavors) {
   container.innerHTML = boxes
     .map(
       (b) => `
-      <article class="card box-card">
+      <article class="card box-card" data-box-size="${b.size}">
         <div class="card-body">
           <div class="box-size">Box of ${b.size}</div>
           <div class="price">${peso(b.price)}</div>
           <p>${esc(CONFIG.boxBlurbs[b.size] || "")}</p>
-          <a class="btn" href="box.html?size=${b.size}">Build this box</a>
+          <p class="box-left" data-box-left hidden></p>
+          <a class="btn" data-box-cta href="box.html?size=${b.size}">Build this box</a>
         </div>
       </article>`
     )

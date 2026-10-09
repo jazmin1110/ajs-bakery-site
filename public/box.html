@@ -124,6 +124,7 @@
             <div class="flavor-info">
               <strong>${esc(f.name)}</strong>
               <span class="stock" data-stock hidden></span>
+              <small class="soldout-note" data-soldout-note hidden>Unpaid orders release after 24 hours, so check back.</small>
               ${f.surcharge > 0 ? `<span class="surcharge">+${peso(f.surcharge)} each</span>` : ""}
             </div>
             <div class="stepper">
@@ -173,6 +174,8 @@
           badge.textContent = label; badge.hidden = !label;
           badge.classList.toggle("stock-out", left !== null && left <= 0);
           row.classList.toggle("is-soldout", left !== null && left <= 0);
+          const note = row.querySelector("[data-soldout-note]");
+          if (note) note.hidden = !(left !== null && left <= 0);
           row.querySelector("output").textContent = q;
           row.querySelector('[data-step="-1"]').disabled = q === 0;
           // + stops at the box size AND at the flavor's remaining limit
@@ -188,7 +191,7 @@
           : full ? `Add to cart · ${peso(cart.priceFor(box.price, items()))}`
           : `Pick ${box.size - n} more`;
         $("builder-msg").textContent = notEnough
-          ? `Only ${available} cookie${available === 1 ? "" : "s"} left for this Sunday, not enough for a box of ${box.size}.`
+          ? (available === 0 ? "Sold out for this Sunday." : `Only ${available} cookie${available === 1 ? "" : "s"} left, not enough for a box of ${box.size}.`)
           : cartFull
           ? `You can order up to ${CONFIG.maxBoxesPerOrder} boxes at a time. Remove one from your cart to add another.`
           : "";
@@ -213,6 +216,8 @@
           giftNote: $("gift-note").value,
         });
         if (!result.ok) { $("builder-msg").textContent = result.error; return; }
+        // Ask the database for fresh stock (someone else may have bought some while we browsed)
+        fetchAvailability().then((st) => { availability = st.bySlug; refresh(); }).catch((err) => console.error(err));
         // Reset the builder so they can make another box, then show the cart
         flavors.forEach((f) => (qty[f.slug] = 0));
         $("gift-note").value = "";

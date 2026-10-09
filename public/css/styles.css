@@ -601,10 +601,25 @@ body.has-cart-bar { padding-bottom: 5rem; }  /* so the bar never covers the foot
 .btn:disabled { opacity: 0.6; }
 
 /* ---------- Stock badges ("3 left", "Sold out") ---------- */
-.stock { display: inline-block; vertical-align: middle; margin-left: 0.4rem; padding: 2px 10px; border-radius: 999px; background: #fff3d6; border: 2px solid var(--accent); color: var(--ink); font-family: var(--font-body); font-size: 0.78rem; font-weight: 800; }
+.stock { display: inline-block; vertical-align: middle; margin-left: 0.4rem; padding: 2px 10px; border-radius: 999px; background: #fff3d6; border: 2px solid var(--accent); color: var(--accent-dark); font-family: var(--font-body); font-size: 0.78rem; font-weight: 800; }
 .stock[hidden] { display: none; }
-.flavor-row.is-soldout { opacity: 0.7; }
-.stock-out { background: #fdeceb; border-color: #d9665a; color: #8a2b22; }
+.stock-out { background: #e9e4dc; border-color: #b8aea0; color: #5b4f46; }   /* grey: nothing left */
+.is-soldout { filter: grayscale(0.85); opacity: 0.72; }
+.is-soldout .btn, .is-soldout .stepper button { cursor: not-allowed; }
+.soldout-note { display: block; margin: 0.3rem 0 0.2rem; color: #6b574d; font-size: 0.88rem; }
+.soldout-note[hidden] { display: none; }
+.box-left { margin: 0.3rem 0 0.6rem; color: var(--accent-dark); font-weight: 800; }
+.box-left[hidden] { display: none; }
+.btn.is-disabled { background: #d9c9ae; color: #5b4f46; box-shadow: none; pointer-events: none; }
+.rule-note { margin: -0.4rem 0 0.9rem; }
+.swap-panel { background: #fff3d6; border: 3px solid var(--accent); border-radius: var(--radius-sm); padding: 0.8rem 0.9rem; margin-bottom: 1rem; }
+.swap-panel[hidden] { display: none; }
+.swap-title { margin: 0 0 0.6rem; }
+.swap-row { border-top: 2px dashed var(--accent); padding-top: 0.6rem; margin-top: 0.6rem; }
+.swap-row p { margin: 0 0 0.4rem; }
+.swap-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.6rem; }
+.swap-controls label { display: block; font-weight: 700; flex: 1; min-width: 180px; }
+.swap-controls select { display: block; width: 100%; margin-top: 0.2rem; min-height: 44px; font: inherit; padding: 0.5rem; border: 2px solid var(--cream-dark); border-radius: var(--radius-sm); background: #fff; }
 
 /* ---------- Cart notice (cart changed while you were away) ---------- */
 .cart-notice { background: #fff3d6; border-bottom: 3px solid var(--accent); }

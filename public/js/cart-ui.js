@@ -18,11 +18,13 @@ export function hintHtml() {
     <a href="index.html#boxes">See boxes</a></p>`;
 }
 
-// "Minimum order is 2 cookies. Add 1 more to check out." (or "" if the minimum is met)
+// Delivery has a minimum (2 cookies or ₱200); pickup doesn't. A gentle note, not a blocker:
+// the customer might be planning to pick up. Returns "" if the cart already qualifies for delivery.
 export function minimumHtml() {
-  const short = cart.cookiesShort();
-  if (cart.isEmpty() || short === 0) return "";
-  return `<p class="min-msg" role="alert">Minimum order is ${cart.MIN_COOKIES} cookies. Add ${short} more to check out.</p>`;
+  if (cart.isEmpty()) return "";
+  const need = cart.deliveryShortfall();
+  if (!need) return "";
+  return `<p class="min-msg">Pickup: any order. Delivery needs at least ${cart.MIN_DELIVERY_COOKIES} cookies or ${peso(cart.MIN_DELIVERY_TOTAL)}: add ${need.moreCookies} more cookie${need.moreCookies === 1 ? "" : "s"} (or ${peso(need.morePeso)}) to qualify.</p>`;
 }
 
 // A small notice under the header: what changed in the cart while the customer was away.
@@ -162,7 +164,7 @@ function render() {
   const singles = cart.getSingles();
   const cookies = cart.cookieCount();
   const empty = cart.isEmpty();
-  const canCheckout = !empty && cart.meetsMinimum();
+  const canCheckout = !empty;
 
   // Header badge (if the page has one): total cookies in the cart
   const badge = document.getElementById("cart-count");
@@ -180,7 +182,7 @@ function render() {
   } else {
     // can't check out yet: show why, and make the button inert
     go.removeAttribute("href"); go.setAttribute("aria-disabled", "true"); go.classList.add("is-disabled");
-    go.textContent = `Add ${cart.cookiesShort()} more`;
+    go.textContent = "Checkout";
   }
 
   // Remember which stepper button had focus, so repeated taps on + or − keep working

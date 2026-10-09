@@ -49,7 +49,10 @@ export const CONFIG = {
   },
 
   maxBoxesPerOrder: 3, // cart limit (the checkout step must respect this too)
-  minCookiesPerOrder: 2, // copy only: the database enforces the minimum (singles + boxes combined)
+  // Order minimums (copy only: the database enforces them): pickup = 1 cookie; delivery = 2 cookies OR ₱200.
+  minPickupCookies: 1,
+  minDeliveryCookies: 2,
+  minDeliveryTotal: 200,
 
   // Copy only: the real limit (weekly_cap on each flavor, 15 each) and the cutoff are enforced by the database.
   // This number is just the fallback for the "15 of each flavor" wording until the live data loads.

@@ -67,6 +67,8 @@
         <p class="field-error" id="fulfillment-error" role="alert"></p>
       </fieldset>
 
+      <p class="field-hint rule-note" id="rule-note"></p>
+
       <div class="note-box" id="pickup-note" hidden></div>
 
       <div id="delivery-fields" hidden>
@@ -84,6 +86,9 @@
         <textarea id="gift" name="gift" rows="2" maxlength="500" placeholder="Happy birthday, Tita!"></textarea>
         <p class="field-hint">Goes on any box that doesn't already have its own note.</p>
       </div>
+
+      <!-- Shown when a flavor in the cart ran out: lets the customer swap it for something else -->
+      <div class="swap-panel" id="swap-panel" role="alert" hidden></div>
 
       <div class="form-error" id="form-error" role="alert" hidden></div>
 
@@ -109,6 +114,7 @@
     let sending = false;       // true while the order request is in flight
     let done = false;          // true once the order is placed (page is about to change)
     let availability = null;   // how many of each flavor are left this Sunday (display only; the database decides)
+    let menuFlavors = [];      // today's flavors (names and prices), used to offer swaps
     let sundayNotice = "";     // set if the ordering Sunday changed since the cart was built
 
     // ---- Retry-safe order key --------------------------------------------------
@@ -194,23 +200,79 @@
       // The gift note belongs to boxes; with only single cookies there's nothing to attach it to
       document.querySelector('[data-field="gift"]').hidden = boxes.length === 0;
 
-      // What stops checkout right now?
-      //   - fewer than 2 cookies (singles and boxes together)
-      //   - more of a flavor than is left this Sunday (we know once availability has loaded)
-      const short = !cart.meetsMinimum();
-      const over = Object.entries(cart.flavorTotals())
-        .filter(([slug, t]) => availability && availability[slug] && t.qty > availability[slug].remaining);
-      $("submit-btn").disabled = short || over.length > 0 || sending;
-      if (short) {
-        showFormError(`${minimumHtml().replace(/<\/?p[^>]*>/g, "")} <a href="index.html#menu">Add cookies</a>`, false);
-      } else if (over.length) {
-        const [slug, t] = over[0];
-        const left = availability[slug].remaining;
-        showFormError(`${left === 0 ? `${esc(t.name)} is sold out for this Sunday.` : `Only ${left} ${esc(t.name)} left for this Sunday, and you have ${t.qty} in your cart.`}
-          Please remove some from your cart (tap the cart icon) to continue.`, false);
-      } else if (!sending) {
-        $("form-error").hidden = true;
+      applyRules();
+    }
+
+    // Is a flavor over what's left? Returns [{ slug, name, qty, left }] (empty if all fine).
+    function overLimit() {
+      return Object.entries(cart.flavorTotals())
+        .filter(([slug, t]) => availability && availability[slug] && t.qty > availability[slug].remaining)
+        .map(([slug, t]) => ({ slug, name: t.name, qty: t.qty, left: availability[slug].remaining }));
+    }
+
+    // What stops checkout right now?
+    //   - a flavor in the cart that ran out (or has fewer left than you have): offer a swap
+    //   - delivery chosen but under the delivery minimum (2 cookies or ₱200): say what's missing
+    // (Pickup has no minimum beyond 1 cookie.) The database re-checks every rule on submit.
+    function applyRules() {
+      const over = overLimit();
+      const delivery = form.fulfillment.value === "delivery";
+      const need = delivery ? cart.deliveryShortfall() : null;
+
+      $("submit-btn").disabled = over.length > 0 || !!need || sending;
+      renderSwapPanel(over);
+
+      if (!over.length && need) {
+        showFormError(`Delivery needs at least ${cart.MIN_DELIVERY_COOKIES} cookies or ${peso(cart.MIN_DELIVERY_TOTAL)}. Add ${need.moreCookies} more cookie${need.moreCookies === 1 ? "" : "s"} (or ${peso(need.morePeso)}), or switch to pickup. <a href="index.html#menu">Add cookies</a>`, false);
+      } else if (!sending && !$("form-error").dataset.sticky) {
+        $("form-error").hidden = true;   // (a server error message stays until the next try)
       }
+    }
+
+    // "Chimp Chips is sold out. Swap to: [Coco Loco v] [Swap]" for each flavor that ran out
+    function renderSwapPanel(over) {
+      const panel = $("swap-panel");
+      if (!over.length) { panel.hidden = true; panel.innerHTML = ""; return; }
+      panel.hidden = false;
+      panel.innerHTML = `<p class="swap-title"><strong>Something ran out while you were shopping.</strong> Your cart is safe; swap it for another flavor, or remove some.
+        <button type="button" class="link-btn" data-recheck>Check again</button></p>` +
+        over.map((o) => {
+          // Another flavor works if it can hold ALL the cookies we'd move to it
+          const options = menuFlavors.filter((f) => f.slug !== o.slug && availability[f.slug]
+            && availability[f.slug].remaining - cart.flavorQty(f.slug) >= o.qty
+            && (cart.getSingles().every((sg) => sg.slug !== o.slug) || f.single_price != null));
+          return `<div class="swap-row" data-from="${esc(o.slug)}">
+            <p>${o.left === 0 ? `<strong>${esc(o.name)}</strong> is sold out.` : `Only <strong>${o.left} ${esc(o.name)}</strong> left, and you have ${o.qty}.`}
+               ${o.left === 0 ? "<small>Unpaid orders release after 24 hours, so check back.</small>" : ""}</p>
+            ${options.length ? `
+            <div class="swap-controls">
+              <label>Swap all ${o.qty} to
+                <select data-swap-to>${options.map((f) => `<option value="${esc(f.slug)}">${esc(f.name)} (${availability[f.slug].remaining} left)</option>`).join("")}</select>
+              </label>
+              <button type="button" class="btn btn-small" data-swap>Swap</button>
+            </div>` : `<p class="field-hint">No other flavor has enough left. Tap the cart icon to remove some.</p>`}
+          </div>`;
+        }).join("");
+    }
+
+    $("swap-panel").addEventListener("click", async (e) => {
+      if (e.target.closest("[data-recheck]")) {      // stock can come back (unpaid orders release after 24 hours)
+        await refreshAvailability(); applyRules(); return;
+      }
+      const btn = e.target.closest("[data-swap]");
+      if (!btn) return;
+      const row = btn.closest("[data-from]");
+      const to = menuFlavors.find((f) => f.slug === row.querySelector("[data-swap-to]").value);
+      if (to) cart.swapFlavor(row.dataset.from, to);   // redraws the summary and re-checks the rules
+    });
+
+    // Keep the numbers fresh while this page is open: when you come back to the tab, and every 30 seconds
+    document.addEventListener("visibilitychange", async () => { if (!document.hidden && !sending) { await refreshAvailability(); applyRules(); } });
+    setInterval(async () => { if (!document.hidden && !sending && !done) { await refreshAvailability(); applyRules(); } }, 30000);
+
+    // Fresh numbers from the database (also called right before the order is sent)
+    async function refreshAvailability() {
+      try { availability = (await fetchAvailability()).bySlug; } catch (err) { console.error(err); }
     }
 
     summary.addEventListener("click", (e) => {
@@ -224,7 +286,7 @@
     // the database re-checks everything when the order is placed anyway.
     // (Retired flavors are removed and price changes shown in a notice at the top of the page.)
     fetchMenu()
-      .then((menu) => { cart.syncWithMenu(menu); renderSummary(); })
+      .then((menu) => { menuFlavors = menu.flavors; cart.syncWithMenu(menu); renderSummary(); })
       .catch((err) => console.error(err));
 
     // How many of each flavor are left, so we can warn BEFORE the order is placed
@@ -255,8 +317,12 @@
     $("delivery-note").textContent =
       `You'll book Lalamove or Grab for the Sunday ${CONFIG.pickupWindow} window; delivery fee is paid by you.`;
 
+    $("rule-note").textContent =
+      `Pickup: any order (at least ${CONFIG.minPickupCookies} cookie). Delivery: at least ${CONFIG.minDeliveryCookies} cookies or ₱${CONFIG.minDeliveryTotal}.`;
+
     function updateFulfillment() {
       const v = form.fulfillment.value;
+      applyRules();
       $("pickup-note").hidden = v !== "pickup";
       $("delivery-fields").hidden = v !== "delivery";
     }
@@ -346,6 +412,7 @@
         case "note_too_long":
         case "too_many_open_orders":
         case "flavor_cap":
+          return `${esc(err.message)} Your cart is saved: swap it below or remove some.`;
         case "minimum_not_met":
         case "too_many_cookies":
         case "empty_order":
@@ -363,15 +430,25 @@
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       if (sending) return;                       // ignore double taps
+      delete $("form-error").dataset.sticky;
       $("form-error").hidden = true;
 
       const values = validate();
       if (!values) return;
 
+      // Fresh stock numbers right before sending: if a flavor ran out while they were
+      // filling in the form, show the swap panel now instead of failing at the server.
+      const btn0 = $("submit-btn");
+      btn0.disabled = true; btn0.textContent = "Checking availability...";
+      await refreshAvailability();
+      btn0.textContent = "Place order";
+      applyRules();
+      if (btn0.disabled) { $("swap-panel").hidden ? null : $("swap-panel").scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+
       const boxes = cart.getBoxes();
       const singles = cart.getSingles();
       if (cart.isEmpty()) return renderSummary();
-      if (!cart.meetsMinimum()) return renderSummary();   // shows why checkout is blocked
+      if (!cart.meetsMinimum()) return renderSummary();
 
       // The checkout note goes on boxes that don't have their own note
       const sharedNote = $("gift").value.trim();
@@ -398,6 +475,13 @@
         sending = false;
         btn.disabled = false;
         btn.textContent = err.isNetwork ? "Try again" : "Place order";
+        if (err.hint === "flavor_cap") {
+          // A flavor ran out between the check and the order. Keep the server's message (it names the
+          // flavor), then refresh the stock and offer the swap. The cart is untouched.
+          $("form-error").dataset.sticky = "1";
+          await refreshAvailability();
+          applyRules();
+        }
       }
     });
   </script>

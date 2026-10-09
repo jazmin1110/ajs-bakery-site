@@ -172,10 +172,22 @@ export function flavorTotals() {
   return out;
 }
 
-// The minimum order (display copy: the database enforces the real rule)
-export const MIN_COOKIES = CONFIG.minCookiesPerOrder;
-export function cookiesShort() { return Math.max(0, MIN_COOKIES - cookieCount()); }
-export function meetsMinimum() { return cookieCount() >= MIN_COOKIES; }
+// Order minimums (display copy: the database enforces the real rules):
+//   pickup   = at least 1 cookie
+//   delivery = at least 2 cookies OR at least ₱200 (either one is enough)
+export const MIN_PICKUP_COOKIES = CONFIG.minPickupCookies;
+export const MIN_DELIVERY_COOKIES = CONFIG.minDeliveryCookies;
+export const MIN_DELIVERY_TOTAL = CONFIG.minDeliveryTotal;
+export function cookiesShort() { return Math.max(0, MIN_PICKUP_COOKIES - cookieCount()); }
+export function meetsMinimum() { return cookieCount() >= MIN_PICKUP_COOKIES; }   // the pickup minimum
+
+// What the cart is missing for DELIVERY, or null if it already qualifies.
+// { moreCookies, morePeso }: adding either amount (cookies OR pesos) would be enough.
+export function deliveryShortfall() {
+  const cookies = cookieCount(), pesos = total();
+  if (cookies >= MIN_DELIVERY_COOKIES || pesos >= MIN_DELIVERY_TOTAL) return null;
+  return { moreCookies: MIN_DELIVERY_COOKIES - cookies, morePeso: MIN_DELIVERY_TOTAL - pesos };
+}
 
 // "1 box + 3 cookies", "2 boxes", "3 cookies"
 export function summaryText() {
@@ -311,6 +323,39 @@ export function setSingleQty(slug, qty) {
 }
 
 export function removeSingle(slug) { setSingleQty(slug, 0); }
+
+// Swap every cookie of one flavor in the cart for another flavor ("sold out, pick something else").
+// Singles move to the new flavor's line (at its single price); inside boxes the flavor is replaced
+// (so box totals change if the surcharge differs). `to` = { slug, name, single_price, surcharge }.
+// Returns how many cookies were moved (0 = nothing to swap, or the new flavor can't be a single).
+export function swapFlavor(fromSlug, to) {
+  if (fromSlug === to.slug) return 0;
+  const cart = read();
+  let moved = 0;
+
+  const single = cart.singles.find((s) => s.slug === fromSlug);
+  if (single && to.single_price != null) {
+    moved += single.qty;
+    cart.singles = cart.singles.filter((s) => s.slug !== fromSlug);
+    const target = cart.singles.find((s) => s.slug === to.slug);
+    if (target) target.qty += single.qty;
+    else cart.singles.push({ slug: to.slug, name: to.name, qty: single.qty, unitPrice: to.single_price, surcharge: to.surcharge });
+  }
+
+  for (const b of cart.boxes) {
+    const item = b.items.find((i) => i.slug === fromSlug);
+    if (!item) continue;
+    moved += item.qty;
+    b.items = b.items.filter((i) => i.slug !== fromSlug);
+    const target = b.items.find((i) => i.slug === to.slug);
+    if (target) target.qty += item.qty;
+    else b.items.push({ slug: to.slug, name: to.name, qty: item.qty, surcharge: to.surcharge });
+    b.price = priceFor(b.boxPrice, b.items);
+  }
+
+  if (moved) write(cart);
+  return moved;
+}
 
 // Empty the whole cart (the "Clear cart" button, and after an order is placed)
 export function clear() {

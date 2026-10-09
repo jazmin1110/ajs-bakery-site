@@ -65,7 +65,7 @@
     <section id="menu">
       <div class="container">
         <h2>The Menu</h2>
-        <p class="section-sub">Three brown butter flavors. Grab a few single cookies, or save with a box. Minimum order is 2 cookies. Every cookie ships with a nutrition label.</p>
+        <p class="section-sub">Three brown butter flavors. Grab a single cookie or save with a box. Pickup: any order, even just 1 cookie. Delivery: at least 2 cookies or ₱200. Every cookie ships with a nutrition label.</p>
         <div class="card-grid" id="menu-grid"><p class="loading">Loading the menu...</p></div>
       </div>
     </section>
@@ -169,7 +169,11 @@
         const label = stockLabel(left);
         badge.textContent = label;
         badge.hidden = !label;
-        badge.classList.toggle("stock-out", left !== null && left <= 0);
+        const soldOut = left !== null && left <= 0;
+        badge.classList.toggle("stock-out", soldOut);
+        card.classList.toggle("is-soldout", soldOut);                 // greys the whole flavor out
+        const note = card.querySelector("[data-soldout-note]");
+        if (note) note.hidden = !soldOut;                              // "Unpaid orders release after 24 hours..."
 
         const out = card.querySelector("output");
         const add = card.querySelector("[data-add-single]");
@@ -183,6 +187,34 @@
           add.textContent = left !== null && left <= 0 ? "Sold out" : limit <= 0 ? "All in your cart" : "Add to cart";
         }
       });
+    }
+
+    // Disable a box size when fewer cookies are left (across all flavors, minus what's already
+    // in the cart) than the box needs: "Only 3 cookies left".
+    let boxCards = [];
+    function refreshBoxes() {
+      if (!availability) return;                       // unknown: leave them enabled (the database checks anyway)
+      const left = Object.entries(availability)
+        .reduce((sum, [slug, a]) => sum + Math.max(0, a.remaining - cart.flavorQty(slug)), 0);
+      document.querySelectorAll("#box-grid [data-box-size]").forEach((card) => {
+        const size = Number(card.dataset.boxSize);
+        const cta = card.querySelector("[data-box-cta]");
+        const msg = card.querySelector("[data-box-left]");
+        const tooFew = left < size;
+        card.classList.toggle("is-soldout", tooFew);
+        msg.hidden = !tooFew;
+        msg.textContent = left === 0 ? "Sold out" : `Only ${left} cookie${left === 1 ? "" : "s"} left`;
+        cta.classList.toggle("is-disabled", tooFew);
+        cta.toggleAttribute("aria-disabled", tooFew);
+        if (tooFew) { cta.removeAttribute("href"); cta.tabIndex = -1; }
+        else { cta.href = `box.html?size=${size}`; cta.removeAttribute("tabindex"); }
+      });
+    }
+
+    // Ask the database again (page load, and after every add to cart)
+    async function reloadAvailability() {
+      try { availability = (await fetchAvailability()).bySlug; } catch (err) { console.error(err); return; }
+      refreshStock(); refreshBoxes();
     }
 
     // Stepper + "Add to cart" on each menu card (single cookies).
@@ -207,8 +239,9 @@
         add.textContent = result.ok ? "Added ✓" : result.error;
         out.textContent = "1";
         setTimeout(() => { delete add.dataset.busy; refreshStock(); }, 1800);
+        if (result.ok) reloadAvailability();     // someone else may have bought some while we browsed
       });
-      window.addEventListener("cart:changed", refreshStock);   // the cart changed: limits move
+      window.addEventListener("cart:changed", () => { refreshStock(); refreshBoxes(); });   // the cart changed: limits move
     }
 
     // Banner, menu and boxes load separately so one failing doesn't hide the others
@@ -228,6 +261,7 @@
         wireSingles(document.getElementById("menu-grid"), flavors);
         refreshStock();
         renderBoxes(document.getElementById("box-grid"), document.getElementById("box-note"), boxes, flavors);
+        refreshBoxes();
         cart.syncWithMenu({ flavors, boxes });   // keep the cart in line with today's menu (retired items are removed, with a notice)
         if (availability) {                      // keep the "15 of each flavor" wording in step with the database
           const cap = Math.max(...Object.values(availability).map((a) => a.cap));

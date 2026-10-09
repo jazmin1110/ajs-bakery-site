@@ -635,18 +635,51 @@ begin
 end $$;
 rollback;
 
--- Minimum order: 2 cookies
+-- Minimums (migration 008): pickup = 1 cookie; delivery = 2 cookies OR P200. Plus other order-size sanity checks.
 begin;
 do $$
 begin
   set local role anon;
+  declare r record;
   begin
-    perform 1 from public.place_order('Min', null, '09175550004', 'pickup', null, '[]'::jsonb, null,
+    -- PICKUP: 1 cookie is enough
+    select * into r from public.place_order('Min', null, '09175550101', 'pickup', null, '[]'::jsonb, null,
       '[{"flavor_slug":"choc-chip","qty":1}]'::jsonb);
-    raise exception 'FAIL (k): a 1-cookie order was accepted';
-  exception when others then
-    if sqlerrm not like '%minimum order is 2%' then raise; end if;
-    raise notice 'PASS (k): 1 cookie rejected -> %', sqlerrm;
+    assert r.total = 105, 'one Chimp Chips for pickup should be 105, got ' || r.total;
+    raise notice 'PASS (k): pickup accepts a single cookie (total %)', r.total;
+
+    -- DELIVERY: 1 cookie under P200 is rejected
+    begin
+      perform 1 from public.place_order('Min', null, '09175550102', 'delivery', '1 Test St', '[]'::jsonb, null,
+        '[{"flavor_slug":"choc-chip","qty":1}]'::jsonb);
+      raise exception 'FAIL (k): a 1-cookie delivery order under P200 was accepted';
+    exception when others then
+      if sqlerrm not like '%Delivery orders need at least 2 cookies or ₱200%' then raise; end if;
+      raise notice 'PASS (k): delivery of 1 cookie (P105) rejected -> %', sqlerrm;
+    end;
+    begin
+      perform 1 from public.place_order('Min', null, '09175550102', 'delivery', '1 Test St', '[]'::jsonb, null,
+        '[{"flavor_slug":"kinder-bueno","qty":1}]'::jsonb);
+      raise exception 'FAIL (k): a 1-cookie delivery order (P135) was accepted';
+    exception when others then
+      if sqlerrm not like '%Delivery orders need%' then raise; end if;
+    end;
+
+    -- DELIVERY: 2 cookies is enough
+    select * into r from public.place_order('Min', null, '09175550103', 'delivery', '1 Test St', '[]'::jsonb, null,
+      '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
+    raise notice 'PASS (k): delivery accepts 2 cookies';
+  end;
+  -- DELIVERY: 1 cookie is enough if it costs P200 or more (we make Bueno Mucho P250 for this test)
+  reset role;
+  update public.flavors set single_price = 250 where slug = 'kinder-bueno';
+  set local role anon;
+  declare r2 record;
+  begin
+    select * into r2 from public.place_order('Min', null, '09175550104', 'delivery', '1 Test St', '[]'::jsonb, null,
+      '[{"flavor_slug":"kinder-bueno","qty":1}]'::jsonb);
+    assert r2.total = 250, 'one P250 cookie by delivery should be accepted at 250';
+    raise notice 'PASS (k): delivery accepts 1 cookie when it costs P200 or more';
   end;
   begin
     perform 1 from public.place_order('Min', null, '09175550004', 'pickup', null, '[]'::jsonb);
@@ -675,7 +708,7 @@ begin
       '[{"flavor_slug":"choc-chip","qty":46}]'::jsonb);
     raise exception 'FAIL (k): 46 Chimp Chips in one order accepted';
   exception when others then
-    if sqlerrm not like '%only 15 Chimp Chips left%' and sqlerrm not like '%Chimp Chips is sold out%' then raise; end if;
+    if sqlerrm not like '%Chimp Chips left%' and sqlerrm not like '%Chimp Chips is sold out%' then raise; end if;
     raise notice 'PASS (k): an order bigger than a flavor cap is rejected (%)', sqlerrm;
   end;
   begin
@@ -776,5 +809,38 @@ begin
   assert (j -> 0 -> 'singles' -> 0 ->> 'unit_price')::numeric = 105 and (j -> 0 -> 'singles' -> 1 ->> 'qty')::int = 2, 'singles detail';
   reset role;
   raise notice 'PASS (k): admin_orders lists singles with quantity and the price they were sold at';
+end $$;
+rollback;
+
+
+-- ===========================================================================
+-- (l) With only 1 cookie left across all flavors, this Sunday is still open
+-- (the smallest order is now 1 cookie for pickup), and that last cookie can be ordered.
+-- ===========================================================================
+begin;
+do $$
+declare
+  v_sunday date := public.ordering_sunday();
+  v_order bigint; v_take int; f record; r record; i record; keep bigint := (select id from public.flavors where slug = 'choc-chip');
+begin
+  insert into public.orders (ref_code, sunday_date, name, phone, fulfillment, total, status)
+  values ('AJ-FIXTURE', v_sunday, 'Fixture', '09170000000', 'pickup', 0, 'paid') returning id into v_order;
+  -- sell out everything except exactly 1 Chimp Chips
+  for f in select flavor_id, remaining from public.flavor_reserved(v_sunday) loop
+    v_take := f.remaining - (case when f.flavor_id = keep then 1 else 0 end);   -- (CASE is kept out of the IF: its THEN would end the IF early)
+    if v_take > 0 then
+      insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price)
+      values (v_order, null, f.flavor_id, v_take, 100);
+    end if;
+  end loop;
+  set local role anon;
+  select * into i from public.current_sunday_info();
+  assert not i.is_full and i.remaining = 1 and i.ordering_sunday = v_sunday, 'with 1 cookie left the Sunday is still open';
+  select * into r from public.place_order('Last', null, '09176660040', 'pickup', null, '[]'::jsonb, null, '[{"flavor_slug":"choc-chip","qty":1}]'::jsonb);
+  assert r.sunday_date = v_sunday, 'the last cookie is orderable for pickup';
+  select * into i from public.current_sunday_info();
+  assert i.is_full and i.ordering_sunday = v_sunday + 7, 'now it is sold out and ordering moves on';
+  reset role;
+  raise notice 'PASS (l): the last single cookie can be ordered for pickup, then ordering moves to the next Sunday';
 end $$;
 rollback;

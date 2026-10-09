@@ -29,7 +29,7 @@ Single source of truth for the numbers. The database is the enforcer and the sto
 | **Single cookie: Chimp Chips** (brown butter choc chip) | **₱105** |
 | **Single cookie: Coco Loco** (double chocolate) | **₱110** |
 | **Single cookie: Bueno Mucho** (Kinder Bueno) | **₱135** |
-| **Minimum order** | **2 cookies**, singles and boxes combined |
+| **Minimum order** | **Pickup: 1 cookie. Delivery: 2 cookies OR ₱200** (either is enough). Singles and box cookies both count |
 | **Cap** | **15 of each flavor per Sunday** (`flavors.weekly_cap`), not a total. Box cookies **and** singles both count toward their flavor's cap. When a flavor hits 15 it shows "Sold out"; the other flavors stay available. When ALL flavors are sold out, ordering moves to the next Sunday |
 | Order limits | Up to 3 boxes per order, plus any single cookies. An order can't take more of a flavor than is left (the error names the flavor and how many remain) |
 | Order cutoff | Wednesday 21:00 Asia/Manila |
@@ -39,7 +39,7 @@ Single source of truth for the numbers. The database is the enforcer and the sto
 
 **Singles vs boxes:** an order can hold boxes, loose single cookies, or both. A box is cheaper per cookie than singles (that is the point of boxes), so the cart nudges people toward a box when singles would cost more. `flavors.single_price` is the single price (null = not sold as a single). The old `flavors.price` column is unused legacy; ignore it.
 
-**All prices, the 2-cookie minimum and each flavor's weekly cap are computed in the database** (`place_order`). "Reserved" for a flavor on a Sunday = its cookies in paid orders plus pending orders that haven't expired; expired and cancelled orders free their slots. The browser shows prices for display only and never sends a price.
+**All prices, the pickup/delivery minimums and each flavor's weekly cap are computed in the database** (`place_order`). "Reserved" for a flavor on a Sunday = its cookies in paid orders plus pending orders that haven't expired; expired and cancelled orders free their slots. The browser shows prices for display only and never sends a price.
 
 **Cutoff rule:** a Sunday `S` accepts orders until `S − 4 days at 21:00` Asia/Manila (that's Wednesday 9pm). Orders placed after that go to the next Sunday.
 
@@ -79,7 +79,7 @@ public/                      <- what Vercel serves
   js/admin.js                shared admin helpers (login guard, Sunday picker, totals math)
   assets/                    flavors/*.jpg, gcash-qr.png, og-image.jpg
   robots.txt, sitemap.xml
-supabase/                    migrations 001-007, seed.sql, tests.sql  (NOT deployed)
+supabase/                    migrations 001-008, seed.sql, tests.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers
