@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Design lab | AJ's</title>
+  <meta name="theme-color" content="#2B4C93">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
+  <!-- Every candidate font, loaded just for this page. The real site will load only the pair you choose. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Chewy&family=Baloo+2:wght@600;700;800&family=Nunito+Sans:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    /* ---- Lab-only styles (nothing here ships to the real pages) ---- */
+    body { padding-bottom: 2rem; }
+    .lab-intro { padding: 1.2rem 0 0.4rem; }
+    .lab-intro h1 { font-size: 1.6rem; }
+    .lab-pair { margin: 1.5rem 0 2.5rem; padding: 1.2rem 0 1.5rem; border-top: 2px solid var(--line); }
+    .lab-tag { display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--blue); color: #fff; font: 700 0.9rem var(--font-body); }
+    .lab-pair .lab-h1 { font-size: 2.6rem; line-height: 1.08; margin: 0.7rem 0 0.4rem; color: var(--blue-dark); }
+    .lab-pair .lab-sub { font-size: 1.1rem; line-height: 1.55; max-width: 34ch; margin: 0 0 1rem; }
+    .lab-pair h2 { font-size: 1.6rem; line-height: 1.15; }
+    .lab-pair h3 { font-size: 1.15rem; margin: 0; }
+    .lab-pair p, .lab-pair li { line-height: 1.55; }
+    .lab-pair { font-family: var(--font-body); }   /* body text re-reads the pair's --font-body */
+    .lab-pair .lab-body { max-width: 62ch; }
+    .lab-sec { margin-top: 1.4rem; }
+    .lab-sec > small { display: block; margin-bottom: 0.4rem; color: var(--ink-soft); font: 700 0.8rem var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; }
+    .lab-box { max-width: 300px; }
+
+    /* The sticker cutouts, shown the way the real site will show them: no frame, no radius, a soft shadow, a slight tilt */
+    .lab-pair .fi-photo { background: none; border-radius: 0; overflow: visible; }
+    .lab-pair .fi-photo img { position: static; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 6px 12px rgba(92, 58, 34, 0.20)); }
+    .lab-pair .flavor-item:nth-child(1) .fi-photo img { transform: rotate(-3deg); }
+    .lab-pair .flavor-item:nth-child(2) .fi-photo img { transform: rotate(2deg); }
+
+    /* One font pair per block: the site's own rules read --font-display and --font-body */
+    .pair-a { --font-display: "Fraunces", Georgia, serif;                          --font-body: "Nunito Sans", system-ui, sans-serif; }
+    .pair-b { --font-display: "Bricolage Grotesque", "Trebuchet MS", sans-serif;   --font-body: "Nunito Sans", system-ui, sans-serif; }
+    .pair-c1 { --font-display: "Chewy", "Trebuchet MS", cursive;                   --font-body: "Nunito Sans", system-ui, sans-serif; }
+    .pair-c2 { --font-display: "Baloo 2", "Trebuchet MS", sans-serif;              --font-body: "Nunito Sans", system-ui, sans-serif; }
+    .pair-a h1, .pair-a h2, .pair-a h3, .pair-a .price, .pair-a .box-size { font-weight: 700; }
+    .pair-b h1, .pair-b h2, .pair-b h3, .pair-b .price, .pair-b .box-size { font-weight: 800; }
+    .pair-c1 h1, .pair-c1 h2, .pair-c1 h3, .pair-c1 .price, .pair-c1 .box-size { font-weight: 400; }   /* Chewy only has one weight */
+    .pair-c2 h1, .pair-c2 h2, .pair-c2 h3, .pair-c2 .price, .pair-c2 .box-size { font-weight: 700; }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <div class="lab-intro">
+      <h1>Design lab: pick a type pairing</h1>
+      <p class="lab-body">Each block shows the real headline, a flavor row, a box card, a button and a paragraph in one pairing. Body text is Nunito Sans in all of them. Tell me A, B, C1 (Chewy) or C2 (Baloo 2).</p>
+    </div>
+
+    <!-- ================= A ================= -->
+    <section class="lab-pair pair-a" aria-labelledby="a-title">
+      <span class="lab-tag" id="a-title">A) Fraunces + Nunito Sans</span>
+      <h1 class="lab-h1">Warm cookies, made at home.</h1>
+      <p class="lab-sub">Small-batch brown butter cookies, baked at home in Manila.</p>
+      <div class="hero-actions"><a class="btn" href="#">Order cookies</a><a class="btn btn-ghost" href="#">Build a box</a></div>
+
+      <div class="lab-sec">
+        <small>Flavor row</small>
+        <div class="menu-list">
+          <article class="flavor-item">
+            <div class="fi-body"><div class="fi-text">
+              <h3>Bueno Mucho</h3>
+              <p class="fi-desc">Brown butter and milk chocolate with a Kinder Bueno hidden in…</p>
+              <p class="fi-price"><span class="price">₱135</span> <small>each</small></p>
+              <p class="box-each">or from ₱120 each in a box</p>
+            </div>
+            <div class="fi-photo"><img class="card-img" src="assets/stickers/bueno-mucho-sticker-240.webp" srcset="assets/stickers/bueno-mucho-sticker-240.webp 240w, assets/stickers/bueno-mucho-sticker-480.webp 480w" sizes="96px" width="240" height="235" alt="Bueno Mucho cookie sticker"></div></div>
+            <div class="fi-add"><button type="button" class="add-pill">+ Add</button></div>
+          </article>
+          <article class="flavor-item">
+            <div class="fi-body"><div class="fi-text">
+              <h3>Chimp Chips</h3>
+              <p class="fi-desc">Brown butter and lots of dark chocolate. Soft, chewy, a little…</p>
+              <p class="fi-price"><span class="price">₱105</span> <small>each</small></p>
+              <p class="box-each">or from ₱90 each in a box</p>
+            </div>
+            <div class="fi-photo"><img class="card-img" src="assets/stickers/chimp-chips-sticker-240.webp" srcset="assets/stickers/chimp-chips-sticker-240.webp 240w, assets/stickers/chimp-chips-sticker-480.webp 480w" sizes="96px" width="240" height="243" alt="Chimp Chips cookie sticker"></div></div>
+            <div class="fi-add"><button type="button" class="add-pill">+ Add</button></div>
+          </article>
+        </div>
+      </div>
+
+      <div class="lab-sec lab-box">
+        <small>Box card</small>
+        <article class="card box-card box-item"><div class="card-body">
+          <div class="box-size">Box of 6</div>
+          <div class="bi-meta"><span class="price">₱570</span><span class="save-badge">Save ₱60 vs singles</span></div>
+          <p class="box-desc">Share it (or don't).</p>
+          <a class="btn bi-cta" href="#"><span class="bi-cta-text">Build this box</span></a>
+        </div></article>
+      </div>
+
+      <div class="lab-sec"><small>Paragraph</small>
+        <p class="lab-body">Every cookie is baked at home on Sunday and ready for pickup between 3 and 6pm. Order by Wednesday 9pm and we'll bake it for you that weekend.</p>
+      </div>
+    </section>
+
+    <!-- ================= B ================= -->
+    <section class="lab-pair pair-b" aria-labelledby="b-title">
+      <span class="lab-tag" id="b-title">B) Bricolage Grotesque + Nunito Sans</span>
+      <h1 class="lab-h1">Warm cookies, made at home.</h1>
+      <p class="lab-sub">Small-batch brown butter cookies, baked at home in Manila.</p>
+      <div class="hero-actions"><a class="btn" href="#">Order cookies</a><a class="btn btn-ghost" href="#">Build a box</a></div>
+
+      <div class="lab-sec">
+        <small>Flavor row</small>
+        <div class="menu-list">
+          <article class="flavor-item">
+            <div class="fi-body"><div class="fi-text">
+              <h3>Bueno Mucho</h3>
+              <p class="fi-desc">Brown butter and milk chocolate with a Kinder Bueno hidden in…</p>
+              <p class="fi-price"><span class="price">₱135</span> <small>each</small></p>
+              <p class="box-each">or from ₱120 each in a box</p>
+            </div>
+            <div class="fi-photo"><img class="card-img" src="assets/stickers/bueno-mucho-sticker-240.webp" srcset="assets/stickers/bueno-mucho-sticker-240.webp 240w, assets/stickers/bueno-mucho-sticker-480.webp 480w" sizes="96px" width="240" height="235" alt="Bueno Mucho cookie sticker"></div></div>
+            <div class="fi-add"><button type="button" class="add-pill">+ Add</button></div>
+          </article>
+          <article class="flavor-item">
+            <div class="fi-body"><div class="fi-text">
+              <h3>Chimp Chips</h3>
+              <p class="fi-desc">Brown butter and lots of dark chocolate. Soft, chewy, a little…</p>
+              <p class="fi-price"><span class="price">₱105</span> <small>each</small></p>
+              <p class="box-each">or from ₱90 each in a box</p>
+            </div>
+            <div class="fi-photo"><img class="card-img" src="assets/stickers/chimp-chips-sticker-240.webp" srcset="assets/stickers/chimp-chips-sticker-240.webp 240w, assets/stickers/chimp-chips-sticker-480.webp 480w" sizes="96px" width="240" height="243" alt="Chimp Chips cookie sticker"></div></div>
+            <div class="fi-add"><button type="button" class="add-pill">+ Add</button></div>
+          </article>
+        </div>
+      </div>
+
+      <div class="lab-sec lab-box">
+        <small>Box card</small>
+        <article class="card box-card box-item"><div class="card-body">
+          <div class="box-size">Box of 6</div>
+          <div class="bi-meta"><span class="price">₱570</span><span class="save-badge">Save ₱60 vs singles</span></div>
+          <p class="box-desc">Share it (or don't).</p>
+          <a class="btn bi-cta" href="#"><span class="bi-cta-text">Build this box</span></a>
+        </div></article>
+      </div>
+
+      <div class="lab-sec"><small>Paragraph</small>
+        <p class="lab-body">Every cookie is baked at home on Sunday and ready for pickup between 3 and 6pm. Order by Wednesday 9pm and we'll bake it for you that weekend.</p>
+      </div>
+    </section>
+
+    <!-- ================= C1 ================= -->
+    <section class="lab-pair pair-c1" aria-labelledby="c1-title">
+      <span class="lab-tag" id="c1-title">C1) Chewy + Nunito Sans</span>
+      <h1 class="lab-h1">Warm cookies, made at home.</h1>
+      <p class="lab-sub">Small-batch brown butter cookies, baked at home in Manila.</p>
+      <div class="hero-actions"><a class="btn" href="#">Order cookies</a><a class="btn btn-ghost" href="#">Build a box</a></div>
+
+      <div class="lab-sec">
+        <small>Flavor row</small>
+        <div class="menu-list">
+          <article class="flavor-item">
+            <div class="fi-body"><div class="fi-text">
+              <h3>Bueno Mucho</h3>
+              <p class="fi-desc">Brown butter and milk chocolate with a Kinder Bueno hidden in…</p>
+              <p class="fi-price"><span class="price">₱135</span> <small>each</small></p>
+              <p class="box-each">or from ₱120 each in a box</p>
+            </div>
+            <div class="fi-photo"><img class="card-img" src="assets/stickers/bueno-mucho-sticker-240.webp" srcset="assets/stickers/bueno-mucho-sticker-240.webp 240w, assets/stickers/bueno-mucho-sticker-480.webp 480w" sizes="96px" width="240" height="235" alt="Bueno Mucho cookie sticker"></div></div>
+            <div class="fi-add"><button type="button" class="add-pill">+ Add</button></div>
+          </article>
+          <article class="flavor-item">
+            <div class="fi-body"><div class="fi-text">
+              <h3>Chimp Chips</h3>
+              <p class="fi-desc">Brown butter and lots of dark chocolate. Soft, chewy, a little…</p>
+              <p class="fi-price"><span class="price">₱105</span> <small>each</small></p>
+              <p class="box-each">or from ₱90 each in a box</p>
+            </div>
+            <div class="fi-photo"><img class="card-img" src="assets/stickers/chimp-chips-sticker-240.webp" srcset="assets/stickers/chimp-chips-sticker-240.webp 240w, assets/stickers/chimp-chips-sticker-480.webp 480w" sizes="96px" width="240" height="243" alt="Chimp Chips cookie sticker"></div></div>
+            <div class="fi-add"><button type="button" class="add-pill">+ Add</button></div>
+          </article>
+        </div>
+      </div>
+
+      <div class="lab-sec lab-box">
+        <small>Box card</small>
+        <article class="card box-card box-item"><div class="card-body">
+          <div class="box-size">Box of 6</div>
+          <div class="bi-meta"><span class="price">₱570</span><span class="save-badge">Save ₱60 vs singles</span></div>
+          <p class="box-desc">Share it (or don't).</p>
+          <a class="btn bi-cta" href="#"><span class="bi-cta-text">Build this box</span></a>
+        </div></article>
+      </div>
+
+      <div class="lab-sec"><small>Paragraph</small>
+        <p class="lab-body">Every cookie is baked at home on Sunday and ready for pickup between 3 and 6pm. Order by Wednesday 9pm and we'll bake it for you that weekend.</p>
+      </div>
+    </section>
+
+    <!-- ================= C2 ================= -->
+    <section class="lab-pair pair-c2" aria-labelledby="c2-title">
+      <span class="lab-tag" id="c2-title">C2) Baloo 2 + Nunito Sans</span>
+      <h1 class="lab-h1">Warm cookies, made at home.</h1>
+      <p class="lab-sub">Small-batch brown butter cookies, baked at home in Manila.</p>
+      <div class="hero-actions"><a class="btn" href="#">Order cookies</a><a class="btn btn-ghost" href="#">Build a box</a></div>
+
+      <div class="lab-sec">
+        <small>Flavor row</small>
+        <div class="menu-list">
+          <article class="flavor-item">
+            <div class="fi-body"><div class="fi-text">
+              <h3>Bueno Mucho</h3>
+              <p class="fi-desc">Brown butter and milk chocolate with a Kinder Bueno hidden in…</p>
+              <p class="fi-price"><span class="price">₱135</span> <small>each</small></p>
+              <p class="box-each">or from ₱120 each in a box</p>
+            </div>
+            <div class="fi-photo"><img class="card-img" src="assets/stickers/bueno-mucho-sticker-240.webp" srcset="assets/stickers/bueno-mucho-sticker-240.webp 240w, assets/stickers/bueno-mucho-sticker-480.webp 480w" sizes="96px" width="240" height="235" alt="Bueno Mucho cookie sticker"></div></div>
+            <div class="fi-add"><button type="button" class="add-pill">+ Add</button></div>
+          </article>
+          <article class="flavor-item">
+            <div class="fi-body"><div class="fi-text">
+              <h3>Chimp Chips</h3>
+              <p class="fi-desc">Brown butter and lots of dark chocolate. Soft, chewy, a little…</p>
+              <p class="fi-price"><span class="price">₱105</span> <small>each</small></p>
+              <p class="box-each">or from ₱90 each in a box</p>
+            </div>
+            <div class="fi-photo"><img class="card-img" src="assets/stickers/chimp-chips-sticker-240.webp" srcset="assets/stickers/chimp-chips-sticker-240.webp 240w, assets/stickers/chimp-chips-sticker-480.webp 480w" sizes="96px" width="240" height="243" alt="Chimp Chips cookie sticker"></div></div>
+            <div class="fi-add"><button type="button" class="add-pill">+ Add</button></div>
+          </article>
+        </div>
+      </div>
+
+      <div class="lab-sec lab-box">
+        <small>Box card</small>
+        <article class="card box-card box-item"><div class="card-body">
+          <div class="box-size">Box of 6</div>
+          <div class="bi-meta"><span class="price">₱570</span><span class="save-badge">Save ₱60 vs singles</span></div>
+          <p class="box-desc">Share it (or don't).</p>
+          <a class="btn bi-cta" href="#"><span class="bi-cta-text">Build this box</span></a>
+        </div></article>
+      </div>
+
+      <div class="lab-sec"><small>Paragraph</small>
+        <p class="lab-body">Every cookie is baked at home on Sunday and ready for pickup between 3 and 6pm. Order by Wednesday 9pm and we'll bake it for you that weekend.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
