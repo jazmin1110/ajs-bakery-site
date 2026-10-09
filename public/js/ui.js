@@ -1,6 +1,6 @@
 // Shared UI helpers: formatting, the Sunday banner, and menu/box cards.
 // Prices passed in here come from the database and are shown for display only.
-import { CONFIG, PICK_FLAVOR_SLUG } from "./config.js";
+import { CONFIG, FLAVOR_BADGES, BADGE_TYPES } from "./config.js";
 
 // 95 -> "₱95"
 export function peso(amount) {
@@ -118,13 +118,17 @@ export function trackBarHeight(bar) {
 }
 
 // Photos that aren't flavor photos, with their version from config.js (assetVersions)
-const ASSET_PATHS = { logo: "assets/stickers/logo-badge-128.webp", gcashQr: "assets/gcash-qr.png" };
+const ASSET_PATHS = { logo: "assets/stickers/logo-badge-new-96.webp", logo2x: "assets/stickers/logo-badge-new-192.webp", gcashQr: "assets/gcash-qr.png" };
 export function assetUrl(name) {
   return withVersion(ASSET_PATHS[name], CONFIG.assetVersions[name]);
 }
 // Give every <img data-asset="logo"> its versioned src (they start without a src on purpose)
 export function applyAssetVersions() {
-  document.querySelectorAll("img[data-asset]").forEach((img) => { img.src = assetUrl(img.dataset.asset); });
+  document.querySelectorAll("img[data-asset]").forEach((img) => {
+    img.src = assetUrl(img.dataset.asset);
+    // the logo comes in two sizes (96px for 1x screens, 192px for 2x phones); both share the logo's version number
+    if (img.dataset.asset === "logo") img.srcset = `${assetUrl("logo")} 96w, ${withVersion(ASSET_PATHS.logo2x, CONFIG.assetVersions.logo)} 192w`;
+  });
 }
 
 function flavorInfo(slug) {
@@ -201,11 +205,16 @@ export function boxSavings(box, flavors) {
   return saving > 0 ? saving : null;
 }
 
-// The small "AJ's pick" badge: the mascot stamp on the sticker's corner plus a dough-coloured pill.
-// Shown only for the flavor named by PICK_FLAVOR_SLUG in js/config.js (null = nobody).
-function pickBadge(flavor) {
-  if (!PICK_FLAVOR_SLUG || flavorHash(flavor) !== PICK_FLAVOR_SLUG) return "";
-  return `<span class="pick-badge"><img src="assets/stickers/mascot-badge-96.webp" width="32" height="32" alt=""><span class="pick-label">AJ's pick</span></span>`;
+// The monkey stamp for a flavor: a small round badge on the top-right corner of the cookie sticker, tilted a little,
+// with its label underneath. Which flavor gets which badge is FLAVOR_BADGES in js/config.js ("" = no badge).
+function flavorBadge(flavor) {
+  const type = BADGE_TYPES[FLAVOR_BADGES[flavorHash(flavor)]];
+  if (!type) return "";
+  const src = (n) => `assets/stickers/${type.image}-${n}.webp`;
+  return `<span class="flavor-badge flavor-badge-${esc(FLAVOR_BADGES[flavorHash(flavor)])}">
+    <img src="${src(96)}" srcset="${src(96)} 96w, ${src(192)} 192w" sizes="(min-width: 700px) 56px, 44px" width="96" height="96" alt="${esc(type.label)}" loading="lazy" decoding="async">
+    <span class="flavor-badge-label" aria-hidden="true">${esc(type.label)}</span>
+  </span>`;
 }
 
 // One item per flavor. On phones (CSS, under 700px) the items are rows inside one rounded list: text on
@@ -238,7 +247,7 @@ export function renderMenu(container, flavors, boxes = [], availability = {}) {
               ${f.nutrition ? `<button type="button" class="nutri-link" data-open-nutrition aria-haspopup="dialog" aria-label="Nutrition info for ${esc(f.name)}">Nutrition info</button>` : ""}
             </p>
           </div>
-          <div class="fi-photo">${flavorPhoto(f, "card-img", { lazy: true, sizes: "(min-width: 700px) 180px, 96px" })}${pickBadge(f)}</div>
+          <div class="fi-photo">${flavorPhoto(f, "card-img", { lazy: true, sizes: "(min-width: 700px) 180px, 96px" })}${flavorBadge(f)}</div>
         </div>
         ${canSingle ? `
         <div class="fi-add" data-add-slot>

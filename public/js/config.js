@@ -6,9 +6,19 @@
 // Prices shown in the browser are for DISPLAY ONLY; the database recalculates
 // every total when an order is placed (see CLAUDE.md).
 
-// "AJ's pick": the flavor that gets the little mascot badge on the menu. Use the flavor's name as a slug
-// (Bueno Mucho -> "bueno-mucho"). Set it to null to hide the badge everywhere. Display only: nothing in the database.
-export const PICK_FLAVOR_SLUG = "bueno-mucho";
+// Flavor badges (the little monkey stamps on the menu). Config-driven: change this list, no markup to touch.
+//   key   = the flavor's name as a slug (Chimp Chips -> "chimp-chips"). A flavor not listed gets no badge.
+//   value = a badge type from BADGE_TYPES below. Delete a line to remove that badge.
+// Display only: nothing in the database. Do NOT use "Best seller" / "Crowd favorite" labels until there is real sales data.
+export const FLAVOR_BADGES = {
+  "chimp-chips": "pick",    // AJ's Pick
+  "bueno-mucho": "fresh",   // Fresh bake (it keeps the least time, so it is the one to eat soonest)
+  // "coco-loco": none
+};
+export const BADGE_TYPES = {
+  pick:  { label: "AJ's Pick",  image: "badge-aj-pick" },   // chef-hat monkey (a bit larger in the CSS: its detail blurs when small)
+  fresh: { label: "Fresh bake", image: "badge-tongue" },    // tongue-out monkey
+};
 
 export const CONFIG = {
   brandName: "AJ's Bakery",
