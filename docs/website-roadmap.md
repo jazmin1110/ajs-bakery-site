@@ -20,7 +20,7 @@ Target: soft launch Mon-Tue Oct 12-13, 2026. Christmas launch is the real deadli
 | Family live test | Next |
 | Pre-launch review pass (security + edge cases) | Re-run after the nav/badge merge |
 | Share image (og-image-v2.jpg exists, pages still point to og-image.jpg) | Open |
-| Cookie care FAQ item (storage + reheating) | Open |
+| Cookie care FAQ item (storage + reheating) | Done (FAQ item on index.html, Oct 11). Bueno Mucho shelf life settled at 2-3 days |
 
 ## Locked business rules
 

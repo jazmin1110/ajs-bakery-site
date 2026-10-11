@@ -76,29 +76,29 @@
       "slug": "bueno-mucho",
       "name": "Bueno Mucho",
       "short_description": "Brown butter and milk chocolate with a Kinder Bueno hidden in the middle.",
-      "long_description": "The fun one. Brown butter dough with milk chocolate, wrapped around half a Kinder Bueno bar, so the middle has wafer crunch and hazelnut cream.",
+      "long_description": "The fun one. Brown butter dough with milk chocolate, wrapped around half a Kinder Bueno bar, so the middle has wafer crunch and hazelnut cream. It's a bit bigger than our other cookies.",
       "taste_notes": ["Milk chocolate", "Hazelnut", "Wafer crunch"],
       "ingredients": "Kinder Bueno (milk chocolate, sugar, palm oil, wheat flour, hazelnuts, milk powder, soy lecithin), all-purpose wheat flour, Kinder Maxi milk chocolate (sugar, milk powder, cocoa butter, cocoa mass, palm oil, soy lecithin), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt.",
       "contains": ["Wheat (gluten)", "Milk", "Egg", "Soy", "Hazelnuts"],
       "may_contain": ["Other tree nuts"],
-      "weight_g": 67,
-      "weight_label": "About 65g",
-      "shelf_life": "Best within 3-4 days.",
+      "weight_g": 71,
+      "weight_label": "About 70g",
+      "shelf_life": "Best within 2-3 days.",
       "storage_tip": "Keep in an airtight container at room temperature.",
       "nutrition": {
-        "serving": "1 cookie (about 65g)",
-        "calories": 340,
-        "total_carbohydrate_g": 37,
-        "sugars_g": 25,
-        "total_fat_g": 19,
+        "serving": "1 cookie (about 70g)",
+        "calories": 355,
+        "total_carbohydrate_g": 39,
+        "sugars_g": 26,
+        "total_fat_g": 20,
         "protein_g": 4
       },
-      "_calc": {"cookies_per_batch": 16, "dough_per_cookie_g": 56, "bueno_piece_g": 10.75, "note": "Half a 21.5g Kinder Bueno bar per cookie (changed from a whole bar on Oct 11). Per cookie = dough + half of per_bueno_piece (kcal 277 + 61.5 = 338.5).", "dough_batch_totals": {"kcal": 4432, "carbs_g": 500, "sugars_g": 325, "fat_g": 246, "protein_g": 51}, "per_cookie_dough": {"kcal": 277, "carbs_g": 31.3, "sugars_g": 20.3, "fat_g": 15.4, "protein_g": 3.2}, "per_bueno_piece": {"kcal": 123, "carbs_g": 10.6, "sugars_g": 8.9, "fat_g": 8.0, "protein_g": 1.9}, "per_half_bueno_piece": {"kcal": 61.5, "carbs_g": 5.3, "sugars_g": 4.45, "fat_g": 4.0, "protein_g": 0.95}},
+      "_calc": {"cookies_per_batch": 15, "dough_per_cookie_g": 60, "bueno_piece_g": 10.75, "note": "Dough is 60g per cookie like the other flavors (about 900g per batch = 15 cookies). Center is half a 21.5g Kinder Bueno bar (changed from a whole bar on Oct 11). Per cookie = dough + half of per_bueno_piece (kcal 295.5 + 61.5 = 357).", "dough_batch_totals": {"kcal": 4432, "carbs_g": 500, "sugars_g": 325, "fat_g": 246, "protein_g": 51}, "per_cookie_dough": {"kcal": 295.5, "carbs_g": 33.3, "sugars_g": 21.7, "fat_g": 16.4, "protein_g": 3.4}, "per_bueno_piece": {"kcal": 123, "carbs_g": 10.6, "sugars_g": 8.9, "fat_g": 8.0, "protein_g": 1.9}, "per_half_bueno_piece": {"kcal": 61.5, "carbs_g": 5.3, "sugars_g": 4.45, "fat_g": 4.0, "protein_g": 0.95}},
       "verify": [
         "Same Anchor check as Chimp Chips.",
         "Read the Kinder Maxi pack (I used Ferrero's label: 566 kcal, 35g fat, 53.5g carbs, 53.3g sugars, 8.7g protein per 100g) and the Kinder Bueno pack (572 kcal, 37.3g fat, 49.5g carbs, 41.2g sugars, 8.6g protein per 100g). Update if your PH packs differ.",
-        "Confirm the center piece weighs about 10.75g (half of a 21.5g bar) and weigh 5 baked cookies. Dough is about 56g plus the center, so roughly 67g before baking loss.",
-        "Confirm the shelf life of 3-4 days on a batch you keep."
+        "Confirm the center piece weighs about 10.75g (half of a 21.5g bar) and weigh 5 baked cookies. Dough is 60g plus the center, so roughly 71g before baking loss.",
+        "Confirm the shelf life of 2-3 days (the wafer goes soft first) by testing Day 1, 2, 3 and 4 on a batch you keep."
       ]
     }
   ]
