@@ -41,15 +41,15 @@ where slug in ('coco-loco', 'double-choc');
 -- Bueno Mucho
 update public.flavors set
   short_description = $c$Brown butter and milk chocolate with a Kinder Bueno hidden in the middle.$c$,
-  long_description  = $c$The fun one. Brown butter dough with milk chocolate, wrapped around a piece of Kinder Bueno, so the middle has wafer crunch and hazelnut cream. It's a bit bigger than our other cookies.$c$,
+  long_description  = $c$The fun one. Brown butter dough with milk chocolate, wrapped around half a Kinder Bueno bar, so the middle has wafer crunch and hazelnut cream.$c$,
   taste_notes       = array[$c$Milk chocolate$c$, $c$Hazelnut$c$, $c$Wafer crunch$c$]::text[],
   ingredients       = $c$Kinder Bueno (milk chocolate, sugar, palm oil, wheat flour, hazelnuts, milk powder, soy lecithin), all-purpose wheat flour, Kinder Maxi milk chocolate (sugar, milk powder, cocoa butter, cocoa mass, palm oil, soy lecithin), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt.$c$,
   contains          = array[$c$Wheat (gluten)$c$, $c$Milk$c$, $c$Egg$c$, $c$Soy$c$, $c$Hazelnuts$c$]::text[],
   may_contain       = array[$c$Other tree nuts$c$]::text[],
-  weight_label      = $c$About 75g$c$,
+  weight_label      = $c$About 65g$c$,
   shelf_life        = $c$Best within 3-4 days.$c$,
   storage_tip       = $c$Keep in an airtight container at room temperature.$c$,
-  nutrition         = $c${"serving": "1 cookie (about 75g)", "calories": 400, "total_carbohydrate_g": 42, "sugars_g": 29, "total_fat_g": 23, "protein_g": 5}$c$::jsonb
+  nutrition         = $c${"serving": "1 cookie (about 65g)", "calories": 340, "total_carbohydrate_g": 37, "sugars_g": 25, "total_fat_g": 19, "protein_g": 4}$c$::jsonb
 where slug in ('bueno-mucho', 'kinder-bueno');
 
 do $todo$ begin
@@ -66,6 +66,6 @@ do $todo$ begin
   raise notice '%', $c$BUENO MUCHO:$c$;
   raise notice '%', $c$  [ ] Same Anchor check as Chimp Chips.$c$;
   raise notice '%', $c$  [ ] Read the Kinder Maxi pack (I used Ferrero's label: 566 kcal, 35g fat, 53.5g carbs, 53.3g sugars, 8.7g protein per 100g) and the Kinder Bueno pack (572 kcal, 37.3g fat, 49.5g carbs, 41.2g sugars, 8.6g protein per 100g). Update if your PH packs differ.$c$;
-  raise notice '%', $c$  [ ] Confirm the center piece weighs about 21.5g and weigh 5 baked cookies. Dough is about 56g plus the center, so roughly 77g before baking loss.$c$;
+  raise notice '%', $c$  [ ] Confirm the center piece weighs about 10.75g (half of a 21.5g bar) and weigh 5 baked cookies. Dough is about 56g plus the center, so roughly 67g before baking loss.$c$;
   raise notice '%', $c$  [ ] Confirm the shelf life of 3-4 days on a batch you keep.$c$;
 end $todo$;
