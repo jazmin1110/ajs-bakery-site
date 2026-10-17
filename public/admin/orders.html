@@ -31,8 +31,7 @@
       <button type="button" class="btn btn-small" id="packing-btn">Packing view</button>
     </div>
 
-    <div class="chips no-print" id="chips" role="group" aria-label="Filter by payment status"></div>
-    <div class="chips no-print" id="chips2" role="group" aria-label="Filter by progress (paid orders)"></div>
+    <div class="chips no-print" id="chips" role="group" aria-label="Filter orders"></div>
 
     <div class="ops-ok ops-flash no-print" id="flash" role="status" hidden></div>
 
@@ -45,7 +44,7 @@
       requireAdmin, renderNav, setupSundayPicker, selectedSunday, expireStale, loadOrders, setStatus,
       formatWhen, timeLeft, singlesPack, rpc,
     } from "../js/admin.js";
-    import { esc, peso, formatSunday } from "../js/ui.js";
+    import { esc, peso, formatSunday, addDays } from "../js/ui.js";
 
     await requireAdmin();
     renderNav("orders");
@@ -55,7 +54,6 @@
     let filter = "all";
     let packing = false;
     let sunday = selectedSunday();
-    let progress = "all";                 // progress filter (only looks at paid orders)
     const openRefs = new Set();           // which "Delivery & notes" sections are open, so a refresh doesn't close them
 
     const STATUS_LABEL = { pending: "Pending", paid: "Paid", cancelled: "Cancelled", expired: "Expired" };
@@ -77,6 +75,30 @@
     function prevStep(o) {
       return { baking: "new", ready: "baking", out_for_delivery: "ready",
                completed: o.fulfillment === "delivery" ? "out_for_delivery" : "ready" }[o.prep_status];
+    }
+
+    // ONE list of stages. Every order is in exactly one. Listed (and sorted) by what needs you:
+    // payments to check, then the kitchen steps, then orders still waiting on the customer, then finished.
+    const STAGES = [
+      ["all", "All"], ["check", "Check payment"], ["to_bake", "To bake"], ["baking", "Baking"],
+      ["ready", "Ready"], ["unpaid", "Not paid yet"], ["done", "Done"], ["closed", "Cancelled / expired"],
+    ];
+    function stage(o) {
+      const s = effectiveStatus(o);
+      if (s === "cancelled" || s === "expired") return "closed";
+      if (s === "pending") return o.gcash_ref ? "check" : "unpaid";
+      return { new: "to_bake", baking: "baking", ready: "ready", out_for_delivery: "ready", completed: "done" }[o.prep_status];
+    }
+    const stageOrder = (o) => STAGES.findIndex(([k]) => k === stage(o));
+
+    // Progress dots for a paid order: Paid > Baking > Ready > (Out for delivery) > Done
+    function stepsHtml(o) {
+      const steps = [["paid", "Paid"], ["baking", "Baking"], ["ready", "Ready"]];
+      if (o.fulfillment === "delivery") steps.push(["out_for_delivery", "On the way"]);
+      steps.push(["completed", o.fulfillment === "delivery" ? "Delivered" : "Picked up"]);
+      const at = o.prep_status === "new" ? 0 : steps.findIndex(([k]) => k === o.prep_status);
+      return `<ol class="o-steps" aria-label="Progress: ${esc(prepName(o))}">${steps.map(([, label], i) =>
+        `<li class="${i < at ? "done" : i === at ? "current" : ""}">${esc(label)}</li>`).join("")}</ol>`;
     }
 
     function flash(text) {
@@ -135,35 +157,46 @@
 
     function orderCard(o) {
       const status = effectiveStatus(o);
-      const needsCheck = status === "pending" && !!o.gcash_ref;       // customer says they paid
-      const cls = needsCheck ? "needs-check" : status === "expired" ? "is-expired" : `is-${status}`;
+      const st = stage(o);
+      const cls = st === "check" ? "needs-check" : status === "expired" ? "is-expired" : `is-${status}`;
       const ig = o.ig_handle ? o.ig_handle.replace(/^@/, "") : "";
       const phoneDigits = o.phone.replace(/[^\d+]/g, "");
+      const next = status === "paid" ? nextStep(o) : null;
+
+      // The ONE main thing to do with this order right now
+      let main = "";
+      if (st === "check") {
+        main = `<div class="o-todo">Check your GCash for <strong>${peso(o.total)}</strong>, ref <strong>${esc(o.gcash_ref)}</strong>.</div>
+          <button type="button" class="btn btn-block" data-act="paid">Payment received, mark paid</button>`;
+      } else if (st === "unpaid") {
+        main = `<div class="o-todo">Waiting for the customer to pay ${peso(o.total)} (${esc(timeLeft(o.seconds_left))}). Got the money anyway?</div>
+          <button type="button" class="btn btn-block btn-ghost" data-act="paid">Mark paid</button>`;
+      } else if (next) {
+        main = `<button type="button" class="btn btn-block" data-prep="${next.to}">${esc(next.label)}</button>`;
+      } else if (st === "closed") {
+        main = `<button type="button" class="btn btn-small btn-ghost" data-act="pending">Reopen</button>`;
+      }
 
       return `
       <article class="order-card ${cls}" data-ref="${esc(o.ref_code)}">
         <div class="o-top">
           <span class="o-ref">${esc(o.ref_code)}</span>
-          <span class="badge badge-${status}">${esc(needsCheck ? "Check payment" : STATUS_LABEL[status])}</span>
+          <span class="badge badge-${status}">${esc(STAGES.find(([k]) => k === st)[1])}</span>
         </div>
         <p class="o-who"><strong>${esc(o.name)}</strong>
           ${ig ? ` · <a href="https://instagram.com/${encodeURIComponent(ig)}" target="_blank" rel="noopener">@${esc(ig)}</a>` : ""}
           · <a href="tel:${esc(phoneDigits)}">${esc(o.phone)}</a></p>
         <p class="o-meta">${o.fulfillment === "delivery"
           ? `🚚 Delivery: ${esc(o.address || "(no address)")}` : "🏠 Pickup"}</p>
+        ${status === "paid" ? stepsHtml(o) : ""}
         ${boxesHtml(o)}
         ${singlesHtml(o)}
         <p class="o-meta"><strong>${peso(o.total)}</strong>
           · GCash ref: ${o.gcash_ref ? `<strong>${esc(o.gcash_ref)}</strong>` : "<em>none yet</em>"}</p>
-        <p class="o-meta o-small">Ordered ${esc(formatWhen(o.created_at))}${status === "pending" ? ` · ${esc(timeLeft(o.seconds_left))}` : ""}</p>
+        <p class="o-meta o-small">Ordered ${esc(formatWhen(o.created_at))}</p>
         ${deliverySummary(o)}
-        ${status === "paid" ? progressHtml(o) : ""}
-        ${status === "cancelled" || status === "expired" ? "" : detailsHtml(o)}
-        <div class="o-actions no-print">
-          ${status === "paid" ? "" : `<button type="button" class="btn btn-small" data-act="paid">Mark paid</button>`}
-          ${status === "cancelled" ? "" : `<button type="button" class="btn btn-small btn-danger" data-act="cancelled">Cancel</button>`}
-          ${status === "cancelled" || status === "expired" ? `<button type="button" class="btn btn-small btn-ghost" data-act="pending">Reopen</button>` : ""}
-        </div>
+        <div class="o-main no-print">${main}</div>
+        ${st === "closed" ? "" : detailsHtml(o)}
       </article>`;
     }
 
@@ -174,22 +207,12 @@
            + (o.admin_note ? `<p class="o-meta o-small">📝 ${esc(o.admin_note)}</p>` : "");
     }
 
-    // Progress badge + the button that moves the order to its next step
-    function progressHtml(o) {
-      const next = nextStep(o), prev = prevStep(o);
-      return `<div class="o-actions no-print">
-        <span class="badge badge-prep-${esc(o.prep_status)}">${esc(prepName(o))}</span>
-        ${next ? `<button type="button" class="btn btn-small" data-prep="${next.to}">${esc(next.label)}</button>` : ""}
-        ${prev ? `<button type="button" class="btn btn-small btn-ghost" data-prep="${prev}">Back a step</button>` : ""}
-      </div>`;
-    }
-
     // Courier / booking ref / time slot (delivery only) and an internal note
     function detailsHtml(o) {
       const delivery = o.fulfillment === "delivery";
       const v = (x) => esc(x || "");
       return `<details class="o-more no-print" data-ref-d="${esc(o.ref_code)}"${openRefs.has(o.ref_code) ? " open" : ""}>
-        <summary>${delivery ? "Delivery &amp; notes" : "Notes"}</summary>
+        <summary>${delivery ? "Delivery, notes, more" : "Notes, more"}</summary>
         <form class="ops-form" data-save-delivery>
           ${delivery ? `
           <div class="ops-field"><label>Courier</label><input name="courier" maxlength="60" placeholder="Lalamove, Grab..." value="${v(o.courier)}"></div>
@@ -199,6 +222,10 @@
           <div class="ops-field wide"><label>Note for yourself (customers never see this)</label><input name="note" maxlength="500" value="${v(o.admin_note)}"></div>
           <div class="wide"><button type="submit" class="btn btn-small">Save</button></div>
         </form>
+        <div class="o-actions">
+          ${o.status === "paid" && prevStep(o) ? `<button type="button" class="btn btn-small btn-ghost" data-prep="${prevStep(o)}">Undo last step</button>` : ""}
+          <button type="button" class="btn btn-small btn-ghost btn-danger-ghost" data-act="cancelled">Cancel order</button>
+        </div>
       </details>`;
     }
 
@@ -217,19 +244,12 @@
     }
 
     function render() {
-      const counts = { all: orders.length, pending: 0, paid: 0, cancelled: 0, expired: 0 };
-      orders.forEach((o) => { counts[effectiveStatus(o)] += 1; });
-
-      $("chips").innerHTML = ["all", "pending", "paid", "cancelled", "expired"].map((k) =>
-        `<button type="button" class="chip" data-filter="${k}" aria-pressed="${filter === k}">${k === "all" ? "All" : STATUS_LABEL[k]} (${counts[k]})</button>`
-      ).join("");
-
-      // Progress chips count PAID orders only
-      const paidOrders = orders.filter((o) => effectiveStatus(o) === "paid");
-      const pc = { all: paidOrders.length };
-      Object.keys(PREP_LABEL).forEach((k) => { pc[k] = paidOrders.filter((o) => o.prep_status === k).length; });
-      $("chips2").innerHTML = paidOrders.length ? ["all", ...Object.keys(PREP_LABEL)].map((k) =>
-        `<button type="button" class="chip" data-progress="${k}" aria-pressed="${progress === k}">${k === "all" ? "All paid" : PREP_LABEL[k]} (${pc[k]})</button>`
+      const counts = Object.fromEntries(STAGES.map(([k]) => [k, 0]));
+      orders.forEach((o) => { counts[stage(o)] += 1; });
+      counts.all = orders.length;
+      // Only show stages that have orders (plus All), so the row stays short
+      $("chips").innerHTML = orders.length ? STAGES.filter(([k]) => k === "all" || counts[k] || filter === k).map(([k, label]) =>
+        `<button type="button" class="chip" data-filter="${k}" aria-pressed="${filter === k}">${esc(label)} (${counts[k]})</button>`
       ).join("") : "";
 
       $("packing-btn").textContent = packing ? "Back to orders" : "Packing view";
@@ -247,11 +267,30 @@
         return;
       }
 
-      const shown = orders.filter((o) => (filter === "all" || effectiveStatus(o) === filter)
-        && (progress === "all" || (effectiveStatus(o) === "paid" && o.prep_status === progress)));
+      // Things that need you come first: check payment, to bake, baking, ready... closed last
+      const shown = orders.filter((o) => filter === "all" || stage(o) === filter)
+        .sort((a, b) => stageOrder(a) - stageOrder(b));
       $("list").innerHTML = shown.length
         ? shown.map(orderCard).join("")
-        : `<p class="loading">${orders.length ? "No orders with that status." : "No orders for this Sunday yet."}</p>`;
+        : `<p class="loading">${orders.length ? "No orders at this stage." : "No orders for this Sunday yet."}</p><div id="next-hint"></div>`;
+      if (!orders.length) findNextOrders();
+    }
+
+    // Empty Sunday? Look ahead a few weeks and offer a jump to the next one that has orders
+    async function findNextOrders() {
+      const from = sunday;
+      for (let w = 1; w <= 6; w++) {
+        const d = addDays(from, w * 7);
+        let list = [];
+        try { list = await loadOrders(d); } catch { return; }
+        if (sunday !== from) return;                    // you switched Sundays meanwhile
+        if (list.length) {
+          const el = $("next-hint"); if (!el) return;
+          el.innerHTML = `<p class="t-sub" style="text-align:center">Next orders are for <strong>${esc(formatSunday(d))}</strong> (${list.length}).</p>
+            <p style="text-align:center"><button type="button" class="btn btn-small" data-jump="${d}">Show ${esc(formatSunday(d))}</button></p>`;
+          return;
+        }
+      }
     }
 
     // ---- Events -------------------------------------------------------------------------
@@ -260,10 +299,6 @@
       filter = b.dataset.filter; render();
     });
 
-    $("chips2").addEventListener("click", (e) => {
-      const b = e.target.closest("[data-progress]"); if (!b) return;
-      progress = b.dataset.progress; render();
-    });
 
     $("packing-btn").addEventListener("click", () => { packing = !packing; render(); });
 
@@ -297,6 +332,13 @@
 
     // Mark paid / Cancel / Reopen (one listener for every card)
     $("list").addEventListener("click", async (e) => {
+      const jump = e.target.closest("[data-jump]");
+      if (jump) {                                               // "Show Sunday, Oct 25"
+        const sel = $("sunday");
+        if (![...sel.options].some((op) => op.value === jump.dataset.jump)) sel.add(new Option(formatSunday(jump.dataset.jump), jump.dataset.jump));
+        sel.value = jump.dataset.jump; sel.dispatchEvent(new Event("change"));
+        return;
+      }
       const prepBtn = e.target.closest("[data-prep]");
       if (prepBtn) {                                           // Start baking / Mark ready / Out for delivery / ...
         const pref = prepBtn.closest("[data-ref]").dataset.ref;
