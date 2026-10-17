@@ -94,18 +94,23 @@ export function setupSundayPicker(select, onChange) {
 // The pages in the menu. `sunday: true` = the page works on one Sunday, so the
 // chosen Sunday is carried along when you switch to it.
 const NAV_PAGES = [
+  // In the order you use them in a week: orders in, plan + bake, stock, recipes. Totals = the numbers at a glance.
   { page: "orders",     label: "Orders",     sunday: true },
-  { page: "totals",     label: "Totals",     sunday: true },
-  { page: "production", label: "Production", sunday: true },
-  { page: "inventory",  label: "Inventory",  sunday: false },
+  { page: "production", label: "Bake plan",  sunday: true },
+  { page: "inventory",  label: "Stock",      sunday: false },
   { page: "recipes",    label: "Recipes",    sunday: false },
+  { page: "totals",     label: "Totals",     sunday: true },
 ];
 
 export function renderNav(active) {
   const nav = document.getElementById("admin-nav");
   nav.innerHTML = NAV_PAGES.map((p) =>
     `<a href="${p.page}.html" data-page="${p.page}"${p.sunday ? ' data-sunday="1"' : ""}${active === p.page ? ' aria-current="page"' : ""}>${p.label}</a>`
-  ).join("") + `<button type="button" class="link-btn" id="logout-btn">Log out</button>`;
+  ).join("");
+  // Log out sits on the logo row (top right) so the menu row only holds the pages
+  if (!document.getElementById("logout-btn")) {
+    nav.insertAdjacentHTML("beforebegin", `<button type="button" class="link-btn admin-logout" id="logout-btn">Log out</button>`);
+  }
   document.getElementById("logout-btn").addEventListener("click", signOut);
   syncNav();
 }
