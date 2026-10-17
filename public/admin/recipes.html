@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Recipes | AJ's Bakery admin</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32.png?v=3">
+  <link rel="icon" type="image/png" sizes="64x64" href="../assets/icons/favicon-64.png?v=3">
+  <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png?v=3">
+  <link rel="manifest" href="../site.webmanifest?v=3">
+  <link rel="preload" href="../assets/fonts/baloo-2-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../assets/fonts/nunito-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <meta name="theme-color" content="#2B4C93">
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="admin">
+
+  <header class="site-header no-print">
+    <div class="container admin-head">
+      <a class="logo-link" href="/"><img src="../assets/stickers/logo-badge-new-96.webp" srcset="../assets/stickers/logo-badge-new-96.webp 96w, ../assets/stickers/logo-badge-new-192.webp 192w" sizes="56px" alt="" width="56" height="56"><span>AJ's Admin</span></a>
+      <nav class="admin-nav" id="admin-nav" aria-label="Admin"></nav>
+    </div>
+  </header>
+
+  <main class="container admin-main">
+    <h1 style="margin:0 0 .3rem;font-size:1.6rem">Recipes and costing</h1>
+    <p class="t-sub" style="margin:0 0 .8rem">Quantities are per batch. The production plan and shopping list use these, and prices come from the Inventory page.</p>
+
+    <div class="form-error" id="message" role="alert" hidden></div>
+    <div class="ops-ok ops-flash" id="flash" role="status" hidden></div>
+    <div id="out"><p class="loading">Loading recipes...</p></div>
+  </main>
+
+  <script type="module">
+    // RECIPES + COSTING. Edits go straight to the recipes / recipe_items tables (Row Level Security lets only admins).
+    // The cost numbers come from the flavor_costing view, so they always follow the latest ingredient prices.
+    // Costs are INGREDIENTS + PACKAGING per cookie only. Labor, utilities and gift boxes are not in here.
+    import { requireAdmin, renderNav, select, fail, fmtQty, num, peso2 } from "../js/admin.js";
+    import { getClient } from "../js/supabase.js";
+    import { esc } from "../js/ui.js";
+
+    await requireAdmin();
+    renderNav("recipes");
+
+    const $ = (id) => document.getElementById(id);
+    let flavors = [], recipes = [], items = [], ingredients = [], costing = [], boxes = [];
+
+    function showMessage(text) {
+      $("message").textContent = text || ""; $("message").hidden = !text;
+      if (text) $("message").scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    function flash(text) {
+      $("flash").textContent = text; $("flash").hidden = false;
+      clearTimeout(flash.t); flash.t = setTimeout(() => { $("flash").hidden = true; }, 2000);
+    }
+
+    async function load() {
+      try {
+        [flavors, recipes, items, ingredients, costing, boxes] = await Promise.all([
+          select("flavors", "id, slug, name, single_price, surcharge, active", (q) => q.eq("active", true).order("id")),
+          select("recipes", "flavor_id, version, yield, dough_freezer_days, notes"),
+          select("recipe_items", "id, flavor_id, ingredient_id, qty_per_batch, note", (q) => q.order("id")),
+          select("ingredients", "id, name, unit, cost_per_unit, price_confirmed, active", (q) => q.order("name")),
+          select("flavor_costing", "*"),
+          select("boxes", "size, price, active", (q) => q.eq("active", true).order("size")),
+        ]);
+        render();
+      } catch (err) {
+        console.error(err);
+        $("out").innerHTML = "";
+        showMessage(err.isNetwork ? "Couldn't reach the server. Check your connection and refresh." : `Couldn't load recipes: ${err.message}`);
+      }
+    }
+
+    // Margin text: "₱67.27 (64%)", red when under 50%
+    function margin(price, cost) {
+      const profit = price - cost, pct = price > 0 ? Math.round((profit / price) * 100) : 0;
+      return `<span class="${pct >= 50 ? "margin-good" : "margin-thin"}">${peso2(profit)} (${pct}%)</span>`;
+    }
+
+    function recipeCard(f) {
+      const r = recipes.find((x) => x.flavor_id === f.id);
+      const c = costing.find((x) => x.flavor_id === f.id);
+      const rows = items.filter((i) => i.flavor_id === f.id);
+      const ingById = Object.fromEntries(ingredients.map((i) => [i.id, i]));
+      const unused = ingredients.filter((i) => i.active && !rows.some((x) => x.ingredient_id === i.id));
+      if (!r) return `<section class="t-card"><h2>${esc(f.name)}</h2><p class="t-sub">No recipe row yet. Run seed_ops.sql.</p></section>`;
+
+      const perCookie = c ? Number(c.ingredient_cost_per_cookie) + Number(c.packaging_cost_per_cookie) : 0;
+      const single = f.single_price == null ? null : Number(f.single_price);
+
+      // What a cookie earns inside a box: box price / cookies, plus the flavor's surcharge (e.g. +P30 Bueno)
+      const boxLines = boxes.map((b) => {
+        const each = Number(b.price) / b.size + Number(f.surcharge || 0);
+        return `<tr><th scope="row" class="left">In a box of ${b.size}</th><td>${peso2(each)} each</td><td>${margin(each, perCookie)}</td></tr>`;
+      }).join("");
+
+      return `<section class="t-card" data-flavor="${f.id}">
+        <div class="ops-head"><h2>${esc(f.name)}</h2><span class="tag tag-info">${esc(r.version)} · ${r.yield} per batch</span></div>
+
+        ${rows.length ? `
+        <div class="ops-stats">
+          <div class="ops-stat"><strong>${peso2(c.batch_cost)}</strong><span>per batch</span></div>
+          <div class="ops-stat"><strong>${peso2(perCookie)}</strong><span>per cookie</span></div>
+          <div class="ops-stat"><strong>${single == null ? "-" : margin(single, perCookie)}</strong><span>profit as a single</span></div>
+        </div>
+        <div class="ops-scroll"><table class="t-table"><tbody>
+          ${single == null ? "" : `<tr><th scope="row" class="left">Single cookie</th><td>${peso2(single)}</td><td>${margin(single, perCookie)}</td></tr>`}
+          ${boxLines}
+        </tbody></table></div>
+        <p class="t-sub">Cost per cookie = ingredients ${peso2(c.ingredient_cost_per_cookie)} + packaging ${peso2(c.packaging_cost_per_cookie)}. Labor, utilities and gift boxes are not included.</p>
+        ${c.assumed_prices > 0 ? `<div class="ops-note">${c.assumed_prices} ingredient${c.assumed_prices === 1 ? " uses" : "s use"} a guessed price, so this cost is an estimate. Set the real prices on the <a href="inventory.html">Inventory page</a> (or just log a purchase with the amount you paid).</div>` : ""}`
+        : `<div class="ops-note">No ingredients entered yet, so the production plan can't count this flavor's ingredients and there's no cost.
+            ${r.notes ? `<br><span class="o-small">${esc(r.notes)}</span>` : ""}</div>`}
+
+        <div class="ops-scroll"><table class="t-table" style="margin-top:.6rem">
+          <thead><tr><th class="left">Ingredient</th><th>Per batch</th><th>Cost</th><th></th></tr></thead>
+          <tbody>
+            ${rows.map((row) => {
+              const ing = ingById[row.ingredient_id] || { name: "?", unit: "", cost_per_unit: 0 };
+              return `<tr data-item="${row.id}">
+                <th scope="row" class="left">${esc(ing.name)}${ing.price_confirmed === false ? ` <span class="tag tag-warn">est.</span>` : ""}</th>
+                <td><input type="number" min="0.001" step="any" inputmode="decimal" value="${esc(row.qty_per_batch)}" data-qty aria-label="${esc(ing.name)} per batch"> ${esc(ing.unit)}</td>
+                <td>${peso2(row.qty_per_batch * ing.cost_per_unit)}</td>
+                <td><button type="button" class="btn btn-small btn-ghost" data-act="remove" aria-label="Remove ${esc(ing.name)}">✕</button></td></tr>`;
+            }).join("")}
+          </tbody>
+        </table></div>
+
+        ${unused.length ? `<form class="ops-inline" data-add style="margin-top:.7rem">
+          <div class="ops-field" style="flex:2 1 160px"><label>Add ingredient</label>
+            <select name="ingredient" required>${unused.map((i) => `<option value="${i.id}">${esc(i.name)} (${esc(i.unit)})</option>`).join("")}</select></div>
+          <div class="ops-field"><label>Per batch</label><input name="qty" type="number" min="0.001" step="any" inputmode="decimal" required></div>
+          <button type="submit" class="btn btn-small">Add</button>
+        </form>` : ""}
+
+        <details class="o-more"><summary>Recipe settings</summary>
+          <form class="ops-form" data-settings>
+            <div class="ops-field"><label>Version</label><input name="version" maxlength="20" required value="${esc(r.version)}"></div>
+            <div class="ops-field"><label>Cookies per batch</label><input name="yield" type="number" min="1" step="1" inputmode="numeric" required value="${r.yield}"></div>
+            <div class="ops-field"><label>Dough lasts in freezer (days)</label><input name="freezer" type="number" min="1" step="1" inputmode="numeric" required value="${r.dough_freezer_days}"><p class="field-hint">default best-by for new dough</p></div>
+            <div class="ops-field wide"><label>Notes</label><input name="notes" maxlength="500" value="${esc(r.notes || "")}"></div>
+            <div class="wide"><button type="submit" class="btn btn-small">Save settings</button></div>
+          </form>
+        </details>
+      </section>`;
+    }
+
+    function render() { $("out").innerHTML = flavors.map(recipeCard).join("") || `<p class="t-sub">No flavors found.</p>`; }
+
+    // ---- Events --------------------------------------------------------------------------
+    // Run a database write, then reload so every number on the page updates
+    async function write(promise, doneText) {
+      showMessage("");
+      try {
+        const { error } = await promise;
+        if (error) throw fail(error);
+        flash(doneText); await load();
+      } catch (err) {
+        console.error(err);
+        showMessage(err.isNetwork ? "Couldn't reach the server. Nothing was changed." : err.message);
+        await load();                                   // put the page back to what's really saved
+      }
+    }
+
+    // Change a quantity
+    $("out").addEventListener("change", (e) => {
+      const input = e.target.closest("[data-qty]"); if (!input) return;
+      const qty = Number(input.value);
+      if (!(qty > 0)) { showMessage("Enter an amount more than zero."); return load(); }
+      write(getClient().from("recipe_items").update({ qty_per_batch: qty }).eq("id", Number(input.closest("[data-item]").dataset.item)), "Saved");
+    });
+
+    // Remove an ingredient
+    $("out").addEventListener("click", (e) => {
+      const btn = e.target.closest('[data-act="remove"]'); if (!btn) return;
+      if (!confirm("Take this ingredient out of the recipe?")) return;
+      write(getClient().from("recipe_items").delete().eq("id", Number(btn.closest("[data-item]").dataset.item)), "Removed");
+    });
+
+    // Add an ingredient / save settings
+    $("out").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const flavorId = Number(e.target.closest("[data-flavor]").dataset.flavor);
+      if (e.target.matches("[data-add]")) {
+        write(getClient().from("recipe_items").insert({ flavor_id: flavorId, ingredient_id: Number(f.get("ingredient")), qty_per_batch: Number(f.get("qty")) }), "Added");
+      } else if (e.target.matches("[data-settings]")) {
+        write(getClient().from("recipes").update({
+          version: String(f.get("version")).trim(), yield: Math.floor(Number(f.get("yield"))),
+          dough_freezer_days: Math.floor(Number(f.get("freezer"))), notes: String(f.get("notes") || "").trim() || null,
+        }).eq("flavor_id", flavorId), "Saved settings");
+      }
+    });
+
+    load();
+  </script>
+</body>
+</html>
