@@ -105,12 +105,13 @@
         <section class="t-card">
           <div class="ops-head"><h2>1. Shopping list</h2>
             ${toBuy.length ? `<button type="button" class="btn btn-small btn-ghost no-print" id="copy-btn">Copy list</button>` : ""}</div>
-          <p class="t-sub">Buy these first. What the batches need (plus one bag per cookie), minus what's in stock and still good on the day, in whole packs. After buying, log it on the <a href="inventory.html">Stock</a> page.</p>
+          <p class="t-sub">Buy these first. What the batches need (plus one bag per cookie), minus what's in stock and still good on the day, in whole packs. Items with a reorder level are topped up so you keep that much spare. After buying, log it on the <a href="inventory.html">Stock</a> page.</p>
           ${toBuy.length ? `<div class="ops-scroll"><table class="t-table">
             <thead><tr><th></th><th>Need</th><th>Have</th><th>Buy</th><th>Est.</th></tr></thead>
             <tbody>
               ${toBuy.map((s) => `<tr>
-                <th scope="row">${esc(s.name)}${s.category === "packaging" ? ` <span class="tag tag-info">packaging</span>` : ""}</th>
+                <th scope="row">${esc(s.name)}${s.category === "packaging" ? ` <span class="tag tag-info">packaging</span>` : ""}
+                  ${s.topup ? `<br><span class="o-small">${s.needed > 0 ? "+ " : ""}keeps ${esc(fmtQty(s.reorder_level, s.unit))} spare (your reorder level)</span>` : ""}</th>
                 <td>${esc(fmtQty(s.needed, s.unit))}</td><td>${esc(fmtQty(s.on_hand, s.unit))}</td>
                 <td><strong>${buyText(s)}</strong></td>
                 <td>${peso2(s.est_cost)}${s.price_confirmed ? "" : " *"}</td></tr>`).join("")}
