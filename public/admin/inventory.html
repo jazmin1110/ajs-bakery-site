@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Inventory | AJ's Bakery admin</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32.png?v=3">
+  <link rel="icon" type="image/png" sizes="64x64" href="../assets/icons/favicon-64.png?v=3">
+  <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png?v=3">
+  <link rel="manifest" href="../site.webmanifest?v=3">
+  <link rel="preload" href="../assets/fonts/baloo-2-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../assets/fonts/nunito-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <meta name="theme-color" content="#2B4C93">
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="admin">
+
+  <header class="site-header no-print">
+    <div class="container admin-head">
+      <a class="logo-link" href="/"><img src="../assets/stickers/logo-badge-new-96.webp" srcset="../assets/stickers/logo-badge-new-96.webp 96w, ../assets/stickers/logo-badge-new-192.webp 192w" sizes="56px" alt="" width="56" height="56"><span>AJ's Admin</span></a>
+      <nav class="admin-nav" id="admin-nav" aria-label="Admin"></nav>
+    </div>
+  </header>
+
+  <main class="container admin-main">
+    <div class="ops-head" style="margin-bottom:.8rem">
+      <h1 style="margin:0;font-size:1.6rem">Inventory</h1>
+      <button type="button" class="btn btn-small" id="add-btn">Add item</button>
+    </div>
+
+    <div class="form-error" id="message" role="alert" hidden></div>
+    <div class="ops-ok ops-flash" id="flash" role="status" hidden></div>
+    <div id="out"><p class="loading">Loading stock...</p></div>
+  </main>
+
+  <script type="module">
+    // INVENTORY. Every purchase is a "lot" with its own expiry date; perishable items must have one.
+    // Stock is used earliest-expiry-first. Stock and lots only change through database functions
+    // (admin_receive_stock, admin_use_stock, admin_count_stock, admin_discard_lot), which also write the log.
+    import { requireAdmin, renderNav, rpc, select, fail, fmtQty, num, peso2, shortDate, daysUntil } from "../js/admin.js";
+    import { getClient } from "../js/supabase.js";
+    import { esc } from "../js/ui.js";
+
+    await requireAdmin();
+    renderNav("inventory");
+
+    const $ = (id) => document.getElementById(id);
+    let items = [];          // ingredient_stock rows
+    let lots = [];           // lots with something left
+    let log = [];            // recent stock movements
+    let openForm = null;     // { id, kind }  kind: receive | use | count | edit      (id "new" = adding an item)
+    let showHidden = false;
+
+    const REASON = { received: "bought", used_in_batch: "used in batch", used_manual: "used", count_correction: "stock take", discarded: "thrown away" };
+
+    function showMessage(text) {
+      $("message").textContent = text || ""; $("message").hidden = !text;
+      if (text) $("message").scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    function flash(text) {
+      $("flash").textContent = text; $("flash").hidden = false;
+      clearTimeout(flash.t); flash.t = setTimeout(() => { $("flash").hidden = true; }, 2500);
+    }
+
+    async function load() {
+      try {
+        [items, lots, log] = await Promise.all([
+          select("ingredient_stock", "*", (q) => q.order("category").order("name")),
+          select("ingredient_lots", "id, ingredient_id, qty_remaining, received_on, expires_on, note",
+                 (q) => q.gt("qty_remaining", 0).order("expires_on", { ascending: true, nullsFirst: false })),
+          select("stock_log", "id, ingredient_id, delta, reason, note, created_at",
+                 (q) => q.order("created_at", { ascending: false }).limit(15)),
+        ]);
+        render();
+      } catch (err) {
+        console.error(err);
+        $("out").innerHTML = "";
+        showMessage(err.isNetwork ? "Couldn't reach the server. Check your connection and refresh." : `Couldn't load stock: ${err.message}`);
+      }
+    }
+
+    // ---- Drawing -------------------------------------------------------------------------
+    function render() {
+      const visible = items.filter((i) => i.active || showHidden);
+      const byId = Object.fromEntries(items.map((i) => [i.ingredient_id, i]));
+      const low = items.filter((i) => i.active && i.is_low);
+      const soon = lots.filter((l) => l.expires_on && daysUntil(l.expires_on) >= 0 && daysUntil(l.expires_on) <= 7);
+      const expired = lots.filter((l) => l.expires_on && daysUntil(l.expires_on) < 0);
+
+      const alerts = [
+        ...low.map((i) => `<span class="tag tag-low">Low</span> ${esc(i.name)}: ${esc(fmtQty(i.on_hand, i.unit))} left (reorder at ${esc(fmtQty(i.reorder_level, i.unit))})`),
+        ...expired.map((l) => `<span class="tag tag-low">Expired</span> ${esc(byId[l.ingredient_id]?.name || "Item")}: ${esc(fmtQty(l.qty_remaining, byId[l.ingredient_id]?.unit || ""))} expired ${esc(shortDate(l.expires_on))}. Throw it away below.`),
+        ...soon.map((l) => `<span class="tag tag-warn">Soon</span> ${esc(byId[l.ingredient_id]?.name || "Item")}: ${esc(fmtQty(l.qty_remaining, byId[l.ingredient_id]?.unit || ""))} expires ${daysUntil(l.expires_on) === 0 ? "today" : esc(shortDate(l.expires_on))}`),
+      ];
+
+      const groups = ["ingredient", "packaging"].map((cat) => {
+        const rows = visible.filter((i) => i.category === cat);
+        if (!rows.length) return "";
+        return `<h2 style="font-size:1.1rem;margin:1.2rem 0 .5rem">${cat === "ingredient" ? "Ingredients" : "Packaging"}</h2>${rows.map(itemCard).join("")}`;
+      }).join("");
+
+      $("out").innerHTML = `
+        ${alerts.length ? `<section class="t-card"><h2>Needs attention</h2>${alerts.map((a) => `<p class="o-meta">${a}</p>`).join("")}</section>`
+                        : `<div class="ops-ok">Nothing low and nothing about to expire.</div>`}
+        ${openForm?.id === "new" ? `<section class="t-card"><h2>Add an item</h2>${editForm(null)}</section>` : ""}
+        ${groups || `<p class="t-sub">No items yet.</p>`}
+        <label class="choice t-toggle no-print" style="margin-top:1rem"><input type="checkbox" id="show-hidden" ${showHidden ? "checked" : ""}><span>Show hidden items</span></label>
+        <section class="t-card">
+          <h2>Recent activity</h2>
+          ${log.length ? log.map((r) => `<div class="lot-row"><span>${esc(byId[r.ingredient_id]?.name || "Item")}
+              <span class="o-small">· ${esc(REASON[r.reason] || r.reason)}${r.note ? " · " + esc(r.note) : ""}</span></span>
+              <span><strong>${r.delta > 0 ? "+" : "−"}${esc(fmtQty(Math.abs(r.delta), byId[r.ingredient_id]?.unit || ""))}</strong>
+              <span class="o-small">${esc(new Date(r.created_at).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" }))}</span></span></div>`).join("")
+            : `<p class="t-sub">Nothing logged yet.</p>`}
+        </section>`;
+    }
+
+    function itemCard(i) {
+      const itemLots = lots.filter((l) => l.ingredient_id === i.ingredient_id);
+      const days = i.next_expiry ? daysUntil(i.next_expiry) : null;
+      const form = openForm?.id === i.ingredient_id ? ({ receive: receiveForm, use: useForm, count: countForm, edit: editForm }[openForm.kind])(i) : "";
+      return `<article class="t-card" data-ing="${i.ingredient_id}"${i.active ? "" : ' style="opacity:.6"'}>
+        <div class="item-top"><h3 class="item-name">${esc(i.name)}</h3><span class="item-qty">${esc(fmtQty(i.on_hand, i.unit))}</span></div>
+        <div class="item-tags">
+          ${i.is_low ? `<span class="tag tag-low">Low</span>` : ""}
+          ${i.expired_qty > 0 ? `<span class="tag tag-low">${esc(fmtQty(i.expired_qty, i.unit))} expired</span>` : ""}
+          ${days !== null && days <= 7 ? `<span class="tag tag-warn">${days === 0 ? "expires today" : "expires " + esc(shortDate(i.next_expiry))}</span>` : ""}
+          ${i.price_confirmed ? "" : `<span class="tag tag-warn">price is a guess</span>`}
+          ${i.perishable ? `<span class="tag tag-info">has expiry</span>` : ""}
+          ${i.active ? "" : `<span class="tag tag-info">hidden</span>`}
+        </div>
+        <p class="o-small" style="margin:.2rem 0">${Number(i.pack_size) === 1 ? `${peso2(i.pack_price)} per ${esc(i.unit)}` : `${peso2(i.pack_price)} per ${esc(i.pack_label || "pack")} (${peso2(i.cost_per_unit)} per ${esc(i.unit)})`}
+          ${i.next_expiry ? ` · next expiry ${esc(shortDate(i.next_expiry))}` : ""}${i.supplier ? ` · ${esc(i.supplier)}` : ""}
+          ${i.reorder_level > 0 ? ` · reorder at ${esc(fmtQty(i.reorder_level, i.unit))}` : ""}</p>
+        <div class="ops-actions no-print">
+          <button type="button" class="btn btn-small" data-open="receive">Bought</button>
+          <button type="button" class="btn btn-small btn-ghost" data-open="use">Used</button>
+          <button type="button" class="btn btn-small btn-ghost" data-open="count">Count</button>
+          <button type="button" class="btn btn-small btn-ghost" data-open="edit">Edit</button>
+        </div>
+        ${form}
+        ${itemLots.length ? `<details class="o-more no-print"><summary>Lots (${itemLots.length})</summary>
+          ${itemLots.map((l) => {
+            const d = l.expires_on ? daysUntil(l.expires_on) : null;
+            return `<div class="lot-row" data-lot="${l.id}"><span>${esc(fmtQty(l.qty_remaining, i.unit))}
+              <span class="o-small">· bought ${esc(shortDate(l.received_on))} · ${l.expires_on ? "expires " + esc(shortDate(l.expires_on)) : "no expiry"}</span>
+              ${d !== null && d < 0 ? `<span class="tag tag-low">expired</span>` : d !== null && d <= 7 ? `<span class="tag tag-warn">soon</span>` : ""}</span>
+              <button type="button" class="btn btn-small btn-ghost" data-act="discard">Throw away</button></div>`;
+          }).join("")}</details>` : ""}
+      </article>`;
+    }
+
+    // ---- Forms ---------------------------------------------------------------------------
+    function receiveForm(i) {
+      return `<form class="ops-form" data-form="receive">
+        <div class="ops-field"><label>Packs bought</label><input name="packs" type="number" min="0" step="any" inputmode="decimal" value="1" required>
+          <p class="field-hint">1 pack = ${esc(fmtQty(i.pack_size, i.unit))} (${esc(i.pack_label || "pack")})</p></div>
+        <div class="ops-field"><label>Total paid (₱, optional)</label><input name="paid" type="number" min="0" step="any" inputmode="decimal" placeholder="so costing follows real prices">
+          </div>
+        <div class="ops-field"><label>Expiry date${i.perishable ? " (required)" : " (optional)"}</label><input name="expires" type="date"${i.perishable ? " required" : ""}></div>
+        <div class="ops-field"><label>Note (optional)</label><input name="note" maxlength="200" placeholder="where you bought it"></div>
+        <div class="wide ops-actions"><button type="submit" class="btn btn-small">Add to stock</button><button type="button" class="btn btn-small btn-ghost" data-close>Cancel</button></div>
+      </form>`;
+    }
+    function useForm(i) {
+      return `<form class="ops-form" data-form="use">
+        <div class="ops-field"><label>Amount used (${esc(i.unit)})</label><input name="qty" type="number" min="0" step="any" inputmode="decimal" required></div>
+        <div class="ops-field"><label>Why (optional)</label><input name="note" maxlength="200" placeholder="test bake, gift, spilled..."></div>
+        <div class="wide"><p class="field-hint">Batches you log on the Production page already use their ingredients. This is for everything else. Earliest-expiring stock goes first.</p></div>
+        <div class="wide ops-actions"><button type="submit" class="btn btn-small">Take out of stock</button><button type="button" class="btn btn-small btn-ghost" data-close>Cancel</button></div>
+      </form>`;
+    }
+    function countForm(i) {
+      return `<form class="ops-form" data-form="count">
+        <div class="ops-field"><label>How much is there really? (${esc(i.unit)})</label><input name="actual" type="number" min="0" step="any" inputmode="decimal" value="${esc(i.on_hand)}" required>
+          <p class="field-hint">Logged: ${esc(fmtQty(i.on_hand, i.unit))}. Expired stock isn't counted.</p></div>
+        <div class="wide ops-actions"><button type="submit" class="btn btn-small">Fix the count</button><button type="button" class="btn btn-small btn-ghost" data-close>Cancel</button></div>
+      </form>`;
+    }
+    // Add (i = null) or edit an item. Unit can't change once an item exists (recipes depend on it).
+    function editForm(i) {
+      const v = (x) => esc(x ?? "");
+      const isNew = !i;
+      return `<form class="ops-form" data-form="${isNew ? "add" : "edit"}">
+        <div class="ops-field wide"><label>Name</label><input name="name" maxlength="80" required value="${v(i?.name)}"></div>
+        <div class="ops-field"><label>Type</label><select name="category"><option value="ingredient"${i?.category === "packaging" ? "" : " selected"}>Ingredient</option><option value="packaging"${i?.category === "packaging" ? " selected" : ""}>Packaging</option></select></div>
+        <div class="ops-field"><label>Counted in</label><select name="unit"${isNew ? "" : " disabled"}>
+          ${[["g", "grams (g)"], ["ml", "millilitres (ml)"], ["pc", "pieces (pc)"], ["tsp", "teaspoons (tsp)"]].map(([u, t]) => `<option value="${u}"${i?.unit === u ? " selected" : ""}>${t}</option>`).join("")}</select></div>
+        <div class="ops-field"><label>How it's sold</label><input name="pack_label" maxlength="40" placeholder="bag 2.5kg" value="${v(i?.pack_label)}"></div>
+        <div class="ops-field"><label>Amount in one pack</label><input name="pack_size" type="number" min="0.001" step="any" inputmode="decimal" required value="${v(i?.pack_size ?? 1)}"><p class="field-hint">in the unit above, e.g. 2500 g</p></div>
+        <div class="ops-field"><label>Price of one pack (₱)</label><input name="pack_price" type="number" min="0" step="any" inputmode="decimal" required value="${v(i?.pack_price ?? 0)}"></div>
+        <div class="ops-field"><label>Reorder when below</label><input name="reorder_level" type="number" min="0" step="any" inputmode="decimal" value="${v(i?.reorder_level ?? 0)}"><p class="field-hint">0 = no alert</p></div>
+        <div class="ops-field"><label>Used per cookie sold</label><input name="per_cookie" type="number" min="0" step="any" inputmode="decimal" value="${v(i?.per_cookie ?? 0)}"><p class="field-hint">packaging only, e.g. 1 bag</p></div>
+        <div class="ops-field"><label>Supplier</label><input name="supplier" maxlength="120" value="${v(i?.supplier)}"></div>
+        <label class="choice wide"><input type="checkbox" name="perishable"${i?.perishable ? " checked" : ""}><span>Has an expiry date (every purchase must have one)</span></label>
+        <label class="choice wide"><input type="checkbox" name="price_confirmed"${i && !i.price_confirmed ? "" : " checked"}><span>The price above is the real price</span></label>
+        ${isNew ? "" : `<label class="choice wide"><input type="checkbox" name="active"${i.active ? " checked" : ""}><span>Show this item (untick to hide it)</span></label>`}
+        <div class="wide ops-actions"><button type="submit" class="btn btn-small">${isNew ? "Add item" : "Save"}</button><button type="button" class="btn btn-small btn-ghost" data-close>Cancel</button></div>
+      </form>`;
+    }
+
+    // ---- Events --------------------------------------------------------------------------
+    $("add-btn").addEventListener("click", () => { openForm = { id: "new", kind: "edit" }; render(); window.scrollTo({ top: 0, behavior: "smooth" }); });
+
+    $("out").addEventListener("change", (e) => { if (e.target.id === "show-hidden") { showHidden = e.target.checked; render(); } });
+
+    $("out").addEventListener("click", async (e) => {
+      const open = e.target.closest("[data-open]");
+      if (open) {
+        const id = Number(open.closest("[data-ing]").dataset.ing);
+        openForm = (openForm?.id === id && openForm.kind === open.dataset.open) ? null : { id, kind: open.dataset.open };
+        render(); return;
+      }
+      if (e.target.closest("[data-close]")) { openForm = null; render(); return; }
+
+      const btn = e.target.closest('[data-act="discard"]');
+      if (btn) {                                                    // throw away one lot
+        if (!confirm("Throw away what's left of this lot?")) return;
+        showMessage(""); btn.disabled = true;
+        try {
+          await rpc("admin_discard_lot", { p_lot_id: Number(btn.closest("[data-lot]").dataset.lot), p_note: "thrown away" });
+          flash("Thrown away"); await load();
+        } catch (err) { console.error(err); btn.disabled = false; showMessage(err.isNetwork ? "Couldn't reach the server. Nothing was changed." : err.message); }
+      }
+    });
+
+    $("out").addEventListener("submit", async (e) => {
+      const form = e.target.closest("[data-form]"); if (!form) return;
+      e.preventDefault();
+      const kind = form.dataset.form;
+      const f = new FormData(form);
+      const id = openForm?.id;
+      const item = items.find((x) => x.ingredient_id === id);
+      const num0 = (name) => Number(f.get(name));
+      const btn = form.querySelector("button[type=submit]");
+      btn.disabled = true; showMessage("");
+
+      try {
+        if (kind === "receive") {
+          const packs = num0("packs"), qty = packs * item.pack_size;
+          if (!(qty > 0)) throw new Error("Enter how many packs you bought.");
+          const paid = f.get("paid") === "" ? null : num0("paid");
+          await rpc("admin_receive_stock", {
+            p_ingredient_id: id, p_qty: qty,
+            p_unit_cost: paid === null ? null : paid / qty,        // total paid -> price per unit, so costing follows what you paid
+            p_expires_on: f.get("expires") || null, p_note: f.get("note") || null,
+          });
+          flash(`Added ${fmtQty(qty, item.unit)} of ${item.name}`);
+        } else if (kind === "use") {
+          await rpc("admin_use_stock", { p_ingredient_id: id, p_qty: num0("qty"), p_note: f.get("note") || null });
+          flash(`Took ${fmtQty(num0("qty"), item.unit)} of ${item.name} out of stock`);
+        } else if (kind === "count") {
+          await rpc("admin_count_stock", { p_ingredient_id: id, p_actual: num0("actual"), p_note: "stock take" });
+          flash(`${item.name} is now ${fmtQty(num0("actual"), item.unit)}`);
+        } else {                                                   // add / edit an item (plain table write; RLS lets only admins)
+          const row = {
+            name: String(f.get("name")).trim(), category: f.get("category"),
+            pack_label: String(f.get("pack_label") || "").trim() || null,
+            pack_size: num0("pack_size"), pack_price: num0("pack_price"),
+            reorder_level: num0("reorder_level") || 0, per_cookie: num0("per_cookie") || 0,
+            supplier: String(f.get("supplier") || "").trim() || null,
+            perishable: f.has("perishable"), price_confirmed: f.has("price_confirmed"),
+          };
+          if (!row.name) throw new Error("Give the item a name.");
+          if (kind === "add") {
+            row.unit = f.get("unit");
+            const { error } = await getClient().from("ingredients").insert(row);
+            if (error) throw error.code === "23505" ? new Error("You already have an item with that name.") : fail(error);
+            flash("Added " + row.name);
+          } else {
+            row.active = f.has("active");
+            const { error } = await getClient().from("ingredients").update(row).eq("id", id);
+            if (error) throw error.code === "23505" ? new Error("You already have an item with that name.") : fail(error);
+            flash("Saved " + row.name);
+          }
+        }
+        openForm = null;
+        await load();
+      } catch (err) {
+        console.error(err);
+        btn.disabled = false;
+        showMessage(err.isNetwork ? "Couldn't reach the server. Nothing was changed." : err.message);
+      }
+    });
+
+    load();
+  </script>
+</body>
+</html>
