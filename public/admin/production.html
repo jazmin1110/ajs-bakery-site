@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Production | AJ's Bakery admin</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32.png?v=3">
+  <link rel="icon" type="image/png" sizes="64x64" href="../assets/icons/favicon-64.png?v=3">
+  <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png?v=3">
+  <link rel="manifest" href="../site.webmanifest?v=3">
+  <link rel="preload" href="../assets/fonts/baloo-2-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../assets/fonts/nunito-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <meta name="theme-color" content="#2B4C93">
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="admin">
+
+  <header class="site-header no-print">
+    <div class="container admin-head">
+      <a class="logo-link" href="/"><img src="../assets/stickers/logo-badge-new-96.webp" srcset="../assets/stickers/logo-badge-new-96.webp 96w, ../assets/stickers/logo-badge-new-192.webp 192w" sizes="56px" alt="" width="56" height="56"><span>AJ's Admin</span></a>
+      <nav class="admin-nav" id="admin-nav" aria-label="Admin"></nav>
+    </div>
+  </header>
+
+  <main class="container admin-main">
+    <div class="toolbar no-print">
+      <label class="toolbar-label" for="sunday">Sunday</label>
+      <select id="sunday"></select>
+    </div>
+
+    <div class="form-error" id="message" role="alert" hidden></div>
+    <div class="ops-ok ops-flash" id="flash" role="status" hidden></div>
+    <div id="out"><p class="loading">Working out the plan...</p></div>
+  </main>
+
+  <script type="module">
+    // PRODUCTION PLAN. Orders for the chosen Sunday  >  cookies to make  >  batches  >  ingredients  >  shopping list.
+    // All the maths happens in the database (admin_production_plan); this page only shows it and
+    // records what you did (mixed a batch, baked dough, threw dough away).
+    import {
+      requireAdmin, renderNav, setupSundayPicker, selectedSunday, expireStale, rpc, select,
+      fmtQty, num, peso2, shortDate, daysUntil,
+    } from "../js/admin.js";
+    import { esc, formatSunday } from "../js/ui.js";
+
+    await requireAdmin();
+    renderNav("production");
+
+    const $ = (id) => document.getElementById(id);
+    let sunday = selectedSunday();
+    let includePending = true;          // plan for unpaid-but-still-open orders too?
+    let plan = null;                    // from admin_production_plan
+    let dough = [];                     // dough balls in the freezer
+
+    function showMessage(text) {
+      $("message").textContent = text || ""; $("message").hidden = !text;
+      if (text) $("message").scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    function flash(text) {
+      $("flash").textContent = text; $("flash").hidden = false;
+      clearTimeout(flash.t); flash.t = setTimeout(() => { $("flash").hidden = true; }, 2500);
+    }
+
+    async function load() {
+      showMessage("");
+      $("out").innerHTML = `<p class="loading">Working out the plan...</p>`;
+      try {
+        try { await expireStale(); } catch (e) { console.error("expire failed", e); }   // so lapsed unpaid orders don't count
+        [plan, dough] = await Promise.all([
+          rpc("admin_production_plan", { p_sunday: sunday, p_include_pending: includePending }),
+          select("dough_lots", "id, flavor_id, balls_made, balls_left, made_on, best_by", (q) => q.gt("balls_left", 0).order("best_by")),
+        ]);
+        render();
+      } catch (err) {
+        console.error(err);
+        $("out").innerHTML = "";
+        showMessage(err.isNetwork ? "Couldn't reach the server. Check your connection and refresh." : `Couldn't build the plan: ${err.message}`);
+      }
+    }
+
+    // ---- Drawing -------------------------------------------------------------------------
+    function render() {
+      const flavors = plan.flavors;
+      const noRecipe = flavors.filter((f) => !f.recipe_ready && f.cookies_needed > 0);
+      const toBuy = plan.shopping.filter((s) => s.short > 0);
+      const covered = plan.shopping.filter((s) => s.short <= 0);
+      const nameOf = Object.fromEntries(flavors.map((f) => [f.flavor_id, f.name]));
+
+      $("out").innerHTML = `
+        <section class="t-card">
+          <h2>${esc(formatSunday(sunday))}</h2>
+          <div class="ops-stats">
+            <div class="ops-stat"><strong>${num(plan.totals.cookies)}</strong><span>cookies ordered</span></div>
+            <div class="ops-stat"><strong>${num(plan.totals.batches)}</strong><span>batches to mix</span></div>
+            <div class="ops-stat"><strong>${peso2(plan.totals.est_shopping_cost)}</strong><span>to buy (est.)</span></div>
+          </div>
+          <label class="choice t-toggle"><input type="checkbox" id="inc-pending" ${includePending ? "checked" : ""}>
+            <span>Include unpaid orders that are still open</span></label>
+        </section>
+
+        ${noRecipe.length ? `<div class="ops-note">No recipe entered yet for <strong>${noRecipe.map((f) => esc(f.name)).join(", ")}</strong>,
+          so the batches and shopping list below leave it out. <a href="recipes.html">Add the recipe</a>.</div>` : ""}
+
+        <section class="t-card">
+          <h2>What to make</h2>
+          <p class="t-sub">Cookies ordered, minus dough balls already in the freezer, rounded up to whole batches (1 batch = the recipe's yield).</p>
+          <div class="ops-scroll"><table class="t-table">
+            <thead><tr><th></th><th>Ordered</th><th>Dough ready</th><th>To make</th><th>Batches</th><th>Spare</th></tr></thead>
+            <tbody>
+              ${flavors.map((f) => `<tr>
+                <th scope="row">${esc(f.name)}${f.recipe_ready ? "" : ` <span class="tag tag-warn">no recipe</span>`}</th>
+                <td>${f.cookies_needed}${includePending && f.pending_cookies ? `<br><span class="o-small">${f.paid_cookies} paid + ${f.pending_cookies} unpaid</span>` : ""}</td>
+                <td>${f.dough_on_hand}</td><td>${f.to_make}</td>
+                <td><strong>${f.batches}</strong></td><td>${f.recipe_ready ? f.leftover : "-"}</td></tr>`).join("")}
+            </tbody>
+          </table></div>
+        </section>
+
+        <section class="t-card">
+          <h2>Log what you did</h2>
+          <p class="t-sub">"Mixed" takes the recipe's ingredients out of stock and adds the dough balls to the freezer. "Baked" takes dough balls out.</p>
+          ${flavors.filter((f) => f.recipe_ready).map((f) => `
+            <div class="ops-inline" data-flavor="${f.flavor_id}" style="margin-top:.7rem">
+              <strong style="flex:1 1 100%">${esc(f.name)}</strong>
+              <div class="ops-field"><label>Batches mixed</label><input type="number" min="1" max="20" step="1" inputmode="numeric" value="${Math.max(f.batches, 1)}" data-batches></div>
+              <button type="button" class="btn btn-small" data-act="mix">Mixed it</button>
+              <div class="ops-field"><label>Dough balls baked</label><input type="number" min="1" step="1" inputmode="numeric" value="${Math.min(Math.max(f.cookies_needed, 1), Math.max(f.dough_on_hand, 1))}" data-balls></div>
+              <button type="button" class="btn btn-small btn-ghost" data-act="bake">Baked them</button>
+            </div>`).join("") || `<p class="t-sub">Add a recipe first (Recipes page), then you can log batches here.</p>`}
+        </section>
+
+        <section class="t-card">
+          <div class="ops-head"><h2>Shopping list</h2>
+            ${toBuy.length ? `<button type="button" class="btn btn-small btn-ghost no-print" id="copy-btn">Copy list</button>` : ""}</div>
+          <p class="t-sub">What the batches need (plus one bag per cookie), minus what's in stock and still good on the day, rounded up to whole packs.</p>
+          ${toBuy.length ? `<div class="ops-scroll"><table class="t-table">
+            <thead><tr><th></th><th>Need</th><th>Have</th><th>Buy</th><th>Est.</th></tr></thead>
+            <tbody>
+              ${toBuy.map((s) => `<tr>
+                <th scope="row">${esc(s.name)}${s.category === "packaging" ? ` <span class="tag tag-info">packaging</span>` : ""}</th>
+                <td>${esc(fmtQty(s.needed, s.unit))}</td><td>${esc(fmtQty(s.on_hand, s.unit))}</td>
+                <td><strong>${buyText(s)}</strong></td>
+                <td>${peso2(s.est_cost)}${s.price_confirmed ? "" : " *"}</td></tr>`).join("")}
+              <tr class="t-sum"><th scope="row">Total</th><td></td><td></td><td></td><td><strong>${peso2(plan.totals.est_shopping_cost)}</strong></td></tr>
+            </tbody>
+          </table></div>
+          ${toBuy.some((s) => !s.price_confirmed) ? `<p class="t-sub">* price is a guess. Set the real one on the Inventory page.</p>` : ""}`
+          : `<div class="ops-ok">${plan.shopping.length ? "Nothing to buy: you have enough of everything for this plan." : "Nothing to list yet. Orders and recipes make this list."}</div>`}
+          ${covered.length ? `<details class="o-more"><summary>Already covered (${covered.length})</summary>
+            <p class="t-sub">${covered.map((s) => `${esc(s.name)}: need ${esc(fmtQty(s.needed, s.unit))}, have ${esc(fmtQty(s.on_hand, s.unit))}`).join("<br>")}</p></details>` : ""}
+        </section>
+
+        <section class="t-card">
+          <h2>Dough in the freezer</h2>
+          ${dough.length ? dough.map((d) => {
+            const left = daysUntil(d.best_by);
+            const tag = left < 0 ? `<span class="tag tag-low">past best-by</span>` : left <= 7 ? `<span class="tag tag-warn">${left === 0 ? "last day" : left + " days left"}</span>` : "";
+            return `<div class="lot-row" data-dough="${d.id}">
+              <span><strong>${esc(nameOf[d.flavor_id] || "Flavor")}</strong>: ${d.balls_left} of ${d.balls_made} balls
+                <span class="o-small">· made ${esc(shortDate(d.made_on))} · best by ${esc(shortDate(d.best_by))}</span> ${tag}</span>
+              <button type="button" class="btn btn-small btn-ghost" data-act="toss">Throw away</button></div>`;
+          }).join("") : `<p class="t-sub">No dough in the freezer. Log a batch above when you mix one.</p>`}
+        </section>`;
+
+      $("inc-pending").addEventListener("change", (e) => { includePending = e.target.checked; load(); });
+      const copy = $("copy-btn"); if (copy) copy.addEventListener("click", () => copyList(toBuy));
+    }
+
+    // "2 x pack 200g" / "1 x bag 2.5kg" / "3 packs"
+    function buyText(s) {
+      return `${num(s.packs_to_buy)} × ${esc(s.pack_label || "pack")}`;
+    }
+
+    // Plain text for Messenger / Notes
+    async function copyList(rows) {
+      const text = `Shopping list for ${formatSunday(sunday)}\n` +
+        rows.map((s) => `- ${s.name}: ${num(s.packs_to_buy)} × ${s.pack_label || "pack"}`).join("\n");
+      try {
+        await navigator.clipboard.writeText(text);
+        flash("List copied");
+      } catch {
+        showMessage("Couldn't copy automatically. Select the table and copy it by hand.");
+      }
+    }
+
+    // ---- Events ---------------------------------------------------------------------------
+    $("out").addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-act]"); if (!btn) return;
+      const act = btn.dataset.act;
+      showMessage("");
+
+      try {
+        if (act === "toss") {                                    // throw away a dough lot
+          const id = Number(btn.closest("[data-dough]").dataset.dough);
+          if (!confirm("Throw away the rest of this dough?")) return;
+          btn.disabled = true;
+          await rpc("admin_discard_dough", { p_lot_id: id });
+          flash("Dough thrown away"); await load(); return;
+        }
+
+        const row = btn.closest("[data-flavor]");
+        const flavorId = Number(row.dataset.flavor);
+        const f = plan.flavors.find((x) => x.flavor_id === flavorId);
+
+        if (act === "mix") {
+          const n = Math.floor(Number(row.querySelector("[data-batches]").value));
+          if (!(n >= 1 && n <= 20)) return showMessage("Enter between 1 and 20 batches.");
+          if (!confirm(`Record ${n} batch${n === 1 ? "" : "es"} of ${f.name}?\n\nThis uses the recipe's ingredients from stock and adds ${n * f.yield} dough balls to the freezer.`)) return;
+          btn.disabled = true;
+          try {
+            await rpc("admin_record_batch", { p_flavor_id: flavorId, p_batches: n });
+          } catch (err) {
+            // Not enough logged stock: say what's short, and let her go ahead anyway (her stock may just not be entered yet)
+            if (err.hint === "short_stock" &&
+                confirm(`${err.message}\n\nRecord the batch anyway? (Use this if your real stock isn't logged yet. It takes whatever is logged.)`)) {
+              await rpc("admin_record_batch", { p_flavor_id: flavorId, p_batches: n, p_force: true });
+            } else { throw err; }
+          }
+          flash(`Recorded ${n} batch${n === 1 ? "" : "es"} of ${f.name}`); await load();
+        }
+
+        if (act === "bake") {
+          const n = Math.floor(Number(row.querySelector("[data-balls]").value));
+          if (!(n >= 1)) return showMessage("Enter how many dough balls you baked.");
+          btn.disabled = true;
+          await rpc("admin_use_dough", { p_flavor_id: flavorId, p_balls: n });
+          flash(`Took ${n} ${f.name} dough ball${n === 1 ? "" : "s"} out of the freezer`); await load();
+        }
+      } catch (err) {
+        console.error(err);
+        btn.disabled = false;
+        showMessage(err.isNetwork ? "Couldn't reach the server. Nothing was changed." : err.message);
+      }
+    });
+
+    setupSundayPicker($("sunday"), (d) => { sunday = d; load(); });
+    load();
+  </script>
+</body>
+</html>
