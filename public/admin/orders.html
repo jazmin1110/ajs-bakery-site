@@ -28,8 +28,12 @@
     <div class="toolbar no-print">
       <label class="toolbar-label" for="sunday">Sunday</label>
       <select id="sunday"></select>
-      <button type="button" class="btn btn-small" id="packing-btn">Packing view</button>
+      <button type="button" class="btn btn-small btn-ghost" id="packing-btn">Packing view</button>
+      <button type="button" class="btn btn-small" id="add-order-btn">+ Add order</button>
     </div>
+
+    <!-- Add an order yourself (Instagram, Messenger, walk-in). Filled by addFormHtml() -->
+    <section class="t-card no-print" id="add-order" hidden></section>
 
     <div class="chips no-print" id="chips" role="group" aria-label="Filter orders"></div>
 
@@ -42,7 +46,7 @@
   <script type="module">
     import {
       requireAdmin, renderNav, setupSundayPicker, selectedSunday, expireStale, loadOrders, setStatus,
-      formatWhen, timeLeft, singlesPack, rpc,
+      formatWhen, timeLeft, singlesPack, rpc, select,
     } from "../js/admin.js";
     import { esc, peso, formatSunday, addDays } from "../js/ui.js";
 
@@ -57,6 +61,8 @@
     const openRefs = new Set();           // which "Delivery & notes" sections are open, so a refresh doesn't close them
 
     const STATUS_LABEL = { pending: "Pending", paid: "Paid", cancelled: "Cancelled", expired: "Expired" };
+    const SOURCE_LABEL = { instagram: "📸 Instagram", messenger: "💬 Messenger", walk_in: "🚶 Walk-in", other: "✍️ Manual" };
+    const METHOD_LABEL = { gcash: "GCash", bank: "bank transfer", cash: "cash", other: "other" };
 
     // Order progress (only for PAID orders): new > baking > ready > out for delivery > completed
     const PREP_LABEL = { new: "To do", baking: "Baking", ready: "Ready", out_for_delivery: "Out for delivery", completed: "Done" };
@@ -160,7 +166,7 @@
       const st = stage(o);
       const cls = st === "check" ? "needs-check" : status === "expired" ? "is-expired" : `is-${status}`;
       const ig = o.ig_handle ? o.ig_handle.replace(/^@/, "") : "";
-      const phoneDigits = o.phone.replace(/[^\d+]/g, "");
+      const phoneDigits = (o.phone || "").replace(/[^\d+]/g, "");
       const next = status === "paid" ? nextStep(o) : null;
 
       // The ONE main thing to do with this order right now
@@ -169,7 +175,9 @@
         main = `<div class="o-todo">Check your GCash for <strong>${peso(o.total)}</strong>, ref <strong>${esc(o.gcash_ref)}</strong>.</div>
           <button type="button" class="btn btn-block" data-act="paid">Payment received, mark paid</button>`;
       } else if (st === "unpaid") {
-        main = `<div class="o-todo">Waiting for the customer to pay ${peso(o.total)} (${esc(timeLeft(o.seconds_left))}). Got the money anyway?</div>
+        main = `<div class="o-todo">${o.source !== "website" && o.payment_method
+            ? `Pays ${peso(o.total)} by ${esc(METHOD_LABEL[o.payment_method])} on the day.`
+            : `Waiting for the customer to pay ${peso(o.total)} (${esc(timeLeft(o.seconds_left))}). Got the money anyway?`}</div>
           <button type="button" class="btn btn-block btn-ghost" data-act="paid">Mark paid</button>`;
       } else if (next) {
         main = `<button type="button" class="btn btn-block" data-prep="${next.to}">${esc(next.label)}</button>`;
@@ -185,7 +193,8 @@
         </div>
         <p class="o-who"><strong>${esc(o.name)}</strong>
           ${ig ? ` · <a href="https://instagram.com/${encodeURIComponent(ig)}" target="_blank" rel="noopener">@${esc(ig)}</a>` : ""}
-          · <a href="tel:${esc(phoneDigits)}">${esc(o.phone)}</a></p>
+          ${o.phone ? ` · <a href="tel:${esc(phoneDigits)}">${esc(o.phone)}</a>` : ""}</p>
+        ${o.source && o.source !== "website" ? `<p class="o-meta o-small">${esc(SOURCE_LABEL[o.source] || o.source)} order${o.payment_method ? ` · ${o.status === "paid" ? "paid by" : "paying by"} ${esc(METHOD_LABEL[o.payment_method])}` : ""}</p>` : ""}
         <p class="o-meta">${o.fulfillment === "delivery"
           ? `🚚 Delivery: ${esc(o.address || "(no address)")}` : "🏠 Pickup"}</p>
         ${status === "paid" ? stepsHtml(o) : ""}
@@ -235,7 +244,7 @@
       <article class="pack-card">
         <div class="o-top"><span class="o-ref">${esc(o.ref_code)}</span>
           <span>${o.fulfillment === "delivery" ? "🚚 DELIVERY" : "🏠 PICKUP"}</span></div>
-        <p class="o-who"><strong>${esc(o.name)}</strong>${o.ig_handle ? ` · ${esc(o.ig_handle)}` : ""} · ${esc(o.phone)}</p>
+        <p class="o-who"><strong>${esc(o.name)}</strong>${o.ig_handle ? ` · ${esc(o.ig_handle)}` : ""}${o.phone ? ` · ${esc(o.phone)}` : ""}</p>
         ${o.fulfillment === "delivery" ? `<p class="o-meta">${esc(o.address || "")}</p>` : ""}
         ${deliverySummary(o)}
         ${boxesHtml(o)}
@@ -292,6 +301,149 @@
         }
       }
     }
+
+    // ---- Add an order yourself -------------------------------------------------------------
+    // For orders that come in by Instagram, Messenger or in person. The database prices it and
+    // checks the 15-per-flavor cap exactly like a website order (admin_create_order).
+    let menu = null;                         // { flavors, boxes } loaded the first time the form opens
+    let draftBoxes = [];                     // [{ size, qty: {slug: n} }]
+
+    async function openAddForm() {
+      const el = $("add-order");
+      if (!menu) {
+        el.hidden = false; el.innerHTML = `<p class="loading">Loading the menu...</p>`;
+        try {
+          const [flavors, boxes] = await Promise.all([
+            select("flavors", "slug, name, single_price, surcharge, active", (q) => q.eq("active", true).order("id")),
+            select("boxes", "size, price, active", (q) => q.eq("active", true).order("size")),
+          ]);
+          menu = { flavors, boxes };
+        } catch (err) { el.innerHTML = ""; el.hidden = true; return showMessage(err.message); }
+      }
+      draftBoxes = [];
+      el.innerHTML = addFormHtml(); el.hidden = false;
+      syncAddForm();
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function boxBlock(b, i) {
+      const n = Object.values(b.qty).reduce((a, x) => a + x, 0);
+      return `<div class="ao-box" data-box="${i}">
+        <div class="ops-head"><strong>Box ${i + 1}</strong>
+          <select data-box-size aria-label="Box size">${menu.boxes.map((x) => `<option value="${x.size}"${x.size === b.size ? " selected" : ""}>Box of ${x.size} (${peso(x.price)})</option>`).join("")}</select>
+          <button type="button" class="link-btn" data-box-remove>Remove</button></div>
+        ${menu.flavors.map((f) => `<label class="ao-qty"><span>${esc(f.name)}</span>
+          <input type="number" min="0" max="${b.size}" step="1" inputmode="numeric" value="${b.qty[f.slug] || 0}" data-box-qty="${esc(f.slug)}"></label>`).join("")}
+        <p class="o-small ${n === b.size ? "" : "ao-warn"}">${n} of ${b.size} picked</p>
+      </div>`;
+    }
+
+    function addFormHtml() {
+      const sel = $("sunday");
+      return `<form class="ops-form" id="ao-form" novalidate>
+        <div class="ops-head wide"><h2 style="margin:0">Add an order</h2><button type="button" class="link-btn" data-ao-close>Close</button></div>
+        <p class="t-sub wide" style="margin:0">For orders from Instagram, Messenger or in person. Prices and the weekly cap work like the website.</p>
+        <div class="ops-field"><label>For Sunday</label><select name="sunday">${[...sel.options].map((op) =>
+          `<option value="${op.value}"${op.value === sunday ? " selected" : ""}>${esc(op.textContent)}</option>`).join("")}</select></div>
+        <div class="ops-field"><label>Came from</label><select name="source">
+          <option value="instagram">Instagram</option><option value="messenger">Messenger</option>
+          <option value="walk_in">Walk-in</option><option value="other">Other</option></select></div>
+        <div class="ops-field"><label>Name</label><input name="name" maxlength="100" required autocomplete="off"></div>
+        <div class="ops-field"><label>Instagram (optional)</label><input name="ig" maxlength="60" autocapitalize="none" placeholder="@handle"></div>
+        <div class="ops-field"><label>Mobile (optional)</label><input name="phone" type="tel" inputmode="tel" maxlength="20"></div>
+        <div class="ops-field"><label>Pickup or delivery</label><select name="fulfillment">
+          <option value="pickup">Pickup</option><option value="delivery">Delivery</option></select></div>
+        <div class="ops-field wide" data-ao-address hidden><label>Delivery address</label><input name="address" maxlength="300"></div>
+
+        <div class="wide"><h3 class="ao-h">Single cookies</h3>
+          ${menu.flavors.filter((f) => f.single_price != null).map((f) => `<label class="ao-qty"><span>${esc(f.name)} <span class="o-small">${peso(f.single_price)}</span></span>
+            <input type="number" min="0" max="99" step="1" inputmode="numeric" value="0" data-single="${esc(f.slug)}"></label>`).join("")}
+        </div>
+        <div class="wide"><h3 class="ao-h">Boxes</h3>
+          <div id="ao-boxes">${draftBoxes.map(boxBlock).join("")}</div>
+          <button type="button" class="btn btn-small btn-ghost" data-box-add>+ Add a box</button>
+        </div>
+
+        <div class="ops-field wide"><label>Payment</label>
+          <label class="choice"><input type="radio" name="payment" value="paid" checked> <span>Paid already</span></label>
+          <label class="choice"><input type="radio" name="payment" value="pay_on_day"> <span>Pays on pickup / delivery (keeps the slot until Sunday)</span></label>
+          <label class="choice"><input type="radio" name="payment" value="unpaid"> <span>Not paid yet (releases after 24 hours, like the website)</span></label>
+        </div>
+        <div class="ops-field" data-ao-method><label>Paid / paying by</label><select name="method">
+          <option value="gcash">GCash</option><option value="bank">Bank transfer</option><option value="cash">Cash</option><option value="other">Other</option></select></div>
+        <div class="ops-field" data-ao-ref><label>GCash ref (optional)</label><input name="gcash" inputmode="numeric" maxlength="15"></div>
+        <div class="ops-field wide"><label>Note for yourself (optional)</label><input name="note" maxlength="500"></div>
+        <div class="wide"><button type="submit" class="btn btn-block">Save order</button></div>
+      </form>`;
+    }
+
+    // Re-draw just the boxes part (keeps what's typed in the other fields)
+    function redrawBoxes() { $("ao-boxes").innerHTML = draftBoxes.map(boxBlock).join(""); }
+
+    function syncAddForm() {
+      const f = $("ao-form"); if (!f) return;
+      f.querySelector("[data-ao-address]").hidden = f.fulfillment.value !== "delivery";
+      const pay = f.querySelector('input[name="payment"]:checked').value;
+      f.querySelector("[data-ao-method]").hidden = pay === "unpaid";
+      f.querySelector("[data-ao-ref]").hidden = !(pay === "paid" && f.method.value === "gcash");
+    }
+
+    async function saveOrder(form, overCap = false) {
+      const f = new FormData(form);
+      const singles = [...form.querySelectorAll("[data-single]")].map((i) => ({ flavor_slug: i.dataset.single, qty: Math.floor(Number(i.value) || 0) })).filter((x) => x.qty > 0);
+      const boxes = draftBoxes.map((b) => ({ size: b.size, items: Object.entries(b.qty).filter(([, q]) => q > 0).map(([flavor_slug, qty]) => ({ flavor_slug, qty })) }));
+      const bad = draftBoxes.findIndex((b) => Object.values(b.qty).reduce((a, x) => a + x, 0) !== b.size);
+      if (bad >= 0) return showMessage(`Box ${bad + 1} needs exactly ${draftBoxes[bad].size} cookies.`);
+      if (!singles.length && !boxes.length) return showMessage("Add at least one cookie or box.");
+      const pay = f.get("payment");
+      const btn = form.querySelector("button[type=submit]"); btn.disabled = true; showMessage("");
+      try {
+        const res = await rpc("admin_create_order", {
+          p_sunday: f.get("sunday"), p_name: f.get("name"), p_phone: f.get("phone"), p_ig_handle: f.get("ig"),
+          p_source: f.get("source"), p_fulfillment: f.get("fulfillment"), p_address: f.get("address"),
+          p_boxes: boxes, p_singles: singles, p_payment: pay,
+          p_payment_method: pay === "unpaid" ? null : f.get("method"),
+          p_gcash_ref: pay === "paid" && f.get("method") === "gcash" ? f.get("gcash") : null,
+          p_note: f.get("note"), p_allow_over_cap: overCap,
+        });
+        const row = Array.isArray(res) ? res[0] : res;
+        $("add-order").hidden = true; $("add-order").innerHTML = "";
+        // Show the Sunday the order went to
+        if (row.sunday_date !== sunday) { const sel = $("sunday"); sel.value = row.sunday_date; sunday = row.sunday_date; }
+        orders = await loadOrders(sunday); render();
+        flash(`Saved ${row.ref_code} · ${peso(row.total)}`);
+      } catch (err) {
+        console.error(err); btn.disabled = false;
+        // Over the 15 cap: say so, and let her go ahead if she's baking extra
+        if (err.hint === "flavor_cap" && confirm(`${err.message}\n\nAdd it anyway? Only do this if you'll bake extra.`)) return saveOrder(form, true);
+        showMessage(err.isNetwork ? "Couldn't reach the server. Nothing was saved." : err.message);
+      }
+    }
+
+    $("add-order-btn").addEventListener("click", openAddForm);
+    $("add-order").addEventListener("click", (e) => {
+      if (e.target.closest("[data-ao-close]")) { $("add-order").hidden = true; $("add-order").innerHTML = ""; return; }
+      if (e.target.closest("[data-box-add]")) { draftBoxes.push({ size: menu.boxes[0]?.size || 3, qty: {} }); redrawBoxes(); return; }
+      const rm = e.target.closest("[data-box-remove]");
+      if (rm) { draftBoxes.splice(Number(rm.closest("[data-box]").dataset.box), 1); redrawBoxes(); }
+    });
+    $("add-order").addEventListener("change", (e) => {
+      const box = e.target.closest("[data-box]");
+      if (box) {
+        const b = draftBoxes[Number(box.dataset.box)];
+        if (e.target.matches("[data-box-size]")) { b.size = Number(e.target.value); redrawBoxes(); return; }
+        if (e.target.matches("[data-box-qty]")) {
+          // Only update the "x of N picked" line, so the field you're typing in isn't replaced
+          b.qty[e.target.dataset.boxQty] = Math.max(0, Math.floor(Number(e.target.value) || 0));
+          const n = Object.values(b.qty).reduce((a, x) => a + x, 0);
+          const line = box.querySelector("p.o-small");
+          line.textContent = `${n} of ${b.size} picked`; line.classList.toggle("ao-warn", n !== b.size);
+        }
+        return;
+      }
+      syncAddForm();
+    });
+    $("add-order").addEventListener("submit", (e) => { e.preventDefault(); saveOrder(e.target); });
 
     // ---- Events -------------------------------------------------------------------------
     $("chips").addEventListener("click", (e) => {
