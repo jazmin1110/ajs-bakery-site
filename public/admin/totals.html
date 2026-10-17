@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex">
-  <title>Totals | AJ's Bakery admin</title>
+  <title>Sales | AJ's Bakery admin</title>
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32.png?v=3">
   <link rel="icon" type="image/png" sizes="64x64" href="../assets/icons/favicon-64.png?v=3">
   <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png?v=3">
@@ -25,6 +25,14 @@
   </header>
 
   <main class="container admin-main">
+    <!-- BEST SELLERS: across many Sundays. The per-Sunday totals are further down. -->
+    <section class="t-card" id="best">
+      <div class="ops-head"><h1 style="margin:0;font-size:1.5rem">Best sellers</h1></div>
+      <div class="chips" id="best-range" role="group" aria-label="Period"></div>
+      <div id="best-out"><p class="loading">Loading sales...</p></div>
+    </section>
+
+    <h2 style="margin:1.4rem 0 .6rem">One Sunday</h2>
     <div class="toolbar">
       <label class="toolbar-label" for="sunday">Sunday</label>
       <select id="sunday"></select>
@@ -37,9 +45,9 @@
   <script type="module">
     import {
       requireAdmin, renderNav, setupSundayPicker, selectedSunday, expireStale, loadOrders, loadFlavors,
-      summarize, batchesFor, BATCH_SIZE,
+      summarize, batchesFor, BATCH_SIZE, rpc, currentSunday, peso2, shortDate, num,
     } from "../js/admin.js";
-        import { esc } from "../js/ui.js";
+    import { esc, addDays } from "../js/ui.js";
 
     await requireAdmin();
     renderNav("totals");
@@ -48,6 +56,72 @@
     let sunday = selectedSunday();
     let includePending = true;      // bake for unpaid-but-still-open orders too?
     let data = null;                // { summary, cap }
+
+    // ---- Best sellers ------------------------------------------------------------------
+    // Paid orders only. "Sold out" weeks matter: if a flavor hits its cap every week,
+    // people wanted more than you baked, so its real demand is hidden by the cap.
+    const RANGES = [["4", "Last 4 Sundays"], ["12", "Last 12 Sundays"], ["all", "All time"]];
+    let range = "4";
+
+    async function loadBest() {
+      $("best-range").innerHTML = RANGES.map(([k, label]) =>
+        `<button type="button" class="chip" data-range="${k}" aria-pressed="${range === k}">${label}</button>`).join("");
+      const now = currentSunday();
+      const from = range === "all" ? "2020-01-05" : addDays(now, -7 * (Number(range) - 1));
+      const to = addDays(now, 7 * 8);                       // paid orders already in for the next few weeks count too
+      try {
+        renderBest(await rpc("admin_sales_report", { p_from: from, p_to: to }));
+      } catch (err) {
+        console.error(err);
+        $("best-out").innerHTML = `<p class="form-error">Couldn't load sales: ${esc(err.message)}</p>`;
+      }
+    }
+
+    function renderBest(rep) {
+      const fl = rep.flavors;
+      const total = rep.total_cookies;
+      if (!total) {
+        $("best-out").innerHTML = `<p class="t-sub">No paid orders in this period yet. Once orders are marked paid, the ranking shows up here.</p>`;
+        return;
+      }
+      const top = fl[0], max = Math.max(...fl.map((f) => f.cookies), 1);
+      const weeks = rep.weeks_with_sales;
+      const always = fl.filter((f) => f.cookies && f.sold_out_weeks === f.weeks.length);
+      const notes = [];
+      if (weeks < 4) notes.push(`Only ${weeks} Sunday${weeks === 1 ? "" : "s"} of sales so far. Give it about 4 before you drop or change a flavor.`);
+      if (always.length) notes.push(`${always.map((f) => `<strong>${esc(f.name)}</strong>`).join(" and ")} sold out every Sunday ${always.length === 1 ? "it was" : "they were"} on sale, so the 15 cap is hiding real demand. Try baking more of ${always.length === 1 ? "it" : "them"}.`);
+
+      $("best-out").innerHTML = `
+        <p class="bs-lead"><strong>${esc(top.name)}</strong> is your best seller:
+          ${num(top.cookies)} of ${num(total)} cookies (${Math.round((top.cookies / total) * 100)}%) across ${weeks} Sunday${weeks === 1 ? "" : "s"} and ${num(rep.total_orders)} paid order${rep.total_orders === 1 ? "" : "s"}.</p>
+        <ol class="bs-list">
+          ${fl.map((f) => {
+            const pct = Math.round((f.cookies / total) * 100);
+            return `<li>
+              <div class="bs-row"><span class="bs-name">${esc(f.name)}</span><span class="bs-val">${num(f.cookies)} <span class="o-small">(${pct}%)</span></span></div>
+              <div class="bs-bar" role="img" aria-label="${esc(f.name)}: ${f.cookies} cookies, ${pct}%"><span style="width:${(f.cookies / max) * 100}%"></span></div>
+              <p class="o-small">${peso2(f.revenue)} · in ${f.orders} order${f.orders === 1 ? "" : "s"} · ${f.in_boxes} picked in boxes, ${f.as_singles} as singles
+                · sold out ${f.sold_out_weeks} of ${f.weeks.length} Sunday${f.weeks.length === 1 ? "" : "s"}</p>
+            </li>`;
+          }).join("")}
+        </ol>
+        ${notes.map((n) => `<div class="ops-note">${n}</div>`).join("")}
+        <details class="o-more"><summary>Week by week</summary>
+          <div class="ops-scroll"><table class="t-table">
+            <thead><tr><th class="left">Sunday</th>${fl.map((f) => `<th>${esc(f.name)}</th>`).join("")}</tr></thead>
+            <tbody>${rep.sundays.map((d) => `<tr><th scope="row" class="left">${esc(shortDate(d))}</th>${fl.map((f) => {
+              const w = f.weeks.find((x) => x.sunday === d); const n = w ? w.cookies : 0;
+              return `<td>${n}${n >= f.cap ? " ✓" : ""}</td>`; }).join("")}</tr>`).join("")}</tbody>
+          </table></div>
+          <p class="o-small">✓ = sold out that Sunday. Money is an estimate: box cookies get an even share of the box price, plus their surcharge.</p>
+        </details>`;
+    }
+
+    $("best-range").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-range]"); if (!b) return;
+      range = b.dataset.range; $("best-out").innerHTML = `<p class="loading">Loading sales...</p>`; loadBest();
+    });
+    loadBest();
 
     async function load() {
       $("message").hidden = true;
