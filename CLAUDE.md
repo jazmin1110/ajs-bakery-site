@@ -98,7 +98,7 @@ public/                      <- what Vercel serves
   checkout.html              customer details + submit
   confirmed.html             order confirmation + GCash instructions
   404.html                   not-found page
-  admin/                     login, orders, totals, production, inventory, recipes (auth required, noindex)
+  admin/                     login, orders, production ("Bake plan"), inventory ("Stock"), recipes, totals (auth required, noindex)
   css/styles.css             all styles
   js/config.js               Supabase URL + anon key, display copy (flavor text, pickup area, Instagram)
   js/supabase.js             Supabase client (anon key only) + database calls, 10s timeout
