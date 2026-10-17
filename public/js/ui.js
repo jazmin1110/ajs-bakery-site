@@ -42,6 +42,13 @@ export function formatCutoff(date) {
   return `${parts.weekday} ${parts.hour}${minutes}${parts.dayPeriod.toLowerCase()}`;
 }
 
+// Same moment with the date, so it can't be misread: "Wed, Oct 21, 9pm"
+export function formatCutoffLong(date) {
+  const day = new Intl.DateTimeFormat("en-US", { timeZone: CONFIG.timezone, month: "short", day: "numeric" }).format(date);
+  const [weekday, time] = formatCutoff(date).split(" ");
+  return `${weekday}, ${day}, ${time}`;
+}
+
 // Turn the database's current_sunday_info row into what the pages show.
 // The database says which Sunday a new order would land on (ordering_sunday):
 // the upcoming one, or the first later one with room if that one is full.
@@ -62,6 +69,7 @@ export function orderingSunday(info) {
     date,                       // "2026-10-25"
     label: formatSunday(date),  // "Sunday, Oct 25"
     cutoffLabel: formatCutoff(new Date(cutoff)), // "Wed 9pm"
+    cutoffLong: formatCutoffLong(new Date(cutoff)), // "Wed, Oct 21, 9pm"
     remaining,
   };
 }
@@ -72,7 +80,7 @@ export function renderBanner(el, ordering, { compact = false } = {}) {
   const lead = ordering.isFull
     ? `This Sunday is full, ordering for <strong>${esc(ordering.label)}</strong>`
     : `Now ordering for <strong>${esc(ordering.label)}</strong>`;
-  const small = `Orders by ${esc(ordering.cutoffLabel)} go to this Sunday · ${CONFIG.weeklyCapPerFlavor} of each flavor, once they're gone, they're gone`;
+  const small = `Order by ${esc(ordering.cutoffLong)} · only ${CONFIG.weeklyCapPerFlavor} of each flavor, once they're gone, they're gone`;
   // compact = one line (the box builder wants its screen space for the flavors)
   el.innerHTML = compact ? `${lead} <span class="banner-by">· by ${esc(ordering.cutoffLabel)}</span>` : `${lead}<small>${small}</small>`;
 }

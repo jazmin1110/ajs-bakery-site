@@ -102,7 +102,7 @@
       const unknown = asked !== null && asked !== "";
       document.title = "Pick a box | AJ's Bakery";
       root.innerHTML = `
-        <a class="back-link-sm" href="index.html#boxes">&larr; All boxes</a>
+        <a class="back-link-sm" href="index.html#menu">&larr; Menu</a>
         <h1>${unknown ? "That box isn't available" : "Pick a box size"}</h1>
         ${unknown ? `<p class="builder-msg" role="status">We don't have a box of ${esc(asked.slice(0, 6))} right now. Here's what we've got:</p>` : ""}
         <div class="box-picker"><div class="card-grid">${boxes.map((b) => `
@@ -112,8 +112,7 @@
             ${boxSavings(b, flavors) ? `<span class="save-badge">Save ${peso(boxSavings(b, flavors))} vs singles</span>` : ""}
             <p class="box-desc">${esc(b.description || "")}</p>
             <a class="btn" href="box.html?size=${b.size}">Build this box</a>
-          </div></article>`).join("")}</div></div>
-        <p><a class="back-link" href="index.html#boxes">&larr; Back to all boxes</a></p>`;
+          </div></article>`).join("")}</div></div>`;
     }
 
     function startBuilder(box, flavors, availability, settings) {
