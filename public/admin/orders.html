@@ -31,7 +31,10 @@
       <button type="button" class="btn btn-small" id="packing-btn">Packing view</button>
     </div>
 
-    <div class="chips no-print" id="chips" role="group" aria-label="Filter by status"></div>
+    <div class="chips no-print" id="chips" role="group" aria-label="Filter by payment status"></div>
+    <div class="chips no-print" id="chips2" role="group" aria-label="Filter by progress (paid orders)"></div>
+
+    <div class="ops-ok ops-flash no-print" id="flash" role="status" hidden></div>
 
     <div class="form-error" id="message" role="alert" hidden></div>
     <div id="list"><p class="loading">Loading orders...</p></div>
@@ -40,7 +43,7 @@
   <script type="module">
     import {
       requireAdmin, renderNav, setupSundayPicker, selectedSunday, expireStale, loadOrders, setStatus,
-      formatWhen, timeLeft, singlesPack,
+      formatWhen, timeLeft, singlesPack, rpc,
     } from "../js/admin.js";
     import { esc, peso, formatSunday } from "../js/ui.js";
 
@@ -52,8 +55,34 @@
     let filter = "all";
     let packing = false;
     let sunday = selectedSunday();
+    let progress = "all";                 // progress filter (only looks at paid orders)
+    const openRefs = new Set();           // which "Delivery & notes" sections are open, so a refresh doesn't close them
 
     const STATUS_LABEL = { pending: "Pending", paid: "Paid", cancelled: "Cancelled", expired: "Expired" };
+
+    // Order progress (only for PAID orders): new > baking > ready > out for delivery > completed
+    const PREP_LABEL = { new: "To do", baking: "Baking", ready: "Ready", out_for_delivery: "Out for delivery", completed: "Done" };
+    const prepName = (o) => o.prep_status === "completed" ? (o.fulfillment === "delivery" ? "Delivered" : "Picked up") : PREP_LABEL[o.prep_status];
+    // The one button that moves the order forward
+    function nextStep(o) {
+      const delivery = o.fulfillment === "delivery";
+      return {
+        new:               { to: "baking", label: "Start baking" },
+        baking:            { to: "ready", label: "Mark ready" },
+        ready:             delivery ? { to: "out_for_delivery", label: "Out for delivery" } : { to: "completed", label: "Picked up" },
+        out_for_delivery:  { to: "completed", label: "Delivered" },
+      }[o.prep_status];
+    }
+    // One step back, for mis-taps
+    function prevStep(o) {
+      return { baking: "new", ready: "baking", out_for_delivery: "ready",
+               completed: o.fulfillment === "delivery" ? "out_for_delivery" : "ready" }[o.prep_status];
+    }
+
+    function flash(text) {
+      $("flash").textContent = text; $("flash").hidden = false;
+      clearTimeout(flash.t); flash.t = setTimeout(() => { $("flash").hidden = true; }, 2500);
+    }
 
     function showMessage(text) {
       $("message").textContent = text || "";
@@ -127,12 +156,50 @@
         <p class="o-meta"><strong>${peso(o.total)}</strong>
           · GCash ref: ${o.gcash_ref ? `<strong>${esc(o.gcash_ref)}</strong>` : "<em>none yet</em>"}</p>
         <p class="o-meta o-small">Ordered ${esc(formatWhen(o.created_at))}${status === "pending" ? ` · ${esc(timeLeft(o.seconds_left))}` : ""}</p>
+        ${deliverySummary(o)}
+        ${status === "paid" ? progressHtml(o) : ""}
+        ${status === "cancelled" || status === "expired" ? "" : detailsHtml(o)}
         <div class="o-actions no-print">
           ${status === "paid" ? "" : `<button type="button" class="btn btn-small" data-act="paid">Mark paid</button>`}
           ${status === "cancelled" ? "" : `<button type="button" class="btn btn-small btn-danger" data-act="cancelled">Cancel</button>`}
           ${status === "cancelled" || status === "expired" ? `<button type="button" class="btn btn-small btn-ghost" data-act="pending">Reopen</button>` : ""}
         </div>
       </article>`;
+    }
+
+    // "🚚 Lalamove · 3-4pm · LLM-123" and the internal note, if any were saved
+    function deliverySummary(o) {
+      const bits = [o.courier, o.delivery_slot, o.delivery_ref].filter(Boolean);
+      return (bits.length ? `<p class="o-meta">🚚 ${bits.map(esc).join(" · ")}</p>` : "")
+           + (o.admin_note ? `<p class="o-meta o-small">📝 ${esc(o.admin_note)}</p>` : "");
+    }
+
+    // Progress badge + the button that moves the order to its next step
+    function progressHtml(o) {
+      const next = nextStep(o), prev = prevStep(o);
+      return `<div class="o-actions no-print">
+        <span class="badge badge-prep-${esc(o.prep_status)}">${esc(prepName(o))}</span>
+        ${next ? `<button type="button" class="btn btn-small" data-prep="${next.to}">${esc(next.label)}</button>` : ""}
+        ${prev ? `<button type="button" class="btn btn-small btn-ghost" data-prep="${prev}">Back a step</button>` : ""}
+      </div>`;
+    }
+
+    // Courier / booking ref / time slot (delivery only) and an internal note
+    function detailsHtml(o) {
+      const delivery = o.fulfillment === "delivery";
+      const v = (x) => esc(x || "");
+      return `<details class="o-more no-print" data-ref-d="${esc(o.ref_code)}"${openRefs.has(o.ref_code) ? " open" : ""}>
+        <summary>${delivery ? "Delivery &amp; notes" : "Notes"}</summary>
+        <form class="ops-form" data-save-delivery>
+          ${delivery ? `
+          <div class="ops-field"><label>Courier</label><input name="courier" maxlength="60" placeholder="Lalamove, Grab..." value="${v(o.courier)}"></div>
+          <div class="ops-field"><label>Time slot</label><input name="slot" maxlength="60" placeholder="3-4pm" value="${v(o.delivery_slot)}"></div>
+          <div class="ops-field wide"><label>Booking number or tracking link</label><input name="ref" maxlength="300" value="${v(o.delivery_ref)}"></div>` : `
+          <input type="hidden" name="courier" value="${v(o.courier)}"><input type="hidden" name="slot" value="${v(o.delivery_slot)}"><input type="hidden" name="ref" value="${v(o.delivery_ref)}">`}
+          <div class="ops-field wide"><label>Note for yourself (customers never see this)</label><input name="note" maxlength="500" value="${v(o.admin_note)}"></div>
+          <div class="wide"><button type="submit" class="btn btn-small">Save</button></div>
+        </form>
+      </details>`;
     }
 
     // One card per paid order: what to put in the box, who it's for, the note
@@ -143,6 +210,7 @@
           <span>${o.fulfillment === "delivery" ? "🚚 DELIVERY" : "🏠 PICKUP"}</span></div>
         <p class="o-who"><strong>${esc(o.name)}</strong>${o.ig_handle ? ` · ${esc(o.ig_handle)}` : ""} · ${esc(o.phone)}</p>
         ${o.fulfillment === "delivery" ? `<p class="o-meta">${esc(o.address || "")}</p>` : ""}
+        ${deliverySummary(o)}
         ${boxesHtml(o)}
         ${singlesHtml(o, true)}
       </article>`;
@@ -155,6 +223,14 @@
       $("chips").innerHTML = ["all", "pending", "paid", "cancelled", "expired"].map((k) =>
         `<button type="button" class="chip" data-filter="${k}" aria-pressed="${filter === k}">${k === "all" ? "All" : STATUS_LABEL[k]} (${counts[k]})</button>`
       ).join("");
+
+      // Progress chips count PAID orders only
+      const paidOrders = orders.filter((o) => effectiveStatus(o) === "paid");
+      const pc = { all: paidOrders.length };
+      Object.keys(PREP_LABEL).forEach((k) => { pc[k] = paidOrders.filter((o) => o.prep_status === k).length; });
+      $("chips2").innerHTML = paidOrders.length ? ["all", ...Object.keys(PREP_LABEL)].map((k) =>
+        `<button type="button" class="chip" data-progress="${k}" aria-pressed="${progress === k}">${k === "all" ? "All paid" : PREP_LABEL[k]} (${pc[k]})</button>`
+      ).join("") : "";
 
       $("packing-btn").textContent = packing ? "Back to orders" : "Packing view";
 
@@ -171,7 +247,8 @@
         return;
       }
 
-      const shown = orders.filter((o) => filter === "all" || effectiveStatus(o) === filter);
+      const shown = orders.filter((o) => (filter === "all" || effectiveStatus(o) === filter)
+        && (progress === "all" || (effectiveStatus(o) === "paid" && o.prep_status === progress)));
       $("list").innerHTML = shown.length
         ? shown.map(orderCard).join("")
         : `<p class="loading">${orders.length ? "No orders with that status." : "No orders for this Sunday yet."}</p>`;
@@ -183,10 +260,58 @@
       filter = b.dataset.filter; render();
     });
 
+    $("chips2").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-progress]"); if (!b) return;
+      progress = b.dataset.progress; render();
+    });
+
     $("packing-btn").addEventListener("click", () => { packing = !packing; render(); });
+
+    // Remember which "Delivery & notes" sections are open
+    $("list").addEventListener("toggle", (e) => {
+      const d = e.target.closest?.("[data-ref-d]"); if (!d) return;
+      d.open ? openRefs.add(d.dataset.refD) : openRefs.delete(d.dataset.refD);
+    }, true);
+
+    // Save courier / slot / ref / note
+    $("list").addEventListener("submit", async (e) => {
+      const form = e.target.closest("[data-save-delivery]"); if (!form) return;
+      e.preventDefault();
+      const ref = form.closest("[data-ref]").dataset.ref;
+      const f = new FormData(form);
+      const btn = form.querySelector("button[type=submit]");
+      btn.disabled = true; showMessage("");
+      try {
+        await rpc("admin_set_order_delivery", {
+          p_ref_code: ref, p_courier: f.get("courier"), p_delivery_ref: f.get("ref"),
+          p_delivery_slot: f.get("slot"), p_admin_note: f.get("note"),
+        });
+        orders = await loadOrders(sunday);
+        render(); flash("Saved " + ref);
+      } catch (err) {
+        console.error(err);
+        btn.disabled = false;
+        showMessage(err.isNetwork ? "Couldn't reach the server. Nothing was saved." : err.message);
+      }
+    });
 
     // Mark paid / Cancel / Reopen (one listener for every card)
     $("list").addEventListener("click", async (e) => {
+      const prepBtn = e.target.closest("[data-prep]");
+      if (prepBtn) {                                           // Start baking / Mark ready / Out for delivery / ...
+        const pref = prepBtn.closest("[data-ref]").dataset.ref;
+        showMessage(""); prepBtn.disabled = true;
+        try {
+          await rpc("admin_set_order_prep", { p_ref_code: pref, p_prep: prepBtn.dataset.prep });
+          orders = await loadOrders(sunday);
+          render();
+        } catch (err) {
+          console.error(err);
+          prepBtn.disabled = false;
+          showMessage(err.isNetwork ? "Couldn't reach the server. Nothing was changed." : err.message);
+        }
+        return;
+      }
       const btn = e.target.closest("[data-act]"); if (!btn) return;
       const ref = btn.closest("[data-ref]").dataset.ref;
       const act = btn.dataset.act;
