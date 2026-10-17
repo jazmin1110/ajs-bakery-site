@@ -91,32 +91,85 @@ export function setupSundayPicker(select, onChange) {
 
 // ---- Nav bar ---------------------------------------------------------------------------
 
+// The pages in the menu. `sunday: true` = the page works on one Sunday, so the
+// chosen Sunday is carried along when you switch to it.
+const NAV_PAGES = [
+  { page: "orders",     label: "Orders",     sunday: true },
+  { page: "totals",     label: "Totals",     sunday: true },
+  { page: "production", label: "Production", sunday: true },
+  { page: "inventory",  label: "Inventory",  sunday: false },
+  { page: "recipes",    label: "Recipes",    sunday: false },
+];
+
 export function renderNav(active) {
   const nav = document.getElementById("admin-nav");
-  nav.innerHTML = `
-    <a href="orders.html" data-page="orders"${active === "orders" ? ' aria-current="page"' : ""}>Orders</a>
-    <a href="totals.html" data-page="totals"${active === "totals" ? ' aria-current="page"' : ""}>Totals</a>
-    <button type="button" class="link-btn" id="logout-btn">Log out</button>`;
+  nav.innerHTML = NAV_PAGES.map((p) =>
+    `<a href="${p.page}.html" data-page="${p.page}"${p.sunday ? ' data-sunday="1"' : ""}${active === p.page ? ' aria-current="page"' : ""}>${p.label}</a>`
+  ).join("") + `<button type="button" class="link-btn" id="logout-btn">Log out</button>`;
   document.getElementById("logout-btn").addEventListener("click", signOut);
   syncNav();
 }
 
-// Keep the chosen Sunday when switching between Orders and Totals
+// Keep the chosen Sunday when switching between the Sunday-based pages
 function syncNav() {
   const q = new URLSearchParams(location.search).get("sunday");
   document.querySelectorAll("#admin-nav a").forEach((a) => {
-    a.href = a.dataset.page + ".html" + (q ? `?sunday=${q}` : "");
+    a.href = a.dataset.page + ".html" + (q && a.dataset.sunday ? `?sunday=${q}` : "");
   });
 }
 
 // ---- Data ------------------------------------------------------------------------------
 
 // Turn a database error into a message a human can read
-function fail(error) {
+export function fail(error) {
   const err = new Error(error.message || "Something went wrong");
   err.hint = error.hint || "";
   err.isNetwork = !error.code;
   return err;
+}
+
+// Call any admin_* database function. Throws a readable error (with .hint) if it fails.
+// The functions check is_admin() themselves, so this is safe to call from any admin page.
+export async function rpc(name, args = {}) {
+  const { data, error } = await getClient().rpc(name, args);
+  if (error) throw fail(error);
+  return data;
+}
+
+// Read rows with the logged-in admin's session. Row Level Security still decides what comes back.
+export async function select(table, columns = "*", build = (q) => q) {
+  const { data, error } = await build(getClient().from(table).select(columns));
+  if (error) throw fail(error);
+  return data || [];
+}
+
+// ---- Number formatting (back-office pages) ----------------------------------------
+
+// 2500 -> "2,500", 3.70 -> "3.7", 0.5 -> "0.5" (no pointless trailing zeros)
+export function num(n, maxDecimals = 2) {
+  return Number(n).toLocaleString("en-PH", { maximumFractionDigits: maxDecimals });
+}
+
+// 2500, "g" -> "2.5 kg", 12, "pc" -> "12 pc", 1.5, "tsp" -> "1.5 tsp"
+export function fmtQty(n, unit) {
+  if (unit === "g" && Math.abs(n) >= 1000) return `${num(n / 1000, 2)} kg`;
+  return `${num(n, 2)} ${unit}`;
+}
+
+// ₱ with cents when it matters: 37.4 -> "₱37.40", 285 -> "₱285"
+export function peso2(amount) {
+  const n = Number(amount);
+  return "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 });
+}
+
+// Short date from "2026-11-02" -> "Nov 2" (done in UTC so the viewer's timezone can't shift it)
+export function shortDate(iso) {
+  return new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+// Days from today (Manila) to a date: 0 = today, 1 = tomorrow, negative = past
+export function daysUntil(iso) {
+  return Math.round((new Date(iso + "T00:00:00Z") - new Date(manilaToday() + "T00:00:00Z")) / 86400000);
 }
 
 // Run this first on the orders page: unpaid orders past 24 hours become "expired"

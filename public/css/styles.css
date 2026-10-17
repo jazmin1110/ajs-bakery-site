@@ -1111,3 +1111,61 @@ html.drawer-open, body.drawer-open { overflow: hidden; overscroll-behavior: none
 /* Checkout summary card: subtotal rows line up with the item rows above them (the drawer's side padding is for its inner boxes);
    the item row above already draws a rule, so the subtotal doesn't add a second one */
 .summary .subtotal { padding-left: 0; padding-right: 0; border-top: 0; }
+
+/* ---------- Admin: back office (production, inventory, recipes, order progress) ---------- */
+/* Same look as the rest of the admin: cream cards, blue buttons. Only new pieces live here. */
+.admin-nav { flex-wrap: wrap; }                                   /* 5 links + Log out wrap on small phones */
+.ops-scroll { overflow-x: auto; }                                 /* wide tables scroll sideways instead of squashing */
+.ops-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin: 0.4rem 0 0.2rem; }
+.ops-stat { background: var(--butter); border-radius: var(--radius-sm); padding: 0.6rem 0.7rem; text-align: center; }
+.ops-stat strong { display: block; font-family: var(--font-display); font-size: 1.7rem; line-height: 1.1; color: var(--blue-dark); }
+.ops-stat span { font-size: 0.82rem; color: var(--ink-soft); }
+.ops-note { background: var(--butter); border: 2px solid var(--accent); border-radius: var(--radius-sm); padding: 0.6rem 0.8rem; margin: 0.6rem 0; font-size: 0.95rem; }
+.ops-ok { background: #e3f6e5; border: 2px solid #5cb868; border-radius: var(--radius-sm); padding: 0.6rem 0.8rem; margin: 0.6rem 0; font-size: 0.95rem; }
+.ops-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+.ops-head h2 { margin: 0; }
+
+/* little coloured labels: Low, Expiring, Expired, est. price... */
+.tag { display: inline-block; font-size: 0.75rem; font-weight: 800; padding: 0.12rem 0.55rem; border-radius: 999px; white-space: nowrap; border: 2px solid transparent; vertical-align: middle; }
+.tag-low { background: #fdeceb; border-color: #d9665a; color: #8a2b22; }
+.tag-warn { background: var(--butter); border-color: var(--accent); color: #6b4a14; }
+.tag-ok { background: #e3f6e5; border-color: #5cb868; color: #1f5f2a; }
+.tag-info { background: var(--blue-soft); border-color: var(--blue); color: var(--blue-dark); }
+
+/* order progress badge + delivery details on the Orders page */
+.badge-prep-new { background: #fff; border: 2px solid var(--cream-dark); }
+.badge-prep-baking { background: var(--butter); border: 2px solid var(--accent); }
+.badge-prep-ready { background: var(--blue-soft); border: 2px solid var(--blue); color: var(--blue-dark); }
+.badge-prep-out_for_delivery { background: var(--blue); border: 2px solid var(--blue); color: #fff; }
+.badge-prep-completed { background: #e3f6e5; border: 2px solid #5cb868; }
+.o-more { border-top: 1px solid var(--line); margin-top: 0.5rem; }
+.o-more summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 700; color: var(--blue-dark); }
+
+/* small forms (receive stock, edit item, delivery details...) */
+.ops-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.6rem; align-items: end; margin-top: 0.6rem; }
+.ops-form .wide { grid-column: 1 / -1; }
+.ops-field label { display: block; font-size: 0.85rem; font-weight: 700; color: var(--blue-dark); margin-bottom: 0.2rem; }
+.ops-field input, .ops-field select, .ops-field textarea { width: 100%; min-height: 44px; font: inherit; font-size: 1rem; padding: 0.5rem 0.7rem; border: 2px solid var(--cream-dark); border-radius: var(--radius-sm); background: #fff; color: var(--ink); }
+.ops-field input:focus, .ops-field select:focus, .ops-field textarea:focus { outline: 3px solid var(--blue-soft); border-color: var(--blue); }
+.ops-field .field-hint { margin: 0.2rem 0 0; }
+.ops-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem; }
+.ops-inline { display: flex; gap: 0.5rem; align-items: end; flex-wrap: wrap; }
+.ops-inline .ops-field { flex: 1 1 110px; }
+.ops-flash { position: sticky; top: 0.5rem; z-index: 5; margin-bottom: 0.8rem; }
+
+/* ingredient / flavor cards */
+.item-top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+.item-name { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--blue-dark); margin: 0; }
+.item-qty { font-family: var(--font-display); font-weight: 700; font-size: 1.25rem; }
+.item-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; margin: 0.35rem 0; }
+.lot-row { display: flex; justify-content: space-between; gap: 0.5rem; align-items: center; flex-wrap: wrap; padding: 0.35rem 0; border-top: 1px solid var(--line); font-size: 0.92rem; }
+.t-table td.left, .t-table th.left { text-align: left; }
+.t-table input { width: 6.5rem; min-height: 40px; font: inherit; padding: 0.3rem 0.5rem; border: 2px solid var(--cream-dark); border-radius: var(--radius-sm); text-align: right; }
+.t-table select { max-width: 11rem; min-height: 40px; font: inherit; padding: 0.3rem 0.4rem; border: 2px solid var(--cream-dark); border-radius: var(--radius-sm); background: #fff; }
+.margin-good { color: #1f5f2a; font-weight: 700; }
+.margin-thin { color: #8a2b22; font-weight: 700; }
+
+@media (max-width: 420px) {
+  .ops-stats { grid-template-columns: 1fr 1fr 1fr; }
+  .ops-stat strong { font-size: 1.35rem; }
+}
