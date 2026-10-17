@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex">
-  <title>Inventory | AJ's Bakery admin</title>
+  <title>Stock | AJ's Bakery admin</title>
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32.png?v=3">
   <link rel="icon" type="image/png" sizes="64x64" href="../assets/icons/favicon-64.png?v=3">
   <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png?v=3">
@@ -25,10 +25,11 @@
 
   <main class="container admin-main">
     <div class="ops-head" style="margin-bottom:.8rem">
-      <h1 style="margin:0;font-size:1.6rem">Inventory</h1>
+      <h1 style="margin:0;font-size:1.6rem">Stock</h1>
       <button type="button" class="btn btn-small" id="add-btn">Add item</button>
     </div>
 
+    <p class="t-sub" style="margin:0 0 .8rem">Tap "I bought some" after every grocery run. The shopping list, expiry alerts and costs all come from this.</p>
     <div class="form-error" id="message" role="alert" hidden></div>
     <div class="ops-ok ops-flash" id="flash" role="status" hidden></div>
     <div id="out"><p class="loading">Loading stock...</p></div>
@@ -120,34 +121,36 @@
       const itemLots = lots.filter((l) => l.ingredient_id === i.ingredient_id);
       const days = i.next_expiry ? daysUntil(i.next_expiry) : null;
       const form = openForm?.id === i.ingredient_id ? ({ receive: receiveForm, use: useForm, count: countForm, edit: editForm }[openForm.kind])(i) : "";
-      return `<article class="t-card" data-ing="${i.ingredient_id}"${i.active ? "" : ' style="opacity:.6"'}>
+      return `<article class="t-card item-card" data-ing="${i.ingredient_id}"${i.active ? "" : ' style="opacity:.6"'}>
         <div class="item-top"><h3 class="item-name">${esc(i.name)}</h3><span class="item-qty">${esc(fmtQty(i.on_hand, i.unit))}</span></div>
         <div class="item-tags">
           ${i.is_low ? `<span class="tag tag-low">Low</span>` : ""}
           ${i.expired_qty > 0 ? `<span class="tag tag-low">${esc(fmtQty(i.expired_qty, i.unit))} expired</span>` : ""}
           ${days !== null && days <= 7 ? `<span class="tag tag-warn">${days === 0 ? "expires today" : "expires " + esc(shortDate(i.next_expiry))}</span>` : ""}
           ${i.price_confirmed ? "" : `<span class="tag tag-warn">price is a guess</span>`}
-          ${i.perishable ? `<span class="tag tag-info">has expiry</span>` : ""}
           ${i.active ? "" : `<span class="tag tag-info">hidden</span>`}
         </div>
         <p class="o-small" style="margin:.2rem 0">${Number(i.pack_size) === 1 ? `${peso2(i.pack_price)} per ${esc(i.unit)}` : `${peso2(i.pack_price)} per ${esc(i.pack_label || "pack")} (${peso2(i.cost_per_unit)} per ${esc(i.unit)})`}
           ${i.next_expiry ? ` · next expiry ${esc(shortDate(i.next_expiry))}` : ""}${i.supplier ? ` · ${esc(i.supplier)}` : ""}
           ${i.reorder_level > 0 ? ` · reorder at ${esc(fmtQty(i.reorder_level, i.unit))}` : ""}</p>
         <div class="ops-actions no-print">
-          <button type="button" class="btn btn-small" data-open="receive">Bought</button>
-          <button type="button" class="btn btn-small btn-ghost" data-open="use">Used</button>
-          <button type="button" class="btn btn-small btn-ghost" data-open="count">Count</button>
-          <button type="button" class="btn btn-small btn-ghost" data-open="edit">Edit</button>
+          <button type="button" class="btn btn-small" data-open="receive">+ I bought some</button>
         </div>
         ${form}
-        ${itemLots.length ? `<details class="o-more no-print"><summary>Lots (${itemLots.length})</summary>
+        <details class="o-more no-print"${openForm?.id === i.ingredient_id && openForm.kind !== "receive" ? " open" : ""}><summary>More: used some, recount, edit${itemLots.length ? `, purchases (${itemLots.length})` : ""}</summary>
+          <div class="ops-actions">
+            <button type="button" class="btn btn-small btn-ghost" data-open="use">Used some</button>
+            <button type="button" class="btn btn-small btn-ghost" data-open="count">Recount</button>
+            <button type="button" class="btn btn-small btn-ghost" data-open="edit">Edit item</button>
+          </div>
           ${itemLots.map((l) => {
             const d = l.expires_on ? daysUntil(l.expires_on) : null;
             return `<div class="lot-row" data-lot="${l.id}"><span>${esc(fmtQty(l.qty_remaining, i.unit))}
               <span class="o-small">· bought ${esc(shortDate(l.received_on))} · ${l.expires_on ? "expires " + esc(shortDate(l.expires_on)) : "no expiry"}</span>
               ${d !== null && d < 0 ? `<span class="tag tag-low">expired</span>` : d !== null && d <= 7 ? `<span class="tag tag-warn">soon</span>` : ""}</span>
               <button type="button" class="btn btn-small btn-ghost" data-act="discard">Throw away</button></div>`;
-          }).join("")}</details>` : ""}
+          }).join("")}
+        </details>
       </article>`;
     }
 

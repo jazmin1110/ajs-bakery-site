@@ -25,7 +25,7 @@
 
   <main class="container admin-main">
     <h1 style="margin:0 0 .3rem;font-size:1.6rem">Recipes and costing</h1>
-    <p class="t-sub" style="margin:0 0 .8rem">Quantities are per batch. The production plan and shopping list use these, and prices come from the Inventory page.</p>
+    <p class="t-sub" style="margin:0 0 .8rem">Quantities are per batch. The production plan and shopping list use these, and prices come from the Stock page.</p>
 
     <div class="form-error" id="message" role="alert" hidden></div>
     <div class="ops-ok ops-flash" id="flash" role="status" hidden></div>
@@ -110,7 +110,7 @@
           ${boxLines}
         </tbody></table></div>
         <p class="t-sub">Cost per cookie = ingredients ${peso2(c.ingredient_cost_per_cookie)} + packaging ${peso2(c.packaging_cost_per_cookie)}. Labor, utilities and gift boxes are not included.</p>
-        ${c.assumed_prices > 0 ? `<div class="ops-note">${c.assumed_prices} ingredient${c.assumed_prices === 1 ? " uses" : "s use"} a guessed price, so this cost is an estimate. Set the real prices on the <a href="inventory.html">Inventory page</a> (or just log a purchase with the amount you paid).</div>` : ""}`
+        ${c.assumed_prices > 0 ? `<div class="ops-note">${c.assumed_prices} ingredient${c.assumed_prices === 1 ? " uses" : "s use"} a guessed price, so this cost is an estimate. Set the real prices on the <a href="inventory.html">Stock page</a> (or just log a purchase with the amount you paid).</div>` : ""}`
         : `<div class="ops-note">No ingredients entered yet, so the production plan can't count this flavor's ingredients and there's no cost.
             ${r.notes ? `<br><span class="o-small">${esc(r.notes)}</span>` : ""}</div>`}
 
