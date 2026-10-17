@@ -74,14 +74,17 @@ Hand-drawn die-cut sticker style, blue anchor. The nav is brand blue with cream 
 - Mascot (`mascot-badge`) shows on the empty cart, the confirmation page and the 404 page. The header/footer badge is `logo-badge-new-96.webp / -192.webp`.
 - `design-lab.html` is an unlinked font-comparison page (noindex).
 
-## Back office (migration 014)
+## Back office (migrations 014-015)
 
 - `orders.prep_status` (new, baking, ready, out_for_delivery, completed) is separate from the payment `status`; only paid orders can move. Delivery is customer-booked, so only courier/ref/slot/note are stored, no fee.
 - Stock is held in **lots** and deducted **earliest expiry first** (expired lots skipped). Perishable items need an expiry date. Stock and dough tables are read-only from the browser; they change only through the `admin_*` functions, which write `stock_log`.
 - `ingredients.cost_per_unit` = `pack_price / pack_size` (generated). Receiving stock with the amount paid updates the price. `price_confirmed=false` means a guessed price (shown as "est.").
 - Production plan: cookies ordered - frozen dough = to make; batches = ceil(to make / `recipes.yield`); shopping = batches x recipe + packaging per cookie - usable stock, rounded up to whole packs.
 - Costing counts ingredients + packaging only. Coco Loco and Bueno Mucho recipes are empty until the owner confirms quantities. **Never invent recipe quantities or prices.**
-- Test locally: `supabase/tests_ops.sql` (run after tests.sql on a scratch Postgres). Don't write to the live DB without the owner's OK.
+- **Manual orders (015):** `admin_create_order` adds Instagram/Messenger/walk-in orders with the same prices and per-flavor cap as the website (the admin can deliberately go over the cap). `orders.source` (website/instagram/messenger/walk_in/other) and `orders.payment_method` (gcash/bank/cash/other). Phone is optional for manual orders only. "Pays on the day" holds the slot until that Sunday 6pm.
+- **Packaging (015):** baking dough balls (`admin_use_dough`) also takes `per_cookie` packaging out of stock. The shopping list tops items up to their `reorder_level` and lists low items even if the week doesn't need them.
+- **Best sellers (015):** `admin_sales_report(from, to)` on the Sales page: paid orders only, cookies per flavor, box vs single picks, estimated money, sold-out Sundays.
+- Test locally: `supabase/tests_ops.sql` and `tests_015.sql` (run after tests.sql on a scratch Postgres). Don't write to the live DB without the owner's OK.
 
 ## 5. Layout
 
@@ -98,7 +101,7 @@ public/                      <- what Vercel serves
   checkout.html              customer details + submit
   confirmed.html             order confirmation + GCash instructions
   404.html                   not-found page
-  admin/                     login, orders, production ("Bake plan"), inventory ("Stock"), recipes, totals (auth required, noindex)
+  admin/                     login, orders (+ add order), production ("Bake plan"), inventory ("Stock"), recipes, totals ("Sales": best sellers) (auth required, noindex)
   css/styles.css             all styles
   js/config.js               Supabase URL + anon key, display copy (flavor text, pickup area, Instagram)
   js/supabase.js             Supabase client (anon key only) + database calls, 10s timeout
@@ -110,7 +113,7 @@ public/                      <- what Vercel serves
   assets/                    flavors/*.jpg (compressed), gcash-qr.png, og-image.jpg
   assets/originals/          full-size flavor photos before compression, git-ignored (NOT deployed)
   robots.txt, sitemap.xml
-supabase/                    migrations 001-014, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql  (NOT deployed)
+supabase/                    migrations 001-015, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers

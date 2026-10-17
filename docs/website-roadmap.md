@@ -10,7 +10,8 @@ Target: soft launch Mon-Tue Oct 12-13, 2026. Christmas launch is the real deadli
 |---|---|
 | Storefront (menu, flavor detail sheet, box builder, cart, checkout, GCash confirmation) | Done, on `main` |
 | Database, RLS, order logic (migrations 001-013) | Done |
-| Back office: order progress, production plan, inventory with expiry, recipes + costing, frozen dough (migration 014, admin pages) | Built and tested locally on branch `feat/admin-ops`; NOT yet applied to live Supabase |
+| Back office: order progress, production plan, inventory with expiry, recipes + costing, frozen dough (migration 014, admin pages) | Live |
+| Manual orders (IG/Messenger/walk-in), packaging deduction, reorder top-ups, best sellers (migration 015) | Live |
 | Admin (login, orders, packing view, totals) | Done |
 | Singles, per-flavor caps, sold-out, minimums | Done |
 | Boxes 3 / 6 / 12 (box of 4 retired) | Done |
@@ -61,7 +62,7 @@ These live in the database and in `CLAUDE.md` in the site folder. If one changes
 
 ## Database (Supabase)
 
-Migrations `supabase/migrations/001`-`014` (014 = back office), plus `seed_ops.sql`, `tests_ops.sql`, `seed.sql`, `seed_content.sql` (generated from `flavor-content.json`) and `tests.sql`.
+Migrations `supabase/migrations/001`-`015` (014 = back office, 015 = manual orders + best sellers), plus `seed_ops.sql`, `tests_ops.sql`, `seed.sql`, `seed_content.sql` (generated from `flavor-content.json`) and `tests.sql`.
 
 - `flavors`: name, slug, box price, single price, surcharge, weekly cap, photo and focus fields, plus the detail-sheet content (descriptions, ingredients, allergens, shelf life, storage, nutrition).
 - `boxes`: size, price, active.
