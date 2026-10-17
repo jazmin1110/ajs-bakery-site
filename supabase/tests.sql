@@ -1070,7 +1070,7 @@ begin
   select nutrition into r from public.flavors where slug = 'choc-chip';
   assert (select count(*) from jsonb_object_keys(r.nutrition)) = 6, 'nutrition has exactly 6 keys';
   assert not (r.nutrition ? 'sodium' or r.nutrition ? 'fiber_g' or r.nutrition ? 'saturated_fat_g' or r.nutrition ? 'trans_fat_g'), 'no extra nutrition keys';
-  assert (select nutrition ->> 'calories' from public.flavors where slug = 'kinder-bueno') = '400', 'Bueno Mucho calories';
+  assert (select nutrition ->> 'calories' from public.flavors where slug = 'kinder-bueno') = '355', 'Bueno Mucho calories (355, from flavor-content.json)';
   assert (select count(*) from public.site_settings where key in ('global_allergen_note', 'nutrition_note')) = 2, 'both site notes readable';
   begin
     update public.site_settings set value = 'x';
