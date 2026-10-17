@@ -74,6 +74,15 @@ Hand-drawn die-cut sticker style, blue anchor. The nav is brand blue with cream 
 - Mascot (`mascot-badge`) shows on the empty cart, the confirmation page and the 404 page. The header/footer badge is `logo-badge-new-96.webp / -192.webp`.
 - `design-lab.html` is an unlinked font-comparison page (noindex).
 
+## Back office (migration 014)
+
+- `orders.prep_status` (new, baking, ready, out_for_delivery, completed) is separate from the payment `status`; only paid orders can move. Delivery is customer-booked, so only courier/ref/slot/note are stored, no fee.
+- Stock is held in **lots** and deducted **earliest expiry first** (expired lots skipped). Perishable items need an expiry date. Stock and dough tables are read-only from the browser; they change only through the `admin_*` functions, which write `stock_log`.
+- `ingredients.cost_per_unit` = `pack_price / pack_size` (generated). Receiving stock with the amount paid updates the price. `price_confirmed=false` means a guessed price (shown as "est.").
+- Production plan: cookies ordered - frozen dough = to make; batches = ceil(to make / `recipes.yield`); shopping = batches x recipe + packaging per cookie - usable stock, rounded up to whole packs.
+- Costing counts ingredients + packaging only. Coco Loco and Bueno Mucho recipes are empty until the owner confirms quantities. **Never invent recipe quantities or prices.**
+- Test locally: `supabase/tests_ops.sql` (run after tests.sql on a scratch Postgres). Don't write to the live DB without the owner's OK.
+
 ## 5. Layout
 
 **Photo rules.** Every flavor photo is shown in a fixed shape with `object-fit: cover`: 4:3 on menu cards and the detail sheet, 1:1 for builder thumbnails (with explicit `width`/`height` attributes so nothing jumps). `flavors.focus_x` / `focus_y` (0-100, default 50) say which point of the photo stays in the middle of the crop. Photos in `public/assets/flavors/` are at most 1200px wide and about 150KB each (JPEG); keep the untouched originals in `public/assets/originals/` (git-ignored). Cards sit straight: `--card-tilt` in `styles.css` is `0deg` (set it to e.g. `0.6deg` for a deliberate tilt).
@@ -89,7 +98,7 @@ public/                      <- what Vercel serves
   checkout.html              customer details + submit
   confirmed.html             order confirmation + GCash instructions
   404.html                   not-found page
-  admin/                     login, orders, totals (auth required, noindex)
+  admin/                     login, orders, totals, production, inventory, recipes (auth required, noindex)
   css/styles.css             all styles
   js/config.js               Supabase URL + anon key, display copy (flavor text, pickup area, Instagram)
   js/supabase.js             Supabase client (anon key only) + database calls, 10s timeout
@@ -101,7 +110,7 @@ public/                      <- what Vercel serves
   assets/                    flavors/*.jpg (compressed), gcash-qr.png, og-image.jpg
   assets/originals/          full-size flavor photos before compression, git-ignored (NOT deployed)
   robots.txt, sitemap.xml
-supabase/                    migrations 001-013, seed.sql, tests.sql  (NOT deployed)
+supabase/                    migrations 001-014, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers

@@ -10,6 +10,7 @@ Target: soft launch Mon-Tue Oct 12-13, 2026. Christmas launch is the real deadli
 |---|---|
 | Storefront (menu, flavor detail sheet, box builder, cart, checkout, GCash confirmation) | Done, on `main` |
 | Database, RLS, order logic (migrations 001-013) | Done |
+| Back office: order progress, production plan, inventory with expiry, recipes + costing, frozen dough (migration 014, admin pages) | Built and tested locally on branch `feat/admin-ops`; NOT yet applied to live Supabase |
 | Admin (login, orders, packing view, totals) | Done |
 | Singles, per-flavor caps, sold-out, minimums | Done |
 | Boxes 3 / 6 / 12 (box of 4 retired) | Done |
@@ -60,7 +61,7 @@ These live in the database and in `CLAUDE.md` in the site folder. If one changes
 
 ## Database (Supabase)
 
-Migrations `supabase/migrations/001`-`013`, plus `seed.sql`, `seed_content.sql` (generated from `flavor-content.json`) and `tests.sql`.
+Migrations `supabase/migrations/001`-`014` (014 = back office), plus `seed_ops.sql`, `tests_ops.sql`, `seed.sql`, `seed_content.sql` (generated from `flavor-content.json`) and `tests.sql`.
 
 - `flavors`: name, slug, box price, single price, surcharge, weekly cap, photo and focus fields, plus the detail-sheet content (descriptions, ingredients, allergens, shelf life, storage, nutrition).
 - `boxes`: size, price, active.
@@ -73,7 +74,9 @@ Security: RLS on every table. Anon can read flavors, boxes and settings, and cal
 ## Pages
 
 Public: `/` (menu, boxes, how it works, FAQ), `/box.html` (box builder), `/checkout.html`, `/confirmed.html?ref=AJ-XXXX`, `/404.html`.
-Admin (login required, noindex): `/admin/login.html`, `/admin/orders.html` (filter, mark paid or cancel, packing view), `/admin/totals.html` (cookies per flavor, batches needed, box counts).
+Admin (login required, noindex): `/admin/login.html`, `/admin/orders.html` (filter, mark paid or cancel, packing view), `/admin/totals.html` (cookies per flavor, batches needed, box counts), `/admin/production.html` (what to make, shopping list, log batches, frozen dough), `/admin/inventory.html` (stock lots with expiry, FEFO), `/admin/recipes.html` (recipes, cost per cookie, margins).
+
+Later phases (not started): customer-facing order progress, suppliers/POs and reports, events/booths, email/SMS alerts.
 Not linked: `/design-lab.html` (font comparison, noindex).
 
 ## Roadmap from here
