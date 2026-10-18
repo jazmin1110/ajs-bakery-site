@@ -25,9 +25,16 @@
   </header>
 
   <main class="container admin-main">
+    <!-- MONEY: what came in, what the cookies cost, what was wasted = profit, per Sunday -->
+    <section class="t-card" id="money">
+      <div class="ops-head"><h1 style="margin:0;font-size:1.5rem">Money</h1></div>
+      <div class="chips" id="money-range" role="group" aria-label="Period"></div>
+      <div id="money-out"><p class="loading">Loading money...</p></div>
+    </section>
+
     <!-- BEST SELLERS: across many Sundays. The per-Sunday totals are further down. -->
     <section class="t-card" id="best">
-      <div class="ops-head"><h1 style="margin:0;font-size:1.5rem">Best sellers</h1></div>
+      <div class="ops-head"><h2 style="margin:0;font-size:1.5rem">Best sellers</h2></div>
       <div class="chips" id="best-range" role="group" aria-label="Period"></div>
       <div id="best-out"><p class="loading">Loading sales...</p></div>
     </section>
@@ -123,14 +130,78 @@
     });
     loadBest();
 
+    // ---- Money -------------------------------------------------------------------------
+    // From admin_money_report. Money in = what paid orders paid. Cost = the cookies BAKED that
+    // week, at the prices you actually paid for the exact stock used (not today's price).
+    // Waste = stock + dough thrown away. Recount = stock that went missing (or turned up).
+    let moneyRange = "4";
+    const signed = (n) => `<span class="${n < 0 ? "money-neg" : ""}">${n < 0 ? "−" : ""}${peso2(Math.abs(Math.round(n * 100) / 100))}</span>`;
+
+    async function loadMoney() {
+      $("money-range").innerHTML = RANGES.map(([k, label]) =>
+        `<button type="button" class="chip" data-range="${k}" aria-pressed="${moneyRange === k}">${label}</button>`).join("");
+      const now = currentSunday();
+      const from = moneyRange === "all" ? "2026-01-04" : addDays(now, -7 * (Number(moneyRange) - 1));
+      try {
+        renderMoney(await rpc("admin_money_report", { p_from: from, p_to: addDays(now, 7 * 8) }));   // paid orders for the next few weeks count too
+      } catch (err) {
+        console.error(err);
+        $("money-out").innerHTML = `<p class="form-error">Couldn't load money: ${esc(err.message)}</p>`;
+      }
+    }
+
+    // The breakdown lines, used for the whole period and for one Sunday
+    function moneyLines(t) {
+      const margin = t.money_in > 0 ? Math.round((t.profit / t.money_in) * 100) : null;
+      return `
+        <div class="money-row"><span>Money in (paid orders)</span><strong>${peso2(t.money_in)}</strong></div>
+        <div class="money-row"><span>Cookies baked: ingredients + packaging${t.cookies_baked ? ` <span class="o-small">(${num(t.cookies_baked)} cookies)</span>` : ""}</span>${signed(-t.cookie_cost)}</div>
+        <div class="money-row"><span>Thrown away (stock + dough)</span>${signed(-t.waste)}</div>
+        ${Number(t.recount) ? `<div class="money-row"><span>Recount difference <span class="o-small">(${t.recount < 0 ? "missing" : "found"})</span></span>${signed(t.recount)}</div>` : ""}
+        <div class="money-row total"><span>Profit${margin !== null ? ` <span class="o-small">(${margin}% of money in)</span>` : ""}</span><strong class="${t.profit < 0 ? "money-neg" : "money-pos"}">${t.profit < 0 ? "−" : ""}${peso2(Math.abs(Math.round(t.profit * 100) / 100))}</strong></div>`;
+    }
+
+    function renderMoney(rep) {
+      const t = rep.totals;
+      const weeks = rep.weeks.filter((w) => w.money_in || w.cookie_cost || w.waste || w.recount || w.spent);
+      const notes = [];
+      if (!weeks.length) {
+        $("money-out").innerHTML = `<p class="t-sub">Nothing yet. Money in shows up when orders are marked paid; costs show up when you tap "I baked these" on the Bake plan.</p>`;
+        return;
+      }
+      if (t.money_in > 0 && !t.cookie_cost) notes.push(`No cookie costs yet. Costs are counted when you tap <strong>"I baked these"</strong> on the Bake plan, so log your bakes there.`);
+      if (t.estimated) notes.push("Some of the cost is estimated: dough made before costs were tracked, or baked with stock that wasn't logged, is priced at today's prices.");
+      if (rep.guessed_prices) notes.push(`${rep.guessed_prices} item${rep.guessed_prices === 1 ? " still has a" : "s still have a"} guessed price. Log a purchase with what you paid on the <a href="inventory.html">Stock page</a> to make this exact.`);
+      $("money-out").innerHTML = `
+        ${moneyLines(t)}
+        <p class="o-small" style="margin-top:.5rem">Spent on stock in this period: <strong>${peso2(t.spent)}</strong>. That's cash out, not cost: anything not baked yet is still on the shelf.
+          Labor, gas/electricity and delivery aren't included.</p>
+        ${notes.map((n) => `<div class="ops-note">${n}</div>`).join("")}
+        <details class="o-more"><summary>Week by week</summary>
+          <div class="ops-scroll"><table class="t-table">
+            <thead><tr><th class="left">Sunday</th><th>In</th><th>Cost</th><th>Waste</th><th>Profit</th></tr></thead>
+            <tbody>${weeks.map((w) => `<tr><th scope="row" class="left">${esc(shortDate(w.sunday))}${w.estimated ? " *" : ""}</th>
+              <td>${peso2(w.money_in)}</td><td>${peso2(w.cookie_cost)}</td><td>${peso2(w.waste)}</td><td><strong>${signed(w.profit)}</strong></td></tr>`).join("")}</tbody>
+          </table></div>
+          ${weeks.some((w) => w.estimated) ? `<p class="o-small">* part of that week's cost is estimated.</p>` : ""}
+        </details>`;
+    }
+
+    $("money-range").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-range]"); if (!b) return;
+      moneyRange = b.dataset.range; $("money-out").innerHTML = `<p class="loading">Loading money...</p>`; loadMoney();
+    });
+    loadMoney();
+
     async function load() {
       $("message").hidden = true;
       $("out").innerHTML = `<p class="loading">Loading totals...</p>`;
       try {
         try { await expireStale(); } catch (e) { console.error("expire failed", e); }
         // Each flavor's weekly cap comes from the database too (flavors.weekly_cap), so it's never out of sync
-        const [orders, flavors] = await Promise.all([loadOrders(sunday), loadFlavors()]);
-        data = { summary: summarize(orders, flavors) };
+        const [orders, flavors, money] = await Promise.all([loadOrders(sunday), loadFlavors(),
+          rpc("admin_money_report", { p_from: sunday, p_to: sunday })]);
+        data = { summary: summarize(orders, flavors), money: money.weeks[0] || null };
         render();
       } catch (err) {
         console.error(err);
@@ -156,7 +227,11 @@
         return `<tr><th scope="row">${esc(f.name)}</th><td>${need}</td><td><strong>${batches}</strong></td><td>${leftover}</td></tr>`;
       }).join("");
 
+      const m = data.money;
       $("out").innerHTML = `
+        ${m ? `<section class="t-card"><h2>Money for this Sunday</h2>${moneyLines(m)}
+          ${m.dough_balls_thrown ? `<p class="o-small">${m.dough_balls_thrown} dough ball${m.dough_balls_thrown === 1 ? "" : "s"} thrown away.</p>` : ""}
+          ${m.cookies_baked > m.cookies_sold && m.cookies_sold ? `<p class="o-small">You baked ${m.cookies_baked - m.cookies_sold} more cookie${m.cookies_baked - m.cookies_sold === 1 ? "" : "s"} than you sold (paid). Extras count as cost.</p>` : ""}</section>` : ""}
         <section class="t-card">
           <h2>Reserved vs weekly cap</h2>
           <p class="t-sub">Each flavor has its own cap per Sunday. Paid and pending orders reserve cookies; cancelled and expired ones don't.</p>
