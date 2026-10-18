@@ -57,9 +57,29 @@ export function sundayOnOrAfter(iso) {
   return addDays(iso, (7 - dow) % 7);
 }
 
-// "Current" Sunday = the next one on or after today (Manila). It's the one being baked.
-export function currentSunday() {
-  return sundayOnOrAfter(manilaToday());
+// Hour of the day in Manila (0-23), same idea as manilaToday: ignores the phone's timezone
+function manilaHour(now = new Date()) {
+  return Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Manila", hour: "2-digit", hourCycle: "h23" }).format(now));
+}
+
+// "Current" Sunday = the one being baked: the next Sunday on or after today (Manila).
+// On a Sunday it stays on today until 6pm (pickup/delivery ends), then rolls to next week.
+export function currentSunday(now = new Date()) {
+  const today = manilaToday(now);
+  const isSunday = new Date(today + "T00:00:00Z").getUTCDay() === 0;
+  if (isSunday && manilaHour(now) >= 18) return addDays(today, 7);
+  return sundayOnOrAfter(today);
+}
+
+// Label for the Sunday picker: "today", "this Sunday", "next Sunday", "last Sunday"
+function sundayTag(d) {
+  const today = manilaToday();
+  if (d === today) return " (today)";
+  const diff = Math.round((new Date(d + "T00:00:00Z") - new Date(currentSunday() + "T00:00:00Z")) / 86400000);
+  if (diff === 0) return " (this Sunday)";
+  if (diff === 7) return " (next Sunday)";
+  if (diff === -7) return " (last Sunday)";
+  return "";
 }
 
 // Which Sunday to show: ?sunday=YYYY-MM-DD in the address, else the current one
@@ -77,7 +97,7 @@ export function setupSundayPicker(select, onChange) {
   if (!dates.includes(chosen)) dates.push(chosen);
   dates.sort();
   select.innerHTML = dates.map((d) =>
-    `<option value="${d}"${d === chosen ? " selected" : ""}>${esc(formatSunday(d))}${d === current ? " (this Sunday)" : ""}</option>`
+    `<option value="${d}"${d === chosen ? " selected" : ""}>${esc(formatSunday(d))}${sundayTag(d)}</option>`
   ).join("");
   select.addEventListener("change", () => {
     const url = new URL(location.href);
