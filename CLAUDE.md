@@ -74,7 +74,7 @@ Hand-drawn die-cut sticker style, blue anchor. The nav is brand blue with cream 
 - Mascot (`mascot-badge`) shows on the empty cart, the confirmation page and the 404 page. The header/footer badge is `logo-badge-new-96.webp / -192.webp`.
 - `design-lab.html` is an unlinked font-comparison page (noindex).
 
-## Back office (migrations 014-015)
+## Back office (migrations 014-016)
 
 - `orders.prep_status` (new, baking, ready, out_for_delivery, completed) is separate from the payment `status`; only paid orders can move. Delivery is customer-booked, so only courier/ref/slot/note are stored, no fee.
 - Stock is held in **lots** and deducted **earliest expiry first** (expired lots skipped). Perishable items need an expiry date. Stock and dough tables are read-only from the browser; they change only through the `admin_*` functions, which write `stock_log`.
@@ -84,7 +84,8 @@ Hand-drawn die-cut sticker style, blue anchor. The nav is brand blue with cream 
 - **Manual orders (015):** `admin_create_order` adds Instagram/Messenger/walk-in orders with the same prices and per-flavor cap as the website (the admin can deliberately go over the cap). `orders.source` (website/instagram/messenger/walk_in/other) and `orders.payment_method` (gcash/bank/cash/other). Phone is optional for manual orders only. "Pays on the day" holds the slot until that Sunday 6pm.
 - **Packaging (015):** baking dough balls (`admin_use_dough`) also takes `per_cookie` packaging out of stock. The shopping list tops items up to their `reorder_level` and lists low items even if the week doesn't need them.
 - **Best sellers (015):** `admin_sales_report(from, to)` on the Sales page: paid orders only, cookies per flavor, box vs single picks, estimated money, sold-out Sundays.
-- Test locally: `supabase/tests_ops.sql` and `tests_015.sql` (run after tests.sql on a scratch Postgres). Don't write to the live DB without the owner's OK.
+- **Real costs (016):** two prices on purpose. `ingredients.pack_price` = the LATEST price paid (menu pricing, shopping list). `ingredient_lots.unit_cost` / `paid_total` = what THAT purchase cost (real cost, profit, waste, stock value). Purchases can be fixed or removed (`admin_fix_lot`, only if unused) and bought in a different pack size (`pack_size_bought`). Dough remembers its real cost (`dough_lots.cost_per_ball`); "I baked these" and thrown dough write `bake_log` against a Sunday (the Bake plan sends the Sunday). `admin_money_report(from, to)` = money in (paid orders) - cookies baked - waste + recount = profit, per Sunday (labor/gas/delivery not included). `admin_receive_many` = "I went shopping" from the shopping list, all or nothing.
+- Test locally: `supabase/tests_ops.sql`, `tests_015.sql` and `tests_016.sql` (run after tests.sql on a scratch Postgres). Don't write to the live DB without the owner's OK.
 
 ## 5. Layout
 
@@ -113,7 +114,7 @@ public/                      <- what Vercel serves
   assets/                    flavors/*.jpg (compressed), gcash-qr.png, og-image.jpg
   assets/originals/          full-size flavor photos before compression, git-ignored (NOT deployed)
   robots.txt, sitemap.xml
-supabase/                    migrations 001-015, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql  (NOT deployed)
+supabase/                    migrations 001-016, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql, tests_016.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers
