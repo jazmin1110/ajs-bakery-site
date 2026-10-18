@@ -1228,3 +1228,36 @@ html.drawer-open, body.drawer-open { overflow: hidden; overscroll-behavior: none
 .ops-field .choice input { width: 22px; height: 22px; flex: none; min-height: 0; margin: 0; padding: 0; }
 .ops-field .choice span { font-weight: 600; }
 .ao-qty input { min-height: 40px; }
+
+/* ---- Stock page: purchases, price changes (migration 016) ---- */
+.inv-group { font-size: 1.1rem; margin: 1.2rem 0 0.5rem; }
+.inv-stats { margin-bottom: 0.8rem; }
+.lot-head { font-size: 0.85rem; color: var(--ink-soft); margin: 0.8rem 0 0.2rem; font-weight: 700; }
+.lot-buy > span:first-child { flex: 1 1 14rem; }
+.lot-btns { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.lot-fix { background: var(--butter); border-radius: var(--radius-sm); padding: 0.6rem; margin: 0.2rem 0 0.6rem; }
+.pc-up { color: #8a2b22; font-weight: 700; }
+.pc-down { color: #1f5f2a; font-weight: 700; }
+.pc-same { color: var(--ink-soft); }
+.rc-sum { min-height: 1.2em; }
+
+/* ---- Money (Sales + Bake plan) ---- */
+.money-row { display: flex; justify-content: space-between; gap: 0.6rem; padding: 0.35rem 0; border-top: 1px solid var(--line); }
+.money-row.total { font-weight: 800; border-top: 2px solid var(--ink); }
+.money-neg { color: #8a2b22; }
+.money-pos { color: #1f5f2a; }
+
+/* ---- "I went shopping" list ---- */
+.shop-line { border-top: 1px solid var(--line); padding: 0.55rem 0; }
+.shop-line .choice { margin: 0; }
+.shop-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; margin-top: 0.4rem; }
+.shop-fields[hidden] { display: none; }
+
+/* ---- Admin on a laptop: use the width (phone layout stays the same) ---- */
+@media (min-width: 1000px) {
+  body.admin .admin-main, body.admin .admin-head { max-width: 1120px; }
+  body.admin .inv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 0.9rem; align-items: start; }
+  body.admin .inv-grid .item-card { margin-bottom: 0.9rem; }
+  body.admin .ops-stats { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  body.admin .admin-wide-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; align-items: start; }
+}

@@ -187,6 +187,18 @@ export function peso2(amount) {
   return "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 });
 }
 
+// "₱200 per pack, ▲₱20 (+11%) vs last time" for a purchase. Both prices are per USUAL pack.
+// Used by the Stock page and the "I went shopping" list so they say it the same way.
+export function priceChange(newPack, oldPack) {
+  const n = Number(newPack), o = Number(oldPack);
+  if (!(n > 0) || !(o > 0)) return "";
+  const diff = n - o, pct = Math.round((diff / o) * 100);
+  if (Math.abs(diff) < 0.005) return `<span class="pc-same">same as last time</span>`;
+  return diff > 0
+    ? `<span class="pc-up">▲ ${peso2(diff)} (+${pct}%) vs last time</span>`
+    : `<span class="pc-down">▼ ${peso2(-diff)} (${pct}%) vs last time</span>`;
+}
+
 // Short date from "2026-11-02" -> "Nov 2" (done in UTC so the viewer's timezone can't shift it)
 export function shortDate(iso) {
   return new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
