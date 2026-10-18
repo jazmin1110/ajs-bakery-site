@@ -140,14 +140,18 @@ begin
   if c1 <> round((200 * 1.0 + other) / 15, 4) then raise exception 'FAIL (z): batch 1 cost % (should use P1 butter)', c1; end if;
   if c2 <> round((200 * 2.0 + other) / 15, 4) then raise exception 'FAIL (z): batch 2 cost % (should use P2 butter)', c2; end if;
 
-  -- Bake 10 (from batch 1), throw the other 5 of batch 1 away
+  -- Bake 10 (from batch 1) for this week, 2 for next week, throw the other 3 of batch 1 away
   perform public.admin_use_dough(f_id, 10);
   select * into o from public.bake_log where kind = 'baked' order by id desc limit 1;
   if o.ingredient_cost <> round(10 * c1, 2) or o.packaging_cost <> 5.00 or o.sunday <> wk or o.estimated then
     raise exception 'FAIL (z): bake log wrong %', row_to_json(o);
   end if;
+  perform public.admin_use_dough(f_id, 2, wk + 7);                  -- baking ahead for next Sunday
+  if (select sunday from public.bake_log where kind = 'baked' order by id desc limit 1) <> wk + 7 then
+    raise exception 'FAIL (z): bake for a chosen Sunday logged on the wrong Sunday';
+  end if;
   perform public.admin_discard_dough(d1);
-  if (select ingredient_cost from public.bake_log where kind = 'dough_thrown' order by id desc limit 1) <> round(5 * c1, 2) then
+  if (select ingredient_cost from public.bake_log where kind = 'dough_thrown' order by id desc limit 1) <> round(3 * c1, 2) then
     raise exception 'FAIL (z): thrown dough not costed';
   end if;
 
@@ -157,7 +161,7 @@ begin
   rep := public.admin_money_report(wk, wk);
   w := rep -> 'weeks' -> 0;
   if (w ->> 'cookie_cost')::numeric <> round(10 * c1, 2) + 5 then raise exception 'FAIL (z): cookie cost %', w; end if;
-  if (w ->> 'waste')::numeric <> round(5 * c1, 2) then raise exception 'FAIL (z): waste %', w; end if;
+  if (w ->> 'waste')::numeric <> round(3 * c1, 2) then raise exception 'FAIL (z): waste %', w; end if;
   if (w ->> 'money_in')::numeric < 2 * (select single_price from public.flavors where slug = s1) then raise exception 'FAIL (z): money in %', w; end if;
   if (w ->> 'profit')::numeric <> (w ->> 'money_in')::numeric - (w ->> 'cookie_cost')::numeric
                                   - (w ->> 'waste')::numeric + (w ->> 'recount')::numeric then

@@ -1261,3 +1261,6 @@ html.drawer-open, body.drawer-open { overflow: hidden; overscroll-behavior: none
   body.admin .ops-stats { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
   body.admin .admin-wide-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; align-items: start; }
 }
+.money-row > :last-child { white-space: nowrap; }
+.ops-stats.ops-stats-4 { grid-template-columns: 1fr 1fr; }
+@media (min-width: 700px) { .ops-stats.ops-stats-4 { grid-template-columns: repeat(4, 1fr); } }

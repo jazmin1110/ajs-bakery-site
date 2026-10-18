@@ -52,6 +52,10 @@
     let includePending = true;          // plan for unpaid-but-still-open orders too?
     let plan = null;                    // from admin_production_plan
     let dough = [];                     // dough balls in the freezer
+    let costing = {};                   // flavor_id -> flavor_costing row (today's prices)
+    let ingInfo = {};                   // ingredient id -> { perishable }
+    let money = null;                   // this Sunday from admin_money_report (what baking cost so far)
+    let shopping = false;               // "I went shopping" mode on the shopping list
 
     function showMessage(text) {
       $("message").textContent = text || ""; $("message").hidden = !text;
@@ -67,10 +71,17 @@
       $("out").innerHTML = `<p class="loading">Working out the plan...</p>`;
       try {
         try { await expireStale(); } catch (e) { console.error("expire failed", e); }   // so lapsed unpaid orders don't count
-        [plan, dough] = await Promise.all([
+        let cost, ings, rep;
+        [plan, dough, cost, ings, rep] = await Promise.all([
           rpc("admin_production_plan", { p_sunday: sunday, p_include_pending: includePending }),
-          select("dough_lots", "id, flavor_id, balls_made, balls_left, made_on, best_by", (q) => q.gt("balls_left", 0).order("best_by")),
+          select("dough_lots", "id, flavor_id, balls_made, balls_left, made_on, best_by, cost_per_ball", (q) => q.gt("balls_left", 0).order("best_by")),
+          select("flavor_costing", "*"),
+          select("ingredients", "id, perishable"),
+          rpc("admin_money_report", { p_from: sunday, p_to: sunday }),
         ]);
+        costing = Object.fromEntries(cost.map((c) => [c.flavor_id, c]));
+        ingInfo = Object.fromEntries(ings.map((i) => [i.id, i]));
+        money = rep.weeks[0] || null;
         render();
       } catch (err) {
         console.error(err);
@@ -86,15 +97,21 @@
       const toBuy = plan.shopping.filter((s) => s.short > 0);
       const covered = plan.shopping.filter((s) => s.short <= 0);
       const nameOf = Object.fromEntries(flavors.map((f) => [f.flavor_id, f.name]));
+      // Ingredient cost of the batches still to mix, at today's prices (Recipes page numbers)
+      const batchCost = (f) => (costing[f.flavor_id] ? Number(costing[f.flavor_id].batch_cost) : 0) * (f.batches || 0);
+      const mixCost = flavors.filter((f) => f.recipe_ready && f.to_make > 0).reduce((t, f) => t + batchCost(f), 0);
 
       $("out").innerHTML = `
         <section class="t-card">
           <h2>${esc(formatSunday(sunday))}</h2>
-          <div class="ops-stats">
+          <div class="ops-stats ops-stats-4">
             <div class="ops-stat"><strong>${num(plan.totals.cookies)}</strong><span>cookies ordered</span></div>
             <div class="ops-stat"><strong>${num(plan.totals.batches)}</strong><span>batches to mix</span></div>
             <div class="ops-stat"><strong>${peso2(plan.totals.est_shopping_cost)}</strong><span>to buy (est.)</span></div>
+            <div class="ops-stat"><strong>${peso2(Math.round(mixCost))}</strong><span>ingredients for the batches (est.)</span></div>
           </div>
+          ${money && money.cookies_baked ? `<p class="o-small">Baked so far for this Sunday: <strong>${num(money.cookies_baked)} cookies</strong>, which cost
+            <strong>${peso2(money.cookie_cost)}</strong> (what you paid for the stock used)${money.estimated ? ", partly estimated" : ""}. Profit is on the <a href="totals.html?sunday=${sunday}">Sales</a> page.</p>` : ""}
           <label class="choice t-toggle"><input type="checkbox" id="inc-pending" ${includePending ? "checked" : ""}>
             <span>Also count orders that aren't paid yet (still inside their 24 hours)</span></label>
         </section>
@@ -104,9 +121,12 @@
 
         <section class="t-card">
           <div class="ops-head"><h2>1. Shopping list</h2>
-            ${toBuy.length ? `<button type="button" class="btn btn-small btn-ghost no-print" id="copy-btn">Copy list</button>` : ""}</div>
-          <p class="t-sub">Buy these first. What the batches need (plus one bag per cookie), minus what's in stock and still good on the day, in whole packs. Items with a reorder level are topped up so you keep that much spare. After buying, log it on the <a href="inventory.html">Stock</a> page.</p>
-          ${toBuy.length ? `<div class="ops-scroll"><table class="t-table">
+            ${toBuy.length ? `<span class="ops-actions no-print" style="margin:0">
+              <button type="button" class="btn btn-small btn-ghost" id="copy-btn">Copy list</button>
+              <button type="button" class="btn btn-small" id="shop-btn">${shopping ? "Close" : "I went shopping"}</button></span>` : ""}</div>
+          <p class="t-sub">Buy these first. What the batches need (plus one bag per cookie), minus what's in stock and still good on the day, in whole packs. Items with a reorder level are topped up so you keep that much spare. After buying, tap <strong>I went shopping</strong> to add it all to stock at once.</p>
+          ${toBuy.length && shopping ? shopForm(toBuy) : ""}
+          ${shopping && toBuy.length ? "" : toBuy.length ? `<div class="ops-scroll"><table class="t-table">
             <thead><tr><th></th><th>Need</th><th>Have</th><th>Buy</th><th>Est.</th></tr></thead>
             <tbody>
               ${toBuy.map((s) => `<tr>
@@ -135,7 +155,8 @@
                 : f.to_make === 0 ? `All ${f.cookies_needed} covered by frozen dough`
                 : `Make ${f.to_make} cookie${f.to_make === 1 ? "" : "s"}${f.recipe_ready ? ` = <strong>${f.batches} batch${f.batches === 1 ? "" : "es"}</strong>` : ""}`}</p>
               <p class="o-small">${f.cookies_needed} ordered${includePending && f.pending_cookies ? ` (${f.paid_cookies} paid, ${f.pending_cookies} not paid yet)` : ""}
-                · ${f.dough_on_hand} dough ball${f.dough_on_hand === 1 ? "" : "s"} in the freezer${f.recipe_ready && f.leftover ? ` · ${f.leftover} spare` : ""}</p>
+                · ${f.dough_on_hand} dough ball${f.dough_on_hand === 1 ? "" : "s"} in the freezer${f.recipe_ready && f.leftover ? ` · ${f.leftover} spare` : ""}
+                ${f.recipe_ready && f.to_make > 0 && costing[f.flavor_id] ? `<br>~${peso2(Math.round(batchCost(f)))} in ingredients (${peso2(costing[f.flavor_id].batch_cost)} per batch, today's prices)` : ""}</p>
               ${f.recipe_ready ? (() => {
                 // Only show the step that applies: mix when there's dough to make, bake when there's dough in the freezer
                 const mix = `<div class="mk-act">
@@ -157,13 +178,80 @@
             const tag = left < 0 ? `<span class="tag tag-low">past best-by</span>` : left <= 7 ? `<span class="tag tag-warn">${left === 0 ? "last day" : left + " days left"}</span>` : "";
             return `<div class="lot-row" data-dough="${d.id}">
               <span><strong>${esc(nameOf[d.flavor_id] || "Flavor")}</strong>: ${d.balls_left} of ${d.balls_made} balls
-                <span class="o-small">· made ${esc(shortDate(d.made_on))} · best by ${esc(shortDate(d.best_by))}</span> ${tag}</span>
+                <span class="o-small">· made ${esc(shortDate(d.made_on))} · best by ${esc(shortDate(d.best_by))}${d.cost_per_ball != null ? ` · ${peso2(Math.round(d.cost_per_ball * 100) / 100)} a ball` : ""}</span> ${tag}</span>
               <button type="button" class="btn btn-small btn-ghost" data-act="toss">Throw away</button></div>`;
           }).join("") : `<p class="t-sub">No dough in the freezer. Tap \"I made the dough\" above when you mix a batch.</p>`}
         </section>`;
 
       $("inc-pending").addEventListener("change", (e) => { includePending = e.target.checked; load(); });
       const copy = $("copy-btn"); if (copy) copy.addEventListener("click", () => copyList(toBuy));
+      const shop = $("shop-btn"); if (shop) shop.addEventListener("click", () => { shopping = !shopping; render(); });
+      wireShopForm();
+    }
+
+    // ---- "I went shopping": tick what you bought, fix packs + totals, save all at once ----
+    function shopForm(rows) {
+      return `<form id="shop-form">
+        <p class="t-sub">Untick anything you didn't get. Totals are filled in from the last price; change them to what you really paid.</p>
+        ${rows.map((s) => {
+          const per = ingInfo[s.ingredient_id]?.perishable;
+          return `<div class="shop-line" data-ing="${s.ingredient_id}">
+            <label class="choice"><input type="checkbox" name="buy" checked><span>${esc(s.name)} <span class="o-small">(list: ${buyText(s)})</span></span></label>
+            <div class="shop-fields">
+              <div class="ops-field"><label>Packs</label><input name="packs" type="number" min="0" step="any" inputmode="decimal" value="${num(s.packs_to_buy, 3).replace(/,/g, "")}"></div>
+              <div class="ops-field"><label>Total paid (₱)</label><input name="paid" type="number" min="0" step="any" inputmode="decimal"
+                value="${s.price_confirmed ? Math.round(s.est_cost * 100) / 100 : ""}" placeholder="${s.price_confirmed ? "" : "what you paid"}"></div>
+              ${per ? `<div class="ops-field"><label>Expiry date</label><input name="expires" type="date" required></div>` : ""}
+            </div></div>`;
+        }).join("")}
+        <div class="ops-field" style="margin-top:.6rem"><label>Where (optional)</label><input name="where" maxlength="200" placeholder="S&R, Landers..."></div>
+        <p class="o-small" data-shop-total></p>
+        <div class="ops-actions"><button type="submit" class="btn">Add all to stock</button></div>
+        <p class="o-small">Bought something not on this list? Log it on the <a href="inventory.html">Stock</a> page.</p>
+      </form>`;
+    }
+
+    function wireShopForm() {
+      const form = $("shop-form"); if (!form) return;
+      const rows = plan.shopping.filter((s) => s.short > 0);
+      const lines = () => [...form.querySelectorAll(".shop-line")];
+      const update = () => {
+        let total = 0, n = 0;
+        lines().forEach((el) => {
+          const on = el.querySelector("[name=buy]").checked;
+          el.querySelector(".shop-fields").hidden = !on;
+          el.querySelectorAll(".shop-fields input").forEach((i) => { i.disabled = !on; });
+          if (on) { n++; total += Number(el.querySelector("[name=paid]").value) || 0; }
+        });
+        form.querySelector("[data-shop-total]").textContent = `${n} item${n === 1 ? "" : "s"} · ${peso2(Math.round(total * 100) / 100)} total`;
+      };
+      form.addEventListener("input", update);
+      form.addEventListener("change", update);
+      update();
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = form.querySelector("button[type=submit]");
+        const where = form.elements.where.value.trim() || null;
+        const items = lines().filter((el) => el.querySelector("[name=buy]").checked).map((el) => {
+          const s = rows.find((r) => r.ingredient_id === Number(el.dataset.ing));
+          const qty = Number(el.querySelector("[name=packs]").value) * Number(s.pack_size);
+          const paid = el.querySelector("[name=paid]").value;
+          return { name: s.name, ingredient_id: s.ingredient_id, qty,
+                   unit_cost: paid === "" || !(qty > 0) ? null : Number(paid) / qty,
+                   expires_on: el.querySelector("[name=expires]")?.value || null, note: where };
+        });
+        const bad = items.find((i) => !(i.qty > 0));
+        if (!items.length) return showMessage("Tick at least one item.");
+        if (bad) return showMessage(`Enter how many packs of ${bad.name} you bought.`);
+        btn.disabled = true; showMessage("");
+        try {
+          const n = await rpc("admin_receive_many", { p_items: items.map(({ name, ...rest }) => rest) });
+          shopping = false; flash(`Added ${n} item${n === 1 ? "" : "s"} to stock`); await load();
+        } catch (err) {
+          console.error(err); btn.disabled = false;
+          showMessage(err.isNetwork ? "Couldn't reach the server. Nothing was saved." : `${err.message} Nothing was saved, fix it and try again.`);
+        }
+      });
     }
 
     // "2 x pack 200g" / "1 x bag 2.5kg" / "3 packs"
@@ -192,7 +280,7 @@
       try {
         if (act === "toss") {                                    // throw away a dough lot
           const id = Number(btn.closest("[data-dough]").dataset.dough);
-          if (!confirm("Throw away the rest of this dough?")) return;
+          if (!confirm("Throw away the rest of this dough? It counts as waste on the Sales page.")) return;
           btn.disabled = true;
           await rpc("admin_discard_dough", { p_lot_id: id });
           flash("Dough thrown away"); await load(); return;
@@ -223,8 +311,8 @@
           const n = Math.floor(Number(row.querySelector("[data-balls]").value));
           if (!(n >= 1)) return showMessage("Enter how many dough balls you baked.");
           btn.disabled = true;
-          await rpc("admin_use_dough", { p_flavor_id: flavorId, p_balls: n });
-          flash(`Took ${n} ${f.name} dough ball${n === 1 ? "" : "s"} out of the freezer`); await load();
+          await rpc("admin_use_dough", { p_flavor_id: flavorId, p_balls: n, p_sunday: sunday });   // cost goes to the Sunday you're baking for
+          flash(`Baked ${n} ${f.name}. Cost logged for this Sunday`); await load();
         }
       } catch (err) {
         console.error(err);

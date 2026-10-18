@@ -400,8 +400,10 @@ begin
 end $$;
 
 -- "I baked these": same as 015, plus it logs what the cookies cost (dough at
--- what it really cost + packaging at what you paid) against this week's Sunday
-create or replace function public.admin_use_dough(p_flavor_id bigint, p_balls integer)
+-- what it really cost + packaging at what you paid) against a Sunday: the one
+-- you're baking for (p_sunday, sent by the Bake plan), else this week's.
+drop function public.admin_use_dough(bigint, integer);
+create function public.admin_use_dough(p_flavor_id bigint, p_balls integer, p_sunday date default null)
 returns void
 language plpgsql security definer set search_path = ''
 as $$
@@ -454,7 +456,7 @@ begin
   insert into public.bake_log (flavor_id, kind, balls, ingredient_cost, packaging_cost, estimated, sunday)
   values (p_flavor_id, 'baked', p_balls, round(v_dough, 2),
           round(public._cost_since(v_mark, v_packs) + v_short, 2), v_est or v_short > 0,
-          public._week_sunday(now()));
+          coalesce(p_sunday, public._week_sunday(now())));
 end $$;
 
 -- Throw away a dough lot: same as 014, plus the loss is logged as waste
@@ -630,12 +632,14 @@ revoke all on function
   public.admin_fix_lot(bigint, numeric, numeric, date, boolean, boolean),
   public.admin_count_stock(bigint, numeric, text, date),
   public.admin_money_report(date, date),
-  public.admin_receive_many(jsonb)
+  public.admin_receive_many(jsonb),
+  public.admin_use_dough(bigint, integer, date)
   from public, anon;
 grant execute on function
   public.admin_receive_stock(bigint, numeric, numeric, date, text, numeric),
   public.admin_fix_lot(bigint, numeric, numeric, date, boolean, boolean),
   public.admin_count_stock(bigint, numeric, text, date),
   public.admin_money_report(date, date),
-  public.admin_receive_many(jsonb)
+  public.admin_receive_many(jsonb),
+  public.admin_use_dough(bigint, integer, date)
   to authenticated;
