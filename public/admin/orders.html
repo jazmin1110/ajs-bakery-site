@@ -35,6 +35,9 @@
     <!-- Add an order yourself (Instagram, Messenger, walk-in). Filled by addFormHtml() -->
     <section class="t-card no-print" id="add-order" hidden></section>
 
+    <!-- What needs you right now + the money for this Sunday. Filled by summaryHtml() -->
+    <div class="o-summary no-print" id="summary" hidden></div>
+
     <div class="chips no-print" id="chips" role="group" aria-label="Filter orders"></div>
 
     <div class="ops-ok ops-flash no-print" id="flash" role="status" hidden></div>
@@ -66,7 +69,6 @@
 
     // Order progress (only for PAID orders): new > baking > ready > out for delivery > completed
     const PREP_LABEL = { new: "To do", baking: "Baking", ready: "Ready", out_for_delivery: "Out for delivery", completed: "Done" };
-    const prepName = (o) => o.prep_status === "completed" ? (o.fulfillment === "delivery" ? "Delivered" : "Picked up") : PREP_LABEL[o.prep_status];
     // The one button that moves the order forward
     function nextStep(o) {
       const delivery = o.fulfillment === "delivery";
@@ -96,16 +98,9 @@
       return { new: "to_bake", baking: "baking", ready: "ready", out_for_delivery: "ready", completed: "done" }[o.prep_status];
     }
     const stageOrder = (o) => STAGES.findIndex(([k]) => k === stage(o));
-
-    // Progress dots for a paid order: Paid > Baking > Ready > (Out for delivery) > Done
-    function stepsHtml(o) {
-      const steps = [["paid", "Paid"], ["baking", "Baking"], ["ready", "Ready"]];
-      if (o.fulfillment === "delivery") steps.push(["out_for_delivery", "On the way"]);
-      steps.push(["completed", o.fulfillment === "delivery" ? "Delivered" : "Picked up"]);
-      const at = o.prep_status === "new" ? 0 : steps.findIndex(([k]) => k === o.prep_status);
-      return `<ol class="o-steps" aria-label="Progress: ${esc(prepName(o))}">${steps.map(([, label], i) =>
-        `<li class="${i < at ? "done" : i === at ? "current" : ""}">${esc(label)}</li>`).join("")}</ol>`;
-    }
+    // Pill color by meaning: amber = needs you, blue = in the kitchen, green = done, grey = waiting, red = closed
+    const STAGE_TONE = { check: "st-check", to_bake: "st-kitchen", baking: "st-kitchen", ready: "st-kitchen",
+                         unpaid: "st-wait", done: "st-done", closed: "st-problem" };
 
     function flash(text) {
       $("flash").textContent = text; $("flash").hidden = false;
@@ -186,10 +181,10 @@
       }
 
       return `
-      <article class="order-card ${cls}" data-ref="${esc(o.ref_code)}">
+      <article class="order-card ${cls}${st === "done" ? " st-done" : ""}" data-ref="${esc(o.ref_code)}">
         <div class="o-top">
           <span class="o-ref">${esc(o.ref_code)}</span>
-          <span class="badge badge-${status}">${esc(STAGES.find(([k]) => k === st)[1])}</span>
+          <span class="badge ${STAGE_TONE[st]}">${esc(STAGES.find(([k]) => k === st)[1])}</span>
         </div>
         <p class="o-who"><strong>${esc(o.name)}</strong>
           ${ig ? ` · <a href="https://instagram.com/${encodeURIComponent(ig)}" target="_blank" rel="noopener">@${esc(ig)}</a>` : ""}
@@ -197,12 +192,10 @@
         ${o.source && o.source !== "website" ? `<p class="o-meta o-small">${esc(SOURCE_LABEL[o.source] || o.source)} order${o.payment_method ? ` · ${o.status === "paid" ? "paid by" : "paying by"} ${esc(METHOD_LABEL[o.payment_method])}` : ""}</p>` : ""}
         <p class="o-meta">${o.fulfillment === "delivery"
           ? `🚚 Delivery: ${esc(o.address || "(no address)")}` : "🏠 Pickup"}</p>
-        ${status === "paid" ? stepsHtml(o) : ""}
         ${boxesHtml(o)}
         ${singlesHtml(o)}
-        <p class="o-meta"><strong>${peso(o.total)}</strong>
-          · GCash ref: ${o.gcash_ref ? `<strong>${esc(o.gcash_ref)}</strong>` : "<em>none yet</em>"}</p>
-        <p class="o-meta o-small">Ordered ${esc(formatWhen(o.created_at))}</p>
+        <p class="o-meta"><strong>${peso(o.total)}</strong>${o.gcash_ref ? ` · GCash ref <strong>${esc(o.gcash_ref)}</strong>` : ""}
+          <span class="o-small"> · ordered ${esc(formatWhen(o.created_at))}</span></p>
         ${deliverySummary(o)}
         <div class="o-main no-print">${main}</div>
         ${st === "closed" ? "" : detailsHtml(o)}
@@ -261,6 +254,9 @@
         `<button type="button" class="chip" data-filter="${k}" aria-pressed="${filter === k}">${esc(label)} (${counts[k]})</button>`
       ).join("") : "";
 
+      $("summary").innerHTML = orders.length ? summaryHtml(counts) : "";
+      $("summary").hidden = !orders.length || packing;
+
       $("packing-btn").textContent = packing ? "Back to orders" : "Packing view";
 
       if (packing) {
@@ -283,6 +279,23 @@
         ? shown.map(orderCard).join("")
         : `<p class="loading">${orders.length ? "No orders at this stage." : "No orders for this Sunday yet."}</p><div id="next-hint"></div>`;
       if (!orders.length) findNextOrders();
+    }
+
+    // Top of the page: the ONE next thing to do, the rest in a line, and the money so far.
+    function summaryHtml(c) {
+      const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+      const todo = [
+        c.check && plural(c.check, "payment to check", "payments to check"),
+        c.to_bake && plural(c.to_bake, "order to bake", "orders to bake"),
+        c.baking && `${c.baking} baking`,
+        c.ready && plural(c.ready, "order ready to hand over", "orders ready to hand over"),
+      ].filter(Boolean);
+      const live = orders.filter((o) => !["closed"].includes(stage(o)));
+      const paid = live.filter((o) => o.status === "paid").reduce((t, o) => t + Number(o.total), 0);
+      const waiting = live.filter((o) => o.status === "pending").reduce((t, o) => t + Number(o.total), 0);
+      return `<p class="o-next">${todo.length ? `Next: ${esc(todo[0])}` : c.unpaid ? "Nothing to do yet: waiting on payments" : "All caught up"}</p>
+        ${todo.length > 1 ? `<p class="o-small">Then: ${esc(todo.slice(1).join(" · "))}</p>` : ""}
+        <p class="o-small">${peso(paid)} paid${waiting ? ` · ${peso(waiting)} not paid yet (${c.unpaid + c.check})` : ""}</p>`;
     }
 
     // Empty Sunday? Look ahead a few weeks and offer a jump to the next one that has orders

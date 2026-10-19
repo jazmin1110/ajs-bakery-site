@@ -1264,3 +1264,77 @@ html.drawer-open, body.drawer-open { overflow: hidden; overscroll-behavior: none
 .money-row > :last-child { white-space: nowrap; }
 .ops-stats.ops-stats-4 { grid-template-columns: 1fr 1fr; }
 @media (min-width: 700px) { .ops-stats.ops-stats-4 { grid-template-columns: repeat(4, 1fr); } }
+
+/* ==========================================================================================
+   CALM ADMIN: the back office keeps the brand colors and fonts but drops the decoration,
+   so the screens read as tools. Everything here is scoped to body.admin (storefront untouched).
+   Status colors mean one thing each:
+     amber = needs you (check a payment)   blue = in the kitchen (to bake, baking, ready)
+     green = paid / done                   grey = waiting on the customer, or closed
+     red   = a problem (expired, past best-by)
+   ========================================================================================== */
+body.admin { background: #FBF7F0; }                                   /* near-white paper, calmer than the storefront cream */
+body.admin .logo-link img { width: 40px; height: 40px; box-shadow: none; }
+body.admin .logo-link { min-height: 44px; }
+
+/* Flat buttons: no 3D drop edge, no press-down jump */
+body.admin .btn, body.admin .btn:active { box-shadow: none; transform: none; }
+body.admin .btn { font-family: var(--font-body); font-weight: 700; border-radius: var(--r-sm); }
+body.admin .btn-ghost { border-width: 1.5px; }
+body.admin .chip { border-width: 1.5px; font-size: 0.88rem; }
+
+/* Cards: white, thin border, no shadow */
+body.admin .order-card, body.admin .pack-card, body.admin .t-card {
+  background: #fff; border: 1px solid #E6DCCB; border-radius: 12px; box-shadow: none; padding: 0.85rem 0.95rem;
+}
+body.admin .t-card h2 { font-size: 1.15rem; margin-bottom: 0.2rem; }
+body.admin .t-sub { font-size: 0.88rem; }
+
+/* Order cards: the status is a stripe on the left edge, not a full colored frame */
+body.admin .order-card { border-left: 5px solid #CFC5B4; }                       /* grey: waiting / closed */
+body.admin .order-card.is-paid { border-color: #E6DCCB; border-left-color: var(--blue); }
+body.admin .order-card.is-paid.st-done { border-left-color: #3E9A50; }
+body.admin .order-card.needs-check { background: #fff; border-color: #E6DCCB; border-left-color: #D99A20; border-width: 1px 1px 1px 5px; }
+body.admin .order-card.is-expired, body.admin .order-card.is-cancelled { background: #fff; border-color: #E6DCCB; border-left-color: #C9574B; border-width: 1px 1px 1px 5px; opacity: 0.75; }
+body.admin .o-ref { font-family: var(--font-body); font-size: 1.05rem; font-weight: 800; letter-spacing: 0.03em; }
+body.admin .o-who { margin: 0.2rem 0; }
+body.admin .o-meta { margin: 0.2rem 0; font-size: 0.95rem; }
+body.admin .o-box { padding: 0.35rem 0; }
+body.admin .o-todo { background: #FFF6E0; font-size: 0.92rem; }
+body.admin .o-main { margin-top: 0.55rem; }
+
+/* Status pills: one color per meaning (see the key above) */
+body.admin .badge { border-width: 1px; font-weight: 700; font-size: 0.78rem; }
+body.admin .st-check   { background: #D99A20; border: 1px solid #D99A20; color: #fff; }
+body.admin .st-kitchen { background: var(--blue-soft); border: 1px solid var(--blue); color: var(--blue-dark); }
+body.admin .st-done    { background: #E3F4E6; border: 1px solid #3E9A50; color: #1F5F2A; }
+body.admin .st-wait    { background: #F2EEE7; border: 1px solid #CFC5B4; color: var(--ink); }
+body.admin .st-problem { background: #FCEBEA; border: 1px solid #C9574B; color: #8A2B22; }
+
+/* "Needs you" summary at the top of Orders */
+.o-summary { background: #fff; border: 1px solid #E6DCCB; border-radius: 12px; padding: 0.7rem 0.95rem; margin-bottom: 0.8rem; }
+.o-summary p { margin: 0.15rem 0; }
+.o-summary .o-next { font-weight: 800; color: var(--blue-dark); }
+
+/* Numbers strip: white tiles, quiet labels */
+body.admin .ops-stat { background: #fff; border: 1px solid #E6DCCB; }
+body.admin .ops-stat strong { font-family: var(--font-body); font-weight: 800; font-size: 1.35rem; }
+body.admin .ops-note { background: #FFF6E0; border: 1px solid #E8C77A; }
+body.admin .ops-ok { background: #EEF7EF; border: 1px solid #9CCFA4; }
+body.admin .tag { border-width: 1px; font-weight: 700; }
+body.admin .choice { border-width: 1.5px; }
+body.admin .t-toggle { background: #fff; border-color: #E6DCCB; font-size: 0.92rem; }
+body.admin .t-toggle span { font-weight: 600; }
+
+/* Tables: the name column gets room; numbers never break across lines */
+body.admin .t-table th:first-child { min-width: 8.5rem; }
+body.admin .t-table td { white-space: nowrap; }
+
+/* "How this works" explainers stay folded away until wanted */
+.how { margin: 0.3rem 0 0.4rem; font-size: 0.88rem; color: var(--ink-soft); }
+.how summary { cursor: pointer; font-weight: 700; color: var(--blue-dark); min-height: 36px; display: flex; align-items: center; }
+
+/* Laptop: orders sit two to a row instead of stretching across the screen */
+@media (min-width: 1000px) {
+  body.admin #list:has(> .order-card) { display: grid; grid-template-columns: 1fr 1fr; gap: 0 0.9rem; align-items: start; }
+}

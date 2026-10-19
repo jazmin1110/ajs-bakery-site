@@ -29,7 +29,7 @@
       <button type="button" class="btn btn-small" id="add-btn">Add item</button>
     </div>
 
-    <p class="t-sub" style="margin:0 0 .8rem">Tap "I bought some" after every grocery run. The shopping list, expiry alerts and costs all come from this.</p>
+    <p class="t-sub" style="margin:0 0 .8rem">Tap "I bought some" after every grocery run. Shopping list, expiry alerts and costs all come from this.</p>
     <div class="form-error" id="message" role="alert" hidden></div>
     <div class="ops-ok ops-flash" id="flash" role="status" hidden></div>
     <div id="out"><p class="loading">Loading stock...</p></div>
@@ -173,10 +173,10 @@
           ${i.next_expiry ? ` · next expiry ${esc(shortDate(i.next_expiry))}` : ""}${i.supplier ? ` · ${esc(i.supplier)}` : ""}
           ${i.reorder_level > 0 ? ` · reorder at ${esc(fmtQty(i.reorder_level, i.unit))}` : ""}</p>
         <div class="ops-actions no-print">
-          <button type="button" class="btn btn-small" data-open="receive">+ I bought some</button>
+          <button type="button" class="btn btn-small btn-ghost" data-open="receive">+ I bought some</button>
         </div>
         ${form && openForm.kind === "receive" ? form : ""}
-        <details class="o-more no-print"${moreOpen ? " open" : ""}><summary>More: used some, recount, edit${itemLots.length ? `, purchases + prices (${itemLots.length})` : ""}</summary>
+        <details class="o-more no-print"${moreOpen ? " open" : ""}><summary>More: used, recount, edit${itemLots.length ? `, ${itemLots.length} purchase${itemLots.length === 1 ? "" : "s"}` : ""}</summary>
           <div class="ops-actions">
             <button type="button" class="btn btn-small btn-ghost" data-open="use">Used some</button>
             <button type="button" class="btn btn-small btn-ghost" data-open="count">Recount</button>
