@@ -20,6 +20,17 @@ export const BADGE_TYPES = {
   bestseller: { label: "Best seller", image: "badge-tongue" },    // tongue-out monkey
 };
 
+// "Coming soon" flavors: placeholders shown under the menu until each one is ready to sell.
+// Display only: they are NOT in the database, so they can't be ordered or counted toward caps.
+// When a flavor's final details are ready: add it to flavor-content.json + the flavors table,
+// then delete its line here. Delete them all and the section hides itself.
+//   teaser = optional one-liner (leave "" until the owner writes it; never invent ingredients)
+export const COMING_SOON = [
+  { name: "Nutella",       emoji: "🌰", teaser: "" },
+  { name: "Biscoff",       emoji: "🍪", teaser: "" },
+  { name: "Peanut Butter", emoji: "🥜", teaser: "" },
+];
+
 export const CONFIG = {
   brandName: "AJ's Bakery",
   tagline: "Small-batch brown butter cookies, baked at home in Manila.",

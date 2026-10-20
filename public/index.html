@@ -84,6 +84,15 @@
       </div>
     </section>
 
+    <!-- Placeholders for flavors that aren't on sale yet (COMING_SOON in js/config.js; display only) -->
+    <section id="coming-soon">
+      <div class="container">
+        <h2>Coming soon</h2>
+        <p class="section-sub">New flavors we're still testing. Not on the menu yet.</p>
+        <div class="menu-list coming-list" id="coming-grid"></div>
+      </div>
+    </section>
+
     <section id="boxes">
       <div class="container">
         <h2>Boxes</h2>
@@ -159,7 +168,7 @@
     import { fetchMenu, fetchSundayInfo, fetchAvailability, fetchSiteSettings } from "./js/supabase.js";
     import {
       orderingSunday, renderBanner, renderBannerError,
-      renderMenu, renderBoxes, renderConfigText, renderClosed, stockLabel, clampDescriptions,
+      renderMenu, renderBoxes, renderConfigText, renderClosed, stockLabel, clampDescriptions, renderComingSoon,
     } from "./js/ui.js";
     import { initCartUI } from "./js/cart-ui.js";
     import { initFlavorSheet } from "./js/flavor-sheet.js";
@@ -167,6 +176,7 @@
 
     renderConfigText();
     initCartUI();
+    renderComingSoon(document.getElementById("coming-soon"), document.getElementById("coming-grid"));   // doesn't need the database
 
     const ig = document.querySelector("[data-instagram]");
     ig.href = CONFIG.instagramUrl;

@@ -1338,3 +1338,13 @@ body.admin .t-table td { white-space: nowrap; }
 @media (min-width: 1000px) {
   body.admin #list:has(> .order-card) { display: grid; grid-template-columns: 1fr 1fr; gap: 0 0.9rem; align-items: start; }
 }
+
+/* ---- "Coming soon" placeholders (COMING_SOON in js/config.js): menu look, nothing to tap ---- */
+#coming-soon { padding-top: 0; scroll-margin-top: 76px; }
+.coming-list .fi-body { cursor: default; padding-bottom: 14px; }
+.coming-list .fi-text h3 { min-height: 44px; display: flex; align-items: center; }
+.coming-list .fi-photo { font-size: 2.6rem; opacity: 0.85; }
+@media (min-width: 700px) {
+  .coming-list .fi-photo { font-size: 4rem; }
+  .coming-list .fi-text { padding-bottom: 1.1rem; }
+}

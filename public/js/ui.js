@@ -1,6 +1,6 @@
 // Shared UI helpers: formatting, the Sunday banner, and menu/box cards.
 // Prices passed in here come from the database and are shown for display only.
-import { CONFIG, FLAVOR_BADGES, BADGE_TYPES } from "./config.js";
+import { CONFIG, FLAVOR_BADGES, BADGE_TYPES, COMING_SOON } from "./config.js";
 
 // 95 -> "₱95"
 export function peso(amount) {
@@ -272,6 +272,25 @@ export function renderMenu(container, flavors, boxes = [], availability = {}) {
     })
     .join("");
   clampDescriptions(container);
+}
+
+// The "Coming soon" placeholders (COMING_SOON in js/config.js). Same row/card look as the menu, but no
+// price, no add control and no detail sheet: they can't be ordered yet. Hides the section when the list is empty.
+export function renderComingSoon(section, container, items = COMING_SOON) {
+  if (!items.length) { section.hidden = true; return; }
+  container.innerHTML = items
+    .map((c) => `
+      <article class="flavor-item is-coming">
+        <div class="fi-body">
+          <div class="fi-text">
+            <h3>${esc(c.name)}</h3>
+            <p class="fi-desc">${esc(c.teaser || "Still in the test kitchen. Details coming soon.")}</p>
+            <p class="fi-extra"><span class="stock sticker">Coming soon</span></p>
+          </div>
+          <div class="fi-photo" aria-hidden="true">${esc(c.emoji || "🍪")}</div>
+        </div>
+      </article>`)
+    .join("");
 }
 
 // Show at most 3 lines of each short description, cutting after a WHOLE word and adding "…"
