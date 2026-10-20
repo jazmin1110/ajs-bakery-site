@@ -635,7 +635,7 @@ begin
 end $$;
 rollback;
 
--- Minimums (migration 008): pickup = 1 cookie; delivery = 2 cookies OR P200. Plus other order-size sanity checks.
+-- Minimums (migration 017): 1 cookie for pickup AND delivery. Plus other order-size sanity checks.
 begin;
 do $$
 begin
@@ -648,38 +648,15 @@ begin
     assert r.total = 105, 'one Chimp Chips for pickup should be 105, got ' || r.total;
     raise notice 'PASS (k): pickup accepts a single cookie (total %)', r.total;
 
-    -- DELIVERY: 1 cookie under P200 is rejected
-    begin
-      perform 1 from public.place_order('Min', null, '09175550102', 'delivery', '1 Test St', '[]'::jsonb, null,
-        '[{"flavor_slug":"choc-chip","qty":1}]'::jsonb);
-      raise exception 'FAIL (k): a 1-cookie delivery order under P200 was accepted';
-    exception when others then
-      if sqlerrm not like '%Delivery orders need at least 2 cookies or ₱200%' then raise; end if;
-      raise notice 'PASS (k): delivery of 1 cookie (P105) rejected -> %', sqlerrm;
-    end;
-    begin
-      perform 1 from public.place_order('Min', null, '09175550102', 'delivery', '1 Test St', '[]'::jsonb, null,
-        '[{"flavor_slug":"kinder-bueno","qty":1}]'::jsonb);
-      raise exception 'FAIL (k): a 1-cookie delivery order (P135) was accepted';
-    exception when others then
-      if sqlerrm not like '%Delivery orders need%' then raise; end if;
-    end;
-
-    -- DELIVERY: 2 cookies is enough
+    -- DELIVERY: 1 cookie is enough too (migration 017 removed the old 2-cookies-or-P200 rule)
+    select * into r from public.place_order('Min', null, '09175550102', 'delivery', '1 Test St', '[]'::jsonb, null,
+      '[{"flavor_slug":"choc-chip","qty":1}]'::jsonb);
+    assert r.total = 105, 'one Chimp Chips by delivery should be accepted at 105, got ' || r.total;
+    raise notice 'PASS (k): delivery accepts a single cookie (total %)', r.total;
     select * into r from public.place_order('Min', null, '09175550103', 'delivery', '1 Test St', '[]'::jsonb, null,
-      '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
-    raise notice 'PASS (k): delivery accepts 2 cookies';
-  end;
-  -- DELIVERY: 1 cookie is enough if it costs P200 or more (we make Bueno Mucho P250 for this test)
-  reset role;
-  update public.flavors set single_price = 250 where slug = 'kinder-bueno';
-  set local role anon;
-  declare r2 record;
-  begin
-    select * into r2 from public.place_order('Min', null, '09175550104', 'delivery', '1 Test St', '[]'::jsonb, null,
       '[{"flavor_slug":"kinder-bueno","qty":1}]'::jsonb);
-    assert r2.total = 250, 'one P250 cookie by delivery should be accepted at 250';
-    raise notice 'PASS (k): delivery accepts 1 cookie when it costs P200 or more';
+    assert r.total = 135, 'one Bueno Mucho by delivery should be accepted at 135, got ' || r.total;
+    raise notice 'PASS (k): delivery accepts a single Bueno Mucho (total %)', r.total;
   end;
   begin
     perform 1 from public.place_order('Min', null, '09175550004', 'pickup', null, '[]'::jsonb);
@@ -939,19 +916,15 @@ begin
   end;
   raise notice 'PASS (n): a box of 5 is rejected too';
 
-  -- Delivery minimum is unchanged: 1 cookie under P200 is refused, a box of 3 and 2 singles are fine
-  begin
-    perform 1 from public.place_order('N', null, '09175551008', 'delivery', '1 Test St', '[]'::jsonb, null,
-      '[{"flavor_slug":"choc-chip","qty":1}]'::jsonb);
-    raise exception 'FAIL (n): delivery with 1 cookie under 200 was accepted';
-  exception when others then
-    if sqlerrm not like '%Delivery orders need at least 2 cookies%' then raise; end if;
-  end;
+  -- No delivery minimum (migration 017): 1 cookie, 2 singles and a box of 3 are all fine by delivery
+  -- (a Bueno Mucho, so the Chimp Chips cap test below still starts from the same count)
+  perform public.place_order('N', null, '09175551008', 'delivery', '1 Test St', '[]'::jsonb, null,
+    '[{"flavor_slug":"kinder-bueno","qty":1}]'::jsonb);
   perform public.place_order('N', null, '09175551009', 'delivery', '1 Test St', '[]'::jsonb, null, '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
   perform public.place_order('N', null, '09175551010', 'delivery', '1 Test St',
     '[{"size":3,"items":[{"flavor_slug":"double-choc","qty":3}]}]'::jsonb);
   perform public.place_order('N', null, '09175551011', 'pickup', null, '[]'::jsonb, null, '[{"flavor_slug":"choc-chip","qty":1}]'::jsonb);
-  raise notice 'PASS (n): delivery minimum still applies (1 cookie refused; 2 cookies and a box of 3 fine); pickup 1 cookie fine';
+  raise notice 'PASS (n): delivery takes any order (1 cookie, 2 cookies, a box of 3); pickup 1 cookie fine';
   reset role;
 
   -- The per-flavor cap still applies to the big box: top Chimp Chips up to 10 reserved, then ask for 11
