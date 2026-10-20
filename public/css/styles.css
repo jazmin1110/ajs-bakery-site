@@ -1364,3 +1364,4 @@ body.admin .t-table td { white-space: nowrap; }
 .ao-total { border-top: 2px solid var(--cream-dark); padding-top: 0.6rem; }
 .ao-total-line { font-size: 1.15rem; margin: 0 0 0.2rem; }
 .ao-total .o-small { margin: 0 0 0.6rem; }
+.unit-now { display: flex; align-items: center; gap: 0.7rem; min-height: 44px; margin: 0; }   /* Stock > Edit: the unit + its Change link */

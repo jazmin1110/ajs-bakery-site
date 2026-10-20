@@ -57,6 +57,8 @@
     let showHidden = false;
     let search = "";         // what's typed in the Find box
 
+    const UNITS = [["g", "grams (g)"], ["ml", "millilitres (ml)"], ["pc", "pieces (pc)"], ["tsp", "teaspoons (tsp)"]];
+    const UNIT_NAME = Object.fromEntries(UNITS.map(([u, t]) => [u, t]));
     const REASON = { received: "bought", used_in_batch: "used in batch", used_manual: "used", count_correction: "stock take", discarded: "thrown away", purchase_fix: "purchase fixed" };
 
     function showMessage(text) {
@@ -101,7 +103,8 @@
 
       const alerts = [
         ...low.map((i) => `<span class="tag tag-low">Low</span> ${esc(i.name)}: ${esc(fmtQty(i.on_hand, i.unit))} left (reorder at ${esc(fmtQty(i.reorder_level, i.unit))})`),
-        ...expired.map((l) => `<span class="tag tag-low">Expired</span> ${esc(byId[l.ingredient_id]?.name || "Item")}: ${esc(fmtQty(l.qty_remaining, byId[l.ingredient_id]?.unit || ""))} expired ${esc(shortDate(l.expires_on))}. Throw it away below.`),
+        ...expired.map((l) => `<span data-lot="${l.id}"><span class="tag tag-low">Expired</span> ${esc(byId[l.ingredient_id]?.name || "Item")}: ${esc(fmtQty(l.qty_remaining, byId[l.ingredient_id]?.unit || ""))} expired ${esc(shortDate(l.expires_on))}.
+          <button type="button" class="btn btn-small btn-ghost" data-act="discard">Throw away</button></span>`),
         ...soon.map((l) => `<span class="tag tag-warn">Soon</span> ${esc(byId[l.ingredient_id]?.name || "Item")}: ${esc(fmtQty(l.qty_remaining, byId[l.ingredient_id]?.unit || ""))} expires ${daysUntil(l.expires_on) === 0 ? "today" : esc(shortDate(l.expires_on))}`),
       ];
 
@@ -132,6 +135,7 @@
             : `<p class="t-sub">Nothing logged yet.</p>`}
         </section>`;
       wireReceiveForm();
+      wireUnitForm();
     }
 
     // One purchase, as a line: "Oct 12 · 2 kg for ₱200 (₱100 per bag) · 1.5 kg left · expires Nov 2"
@@ -160,7 +164,7 @@
       const shown = itemLots.filter((l, n) => l.qty_remaining > 0 || n < 6);      // everything with stock, plus the last few
       const days = i.next_expiry ? daysUntil(i.next_expiry) : null;
       const form = openForm?.id === i.ingredient_id && openForm.kind !== "fix"
-        ? ({ receive: receiveForm, use: useForm, count: countForm, edit: editForm }[openForm.kind])(i) : "";
+        ? ({ receive: receiveForm, use: useForm, count: countForm, edit: editForm, unit: unitForm }[openForm.kind])(i) : "";
       const moreOpen = openForm?.id === i.ingredient_id && openForm.kind === "fix";     // keep the purchases open while fixing one
       return `<article class="t-card item-card" data-ing="${i.ingredient_id}"${i.active ? "" : ' style="opacity:.6"'}>
         <div class="item-top"><h3 class="item-name">${esc(i.name)}</h3><span class="item-qty">${esc(fmtQty(i.on_hand, i.unit))}</span></div>
@@ -281,8 +285,10 @@
       return `<form class="ops-form" data-form="${isNew ? "add" : "edit"}">
         <div class="ops-field wide"><label>Name</label><input name="name" maxlength="80" required value="${v(i?.name)}"></div>
         <div class="ops-field"><label>Type</label><select name="category"><option value="ingredient"${i?.category === "packaging" ? "" : " selected"}>Ingredient</option><option value="packaging"${i?.category === "packaging" ? " selected" : ""}>Packaging</option></select></div>
-        <div class="ops-field"><label>Counted in</label><select name="unit"${isNew ? "" : " disabled"}>
-          ${[["g", "grams (g)"], ["ml", "millilitres (ml)"], ["pc", "pieces (pc)"], ["tsp", "teaspoons (tsp)"]].map(([u, t]) => `<option value="${u}"${i?.unit === u ? " selected" : ""}>${t}</option>`).join("")}</select></div>
+        ${isNew ? `<div class="ops-field"><label>Counted in</label><select name="unit">
+          ${UNITS.map(([u, t]) => `<option value="${u}">${t}</option>`).join("")}</select></div>`
+          : `<div class="ops-field"><label>Counted in</label><p class="unit-now"><strong>${esc(UNIT_NAME[i.unit] || i.unit)}</strong>
+              <button type="button" class="link-btn" data-open="unit">Change</button></p></div>`}
         <div class="ops-field"><label>How it's sold</label><input name="pack_label" maxlength="40" placeholder="bag 2.5kg" value="${v(i?.pack_label)}"></div>
         <div class="ops-field"><label>Amount in one pack</label><input name="pack_size" type="number" min="0.001" step="any" inputmode="decimal" required value="${v(i?.pack_size ?? 1)}"><p class="field-hint">in the unit above, e.g. 2500 g</p></div>
         <div class="ops-field"><label>Price of one pack (₱)</label><input name="pack_price" type="number" min="0" step="any" inputmode="decimal" required value="${v(i?.pack_price ?? 0)}"><p class="field-hint">Updates by itself when you log a purchase with what you paid.</p></div>
@@ -292,8 +298,35 @@
         <label class="choice wide"><input type="checkbox" name="perishable"${i?.perishable ? " checked" : ""}><span>Has an expiry date (every purchase must have one)</span></label>
         <label class="choice wide"><input type="checkbox" name="price_confirmed"${i && !i.price_confirmed ? "" : " checked"}><span>The price above is the real price</span></label>
         ${isNew ? "" : `<label class="choice wide"><input type="checkbox" name="active"${i.active ? " checked" : ""}><span>Show this item (untick to hide it)</span></label>`}
-        <div class="wide ops-actions"><button type="submit" class="btn btn-small">${isNew ? "Add item" : "Save"}</button><button type="button" class="btn btn-small btn-ghost" data-close>Cancel</button></div>
+        <div class="wide ops-actions"><button type="submit" class="btn btn-small">${isNew ? "Add item" : "Save"}</button><button type="button" class="btn btn-small btn-ghost" data-close>Cancel</button>
+          ${isNew ? "" : `<button type="button" class="btn btn-small btn-ghost btn-danger-ghost" data-act="delete" style="margin-left:auto">Delete item</button>`}</div>
       </form>`;
+    }
+
+    // Change the unit (e.g. pieces -> grams). Every amount is converted in the database
+    // (stock, purchases, history, recipes, pack size, reorder level); money stays the same.
+    function unitForm(i) {
+      return `<form class="ops-form" data-form="unit">
+        <div class="ops-field"><label>Count it in</label><select name="unit">
+          ${UNITS.filter(([u]) => u !== i.unit).map(([u, t]) => `<option value="${u}">${t}</option>`).join("")}</select></div>
+        <div class="ops-field"><label data-factor-label>How many in one ${esc(i.unit)}?</label><input name="factor" type="number" min="0.001" step="any" inputmode="decimal" required>
+          <p class="field-hint">e.g. 1 egg (pc) = 50 g, 1 tsp salt = 6 g, 1 g ≈ 1 ml</p></div>
+        <div class="wide"><p class="field-hint" data-unit-preview></p></div>
+        <div class="wide ops-actions"><button type="submit" class="btn btn-small">Change unit</button><button type="button" class="btn btn-small btn-ghost" data-close>Cancel</button></div>
+      </form>`;
+    }
+    // Live preview: "500 g in stock becomes 10 pc. Recipes and the pack size change the same way."
+    function wireUnitForm() {
+      const form = document.querySelector('[data-form="unit"]'); if (!form) return;
+      const item = items.find((x) => x.ingredient_id === openForm.id);
+      const update = () => {
+        const u = form.elements.unit.value, k = Number(form.elements.factor.value);
+        form.querySelector("[data-factor-label]").textContent = `How many ${u} in one ${item.unit}?`;
+        form.querySelector("[data-unit-preview]").textContent = k > 0
+          ? `${fmtQty(item.on_hand, item.unit)} in stock becomes ${fmtQty(item.on_hand * k, u)}. One pack (${fmtQty(item.pack_size, item.unit)}) becomes ${fmtQty(item.pack_size * k, u)}. Recipes, purchases and the reorder level change the same way. Prices stay the same.`
+          : "";
+      };
+      form.addEventListener("input", update); form.addEventListener("change", update); update();
     }
 
     // ---- Events --------------------------------------------------------------------------
@@ -328,6 +361,24 @@
         showMessage(""); act.disabled = true;
         try { await rpc("admin_discard_lot", { p_lot_id: lotId, p_note: "thrown away" }); flash("Thrown away"); await load(); }
         catch (err) { console.error(err); act.disabled = false; showMessage(errText(err)); }
+        return;
+      }
+      if (act.dataset.act === "delete") {                           // delete an item (only if never used)
+        const item = items.find((x) => x.ingredient_id === openForm?.id); if (!item) return;
+        if (!confirm(`Delete ${item.name}? This can't be undone.`)) return;
+        showMessage(""); act.disabled = true;
+        try {
+          await rpc("admin_delete_ingredient", { p_ingredient_id: item.ingredient_id });
+          openForm = null; flash(`Deleted ${item.name}`); await load();
+        } catch (err) {
+          console.error(err); act.disabled = false;
+          // Bought or used before: deleting would break old costs, so offer to hide it
+          if (err.hint === "has_history" && confirm(`${err.message}\n\nHide it now? It disappears from the list and the shopping list; its history stays.`)) {
+            const { error } = await getClient().from("ingredients").update({ active: false }).eq("id", item.ingredient_id);
+            if (error) return showMessage(fail(error).message);
+            openForm = null; flash(`Hid ${item.name}`); await load();
+          } else showMessage(errText(err));
+        }
         return;
       }
       if (act.dataset.act === "remove") {                           // purchase was a mistake
@@ -369,6 +420,12 @@
         } else if (kind === "count") {
           await rpc("admin_count_stock", { p_ingredient_id: id, p_actual: num0("actual"), p_note: "stock take", p_expires_on: f.get("expires") || null });
           flash(`${item.name} is now ${fmtQty(num0("actual"), item.unit)}`);
+        } else if (kind === "unit") {
+          const u = f.get("unit"), k = num0("factor");
+          if (!(k > 0)) throw new Error(`Say how many ${u} make one ${item.unit}.`);
+          if (!confirm(`Change ${item.name} from ${item.unit} to ${u} (1 ${item.unit} = ${k} ${u})?\n\nStock, purchases, history and recipes are all converted.`)) { btn.disabled = false; return; }
+          await rpc("admin_change_unit", { p_ingredient_id: id, p_unit: u, p_factor: k });
+          flash(`${item.name} is now counted in ${u}`);
         } else if (kind === "fix") {
           const lot = allLots.find((l) => l.id === openForm.lot);
           const qty = num0("qty");
@@ -387,7 +444,7 @@
             pack_size: num0("pack_size"), pack_price: num0("pack_price"),
             reorder_level: num0("reorder_level") || 0, per_cookie: num0("per_cookie") || 0,
             supplier: String(f.get("supplier") || "").trim() || null,
-            perishable: f.has("perishable"), price_confirmed: f.has("price_confirmed"),
+            perishable: f.has("perishable"), price_confirmed: f.has("price_confirmed") && num0("pack_price") > 0,
           };
           if (!row.name) throw new Error("Give the item a name.");
           if (kind === "add") {
@@ -397,6 +454,11 @@
             flash("Added " + row.name);
           } else {
             row.active = f.has("active");
+            if (!row.active && item.active) {
+              // Hidden items are left off the shopping list, but a recipe still uses them when you mix
+              const uses = await select("recipe_items", "id", (q) => q.eq("ingredient_id", id));
+              if (uses.length && !confirm(`${item.name} is in a recipe. Hidden items are left off the shopping list, but mixing that recipe still uses it.\n\nHide it anyway? (Or take it out on the Recipes page first.)`)) { btn.disabled = false; return; }
+            }
             const { error } = await getClient().from("ingredients").update(row).eq("id", id);
             if (error) throw error.code === "23505" ? new Error("You already have an item with that name.") : fail(error);
             flash("Saved " + row.name);
