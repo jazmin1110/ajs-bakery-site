@@ -85,7 +85,8 @@ Hand-drawn die-cut sticker style, blue anchor. The nav is brand blue with cream 
 - **Packaging (015):** baking dough balls (`admin_use_dough`) also takes `per_cookie` packaging out of stock. The shopping list tops items up to their `reorder_level` and lists low items even if the week doesn't need them.
 - **Best sellers (015):** `admin_sales_report(from, to)` on the Sales page: paid orders only, cookies per flavor, box vs single picks, estimated money, sold-out Sundays.
 - **Real costs (016):** two prices on purpose. `ingredients.pack_price` = the LATEST price paid (menu pricing, shopping list). `ingredient_lots.unit_cost` / `paid_total` = what THAT purchase cost (real cost, profit, waste, stock value). Purchases can be fixed or removed (`admin_fix_lot`, only if unused) and bought in a different pack size (`pack_size_bought`). Dough remembers its real cost (`dough_lots.cost_per_ball`); "I baked these" and thrown dough write `bake_log` against a Sunday (the Bake plan sends the Sunday). `admin_money_report(from, to)` = money in (paid orders) - cookies baked - waste + recount = profit, per Sunday (labor/gas/delivery not included). `admin_receive_many` = "I went shopping" from the shopping list, all or nothing.
-- Test locally: `supabase/tests_ops.sql`, `tests_015.sql` and `tests_016.sql` (run after tests.sql on a scratch Postgres). Don't write to the live DB without the owner's OK.
+- **Admin fixes (018):** the Bake plan subtracts cookies already baked for that Sunday (`bake_log`), so it never asks for them twice. `admin_delete_ingredient` deletes only never-used items (anything with purchases is hidden instead). `admin_change_unit(id, unit, factor)` converts every amount (stock, purchases, log, recipes, pack size, reorder level); money stays the same. `admin_update_order` edits details, moves the Sunday and replaces cookies (re-priced, cap checked without counting the order itself); cookies unchanged = sent as null and not re-priced. `admin_set_order_status` takes `p_allow_over_cap`.
+- Test locally: `supabase/tests_ops.sql`, `tests_015.sql`, `tests_016.sql` and `tests_018.sql` (run after tests.sql on a scratch Postgres). Don't write to the live DB without the owner's OK.
 
 ## 5. Layout
 
@@ -114,7 +115,7 @@ public/                      <- what Vercel serves
   assets/                    flavors/*.jpg (compressed), gcash-qr.png, og-image.jpg
   assets/originals/          full-size flavor photos before compression, git-ignored (NOT deployed)
   robots.txt, sitemap.xml
-supabase/                    migrations 001-017, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql, tests_016.sql  (NOT deployed)
+supabase/                    migrations 001-018, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql, tests_016.sql, tests_018.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers
