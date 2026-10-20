@@ -85,7 +85,9 @@
       const rows = items.filter((i) => i.flavor_id === f.id);
       const ingById = Object.fromEntries(ingredients.map((i) => [i.id, i]));
       const unused = ingredients.filter((i) => i.active && !rows.some((x) => x.ingredient_id === i.id));
-      if (!r) return `<section class="t-card"><h2>${esc(f.name)}</h2><p class="t-sub">No recipe row yet. Run seed_ops.sql.</p></section>`;
+      if (!r) return `<section class="t-card" data-flavor="${f.id}"><h2>${esc(f.name)}</h2>
+        <p class="t-sub">No recipe yet, so the Bake plan can't work out batches or shopping for it.</p>
+        <button type="button" class="btn btn-small" data-act="start">Start a recipe</button></section>`;
 
       const perCookie = c ? Number(c.ingredient_cost_per_cookie) + Number(c.packaging_cost_per_cookie) : 0;
       const single = f.single_price == null ? null : Number(f.single_price);
@@ -172,8 +174,13 @@
       write(getClient().from("recipe_items").update({ qty_per_batch: qty }).eq("id", Number(input.closest("[data-item]").dataset.item)), "Saved");
     });
 
-    // Remove an ingredient
+    // Remove an ingredient / start a recipe for a new flavor
     $("out").addEventListener("click", (e) => {
+      const start = e.target.closest('[data-act="start"]');
+      if (start) {                                             // 15 per batch, 28 freezer days: change them under Recipe settings
+        write(getClient().from("recipes").insert({ flavor_id: Number(start.closest("[data-flavor]").dataset.flavor) }), "Recipe started");
+        return;
+      }
       const btn = e.target.closest('[data-act="remove"]'); if (!btn) return;
       if (!confirm("Take this ingredient out of the recipe?")) return;
       write(getClient().from("recipe_items").delete().eq("id", Number(btn.closest("[data-item]").dataset.item)), "Removed");

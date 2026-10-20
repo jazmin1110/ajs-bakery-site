@@ -93,7 +93,9 @@
     // ---- Drawing -------------------------------------------------------------------------
     function render() {
       const flavors = plan.flavors;
-      const noRecipe = flavors.filter((f) => !f.recipe_ready && f.cookies_needed > 0);
+      // Cookies already baked for this Sunday ("I baked these"). Older databases (before 018) don't send it.
+      for (const f of flavors) { f.baked ??= 0; f.still_to_bake ??= Math.max(f.cookies_needed - f.baked, 0); }
+      const noRecipe = flavors.filter((f) => !f.recipe_ready && f.still_to_bake > 0);
       const toBuy = plan.shopping.filter((s) => s.short > 0);
       const covered = plan.shopping.filter((s) => s.short <= 0);
       const nameOf = Object.fromEntries(flavors.map((f) => [f.flavor_id, f.name]));
@@ -105,7 +107,7 @@
         <section class="t-card">
           <h2>${esc(formatSunday(sunday))}</h2>
           <div class="ops-stats ops-stats-4">
-            <div class="ops-stat"><strong>${num(plan.totals.cookies)}</strong><span>cookies ordered</span></div>
+            <div class="ops-stat"><strong>${num(plan.totals.cookies)}</strong><span>cookies ordered${plan.totals.baked ? `, ${num(plan.totals.baked)} baked` : ""}</span></div>
             <div class="ops-stat"><strong>${num(plan.totals.batches)}</strong><span>batches to mix</span></div>
             <div class="ops-stat"><strong>${peso2(plan.totals.est_shopping_cost)}</strong><span>to buy (est.)</span></div>
             <div class="ops-stat"><strong>${peso2(Math.round(mixCost))}</strong><span>batch ingredients (est.)</span></div>
@@ -155,10 +157,11 @@
             <div class="mk-row" data-flavor="${f.flavor_id}">
               <div class="mk-head"><strong>${esc(f.name)}</strong>
                 ${f.recipe_ready ? "" : `<a class="tag tag-warn" href="recipes.html">no recipe yet</a>`}</div>
-              <p class="mk-big">${f.cookies_needed === 0 ? "Nothing ordered"
-                : f.to_make === 0 ? `All ${f.cookies_needed} covered by frozen dough`
+              <p class="mk-big">${f.cookies_needed === 0 && !f.baked ? "Nothing ordered"
+                : f.still_to_bake === 0 ? `All ${f.cookies_needed} baked ✓${f.baked > f.cookies_needed ? ` (${f.baked - f.cookies_needed} extra)` : ""}`
+                : f.to_make === 0 ? `${f.still_to_bake} to bake, all covered by frozen dough`
                 : `Make ${f.to_make} cookie${f.to_make === 1 ? "" : "s"}${f.recipe_ready ? ` = <strong>${f.batches} batch${f.batches === 1 ? "" : "es"}</strong>` : ""}`}</p>
-              <p class="o-small">${f.cookies_needed} ordered${includePending && f.pending_cookies ? ` (${f.paid_cookies} paid, ${f.pending_cookies} not paid yet)` : ""}
+              <p class="o-small">${f.cookies_needed} ordered${includePending && f.pending_cookies ? ` (${f.paid_cookies} paid, ${f.pending_cookies} not paid yet)` : ""}${f.baked ? ` · ${f.baked} baked already` : ""}
                 · ${f.dough_on_hand} dough ball${f.dough_on_hand === 1 ? "" : "s"} in the freezer${f.recipe_ready && f.leftover ? ` · ${f.leftover} spare` : ""}
                 ${f.recipe_ready && f.to_make > 0 && costing[f.flavor_id] ? `<br>~${peso2(Math.round(batchCost(f)))} in ingredients (${peso2(costing[f.flavor_id].batch_cost)} per batch, today's prices)` : ""}</p>
               ${f.recipe_ready ? (() => {
@@ -167,9 +170,12 @@
                   <div class="ops-field"><label>Batches</label><input type="number" min="1" max="20" step="1" inputmode="numeric" value="${Math.max(f.batches, 1)}" data-batches></div>
                   <button type="button" class="btn btn-small" data-act="mix">I made the dough</button></div>`;
                 const bake = `<div class="mk-act">
-                  <div class="ops-field"><label>Dough balls</label><input type="number" min="1" step="1" inputmode="numeric" value="${Math.min(Math.max(f.cookies_needed, 1), Math.max(f.dough_on_hand, 1))}" data-balls></div>
+                  <div class="ops-field"><label>Dough balls</label><input type="number" min="1" step="1" inputmode="numeric" value="${Math.min(Math.max(f.still_to_bake, 1), Math.max(f.dough_on_hand, 1))}" data-balls></div>
                   <button type="button" class="btn btn-small${f.to_make > 0 ? " btn-ghost" : ""}" data-act="bake">I baked these</button></div>`;
-                return (f.to_make > 0 ? mix : "") + (f.dough_on_hand > 0 ? bake : "")
+                // Still dough in the freezer but nothing left to bake: keep the button, folded away
+                const bakeShown = f.dough_on_hand > 0 && f.still_to_bake > 0 ? bake
+                  : f.dough_on_hand > 0 ? `<details class="o-more"><summary>Baked extra?</summary>${bake}</details>` : "";
+                return (f.to_make > 0 ? mix : "") + bakeShown
                   + (f.to_make > 0 ? "" : `<details class="o-more"><summary>Made extra dough anyway?</summary>${mix}</details>`);
               })() : ""}
             </div>`).join("")}
