@@ -38,6 +38,10 @@
     <!-- What needs you right now + the money for this Sunday. Filled by summaryHtml() -->
     <div class="o-summary no-print" id="summary" hidden></div>
 
+    <!-- Find one order fast when a customer messages: name, @instagram, phone or order code -->
+    <input type="search" id="search" class="admin-search no-print" placeholder="Find: name, @ig, phone or code"
+      aria-label="Find an order" autocomplete="off" autocapitalize="none">
+
     <div class="chips no-print" id="chips" role="group" aria-label="Filter orders"></div>
 
     <div class="ops-ok ops-flash no-print" id="flash" role="status" hidden></div>
@@ -49,7 +53,7 @@
   <script type="module">
     import {
       requireAdmin, renderNav, setupSundayPicker, selectedSunday, expireStale, loadOrders, setStatus,
-      formatWhen, timeLeft, singlesPack, rpc, select,
+      formatWhen, timeLeft, singlesPack, rpc, select, loadFlavors, summarize,
     } from "../js/admin.js";
     import { esc, peso, formatSunday, addDays } from "../js/ui.js";
 
@@ -58,7 +62,9 @@
 
     const $ = (id) => document.getElementById(id);
     let orders = [];
+    let flavors = [];                     // slug, name, weekly_cap: for the "left this Sunday" line
     let filter = "all";
+    let search = "";                      // what's typed in the Find box
     let packing = false;
     let sunday = selectedSunday();
     const openRefs = new Set();           // which "Delivery & notes" sections are open, so a refresh doesn't close them
@@ -120,7 +126,7 @@
       try {
         // Mark overdue unpaid orders as expired first, so what you see is up to date
         try { await expireStale(); } catch (e) { console.error("expire failed", e); }
-        orders = await loadOrders(sunday);
+        [orders, flavors] = await Promise.all([loadOrders(sunday), flavors.length ? flavors : loadFlavors()]);
         render();
       } catch (err) {
         console.error(err);
@@ -258,6 +264,7 @@
       $("summary").hidden = !orders.length || packing;
 
       $("packing-btn").textContent = packing ? "Back to orders" : "Packing view";
+      $("search").hidden = packing || !orders.length;
 
       if (packing) {
         const paid = orders.filter((o) => o.status === "paid");
@@ -272,12 +279,14 @@
         return;
       }
 
-      // Things that need you come first: check payment, to bake, baking, ready... closed last
-      const shown = orders.filter((o) => filter === "all" || stage(o) === filter)
-        .sort((a, b) => stageOrder(a) - stageOrder(b));
+      // Typing in Find searches every stage (the chips are ignored while you search)
+      $("chips").hidden = !!search;
+      const shown = orders.filter((o) => search ? matches(o, search) : filter === "all" || stage(o) === filter)
+        .sort((a, b) => stageOrder(a) - stageOrder(b));   // things that need you first, closed last
       $("list").innerHTML = shown.length
         ? shown.map(orderCard).join("")
-        : `<p class="loading">${orders.length ? "No orders at this stage." : "No orders for this Sunday yet."}</p><div id="next-hint"></div>`;
+        : `<p class="loading">${search ? `No order on ${esc(formatSunday(sunday))} matches "${esc(search)}". Wrong Sunday?`
+            : orders.length ? "No orders at this stage." : "No orders for this Sunday yet."}</p><div id="next-hint"></div>`;
       if (!orders.length) findNextOrders();
     }
 
@@ -295,7 +304,33 @@
       const waiting = live.filter((o) => o.status === "pending").reduce((t, o) => t + Number(o.total), 0);
       return `<p class="o-next">${todo.length ? `Next: ${esc(todo[0])}` : c.unpaid ? "Nothing to do yet: waiting on payments" : "All caught up"}</p>
         ${todo.length > 1 ? `<p class="o-small">Then: ${esc(todo.slice(1).join(" · "))}</p>` : ""}
-        <p class="o-small">${peso(paid)} paid${waiting ? ` · ${peso(waiting)} not paid yet (${c.unpaid + c.check})` : ""}</p>`;
+        <p class="o-small">${peso(paid)} paid${waiting ? ` · ${peso(waiting)} not paid yet (${c.unpaid + c.check})` : ""}</p>
+        ${leftLine()}`;
+    }
+
+    // How many of each flavor can still be sold for this Sunday, so you can answer a DM without
+    // opening another page. Same count as the website: paid + unpaid-not-expired orders hold cookies.
+    function leftFor(list) {
+      const per = summarize(list, flavors).perFlavor;
+      return flavors.map((f) => ({ slug: f.slug, name: f.name, left: (f.weekly_cap ?? 0) - per[f.slug].paid - per[f.slug].pending }));
+    }
+    function leftLine() {
+      if (!flavors.length) return "";
+      return `<p class="o-left"><strong>Left to sell:</strong> ${leftFor(orders).map((f) =>
+        `<span class="${f.left <= 0 ? "o-left-out" : f.left <= 3 ? "o-left-low" : ""}">${esc(f.name)} ${f.left <= 0 ? (f.left < 0 ? `${-f.left} over` : "sold out") : f.left}</span>`
+      ).join(" · ")}</p>`;
+    }
+
+    // Find box: name, @instagram, phone (digits only, so "0917 123" finds "+63917123...") or order code
+    function matches(o, q) {
+      const text = q.toLowerCase().replace(/^@/, "");
+      const digits = q.replace(/\D/g, "");
+      if ([o.name, o.ig_handle, o.ref_code].some((v) => (v || "").toLowerCase().replace(/^@/, "").includes(text))) return true;
+      if (digits.length >= 3) {
+        const phone = (o.phone || "").replace(/\D/g, "");
+        return phone.includes(digits) || phone.includes(digits.replace(/^0/, ""));   // 0917... vs +63917...
+      }
+      return false;
     }
 
     // Empty Sunday? Look ahead a few weeks and offer a jump to the next one that has orders
@@ -335,20 +370,79 @@
       }
       draftBoxes = [];
       el.innerHTML = addFormHtml(); el.hidden = false;
-      syncAddForm();
+      syncAddForm(); updateDraft();
       el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.querySelector("[name=name]").focus({ preventScroll: true });
     }
 
+    // A number box with − and + buttons either side (easier than typing on a phone)
+    function qtyStepper(attrs, value, max, label) {
+      return `<span class="stepper ao-stepper">
+        <button type="button" data-step="-1" aria-label="One less ${esc(label)}">−</button>
+        <input type="number" min="0" max="${max}" step="1" inputmode="numeric" value="${value}" ${attrs} aria-label="${esc(label)}">
+        <button type="button" data-step="1" aria-label="One more ${esc(label)}">+</button></span>`;
+    }
+
+    const boxCount = (b) => Object.values(b.qty).reduce((a, x) => a + x, 0);
     function boxBlock(b, i) {
-      const n = Object.values(b.qty).reduce((a, x) => a + x, 0);
+      const n = boxCount(b);
       return `<div class="ao-box" data-box="${i}">
         <div class="ops-head"><strong>Box ${i + 1}</strong>
           <select data-box-size aria-label="Box size">${menu.boxes.map((x) => `<option value="${x.size}"${x.size === b.size ? " selected" : ""}>Box of ${x.size} (${peso(x.price)})</option>`).join("")}</select>
           <button type="button" class="link-btn" data-box-remove>Remove</button></div>
-        ${menu.flavors.map((f) => `<label class="ao-qty"><span>${esc(f.name)}</span>
-          <input type="number" min="0" max="${b.size}" step="1" inputmode="numeric" value="${b.qty[f.slug] || 0}" data-box-qty="${esc(f.slug)}"></label>`).join("")}
-        <p class="o-small ${n === b.size ? "" : "ao-warn"}">${n} of ${b.size} picked</p>
+        ${menu.flavors.map((f) => `<div class="ao-qty"><span>${esc(f.name)}${Number(f.surcharge) ? ` <span class="o-small">+${peso(Number(f.surcharge))} each</span>` : ""}</span>
+          ${qtyStepper(`data-box-qty="${esc(f.slug)}"`, b.qty[f.slug] || 0, b.size, `${f.name} in box ${i + 1}`)}</div>`).join("")}
+        <p class="o-small ${n === b.size ? "" : "ao-warn"}" data-box-count>${n} of ${b.size} picked${n === b.size ? " ✓" : ""}</p>
       </div>`;
+    }
+
+    // Price shown while you fill the form. Display only: the database works out the real total when you save.
+    function draftTotal(form) {
+      const bySlug = Object.fromEntries(menu.flavors.map((f) => [f.slug, f]));
+      let total = 0, cookies = 0;
+      form.querySelectorAll("[data-single]").forEach((i) => {
+        const q = Math.max(0, Math.floor(Number(i.value) || 0));
+        total += q * Number(bySlug[i.dataset.single].single_price); cookies += q;
+      });
+      for (const b of draftBoxes) {
+        total += Number(menu.boxes.find((x) => x.size === b.size)?.price || 0);
+        for (const [slug, q] of Object.entries(b.qty)) { total += q * Number(bySlug[slug]?.surcharge || 0); cookies += q; }
+      }
+      return { total, cookies };
+    }
+
+    // Cookies of each flavor in the form right now (singles + every box)
+    function draftCookies(form) {
+      const per = {};
+      form.querySelectorAll("[data-single]").forEach((i) => { per[i.dataset.single] = (per[i.dataset.single] || 0) + Math.max(0, Math.floor(Number(i.value) || 0)); });
+      for (const b of draftBoxes) for (const [slug, q] of Object.entries(b.qty)) per[slug] = (per[slug] || 0) + q;
+      return per;
+    }
+
+    // Orders for the Sunday picked IN THE FORM (it can differ from the page's Sunday), for the "left after this order" line
+    const ordersBySunday = {};
+    async function ordersFor(d) {
+      if (d === sunday) return orders;
+      if (!ordersBySunday[d]) ordersBySunday[d] = await loadOrders(d);
+      return ordersBySunday[d];
+    }
+
+    // Bottom of the form: the running total, and what would be left of each flavor after this order
+    async function updateDraft() {
+      const form = $("ao-form"); if (!form) return;
+      const { total, cookies } = draftTotal(form);
+      const want = draftCookies(form);
+      const d = form.sunday.value;
+      form.querySelector("[data-ao-total]").innerHTML = cookies
+        ? `<strong>${peso(total)}</strong> · ${cookies} cookie${cookies === 1 ? "" : "s"}`
+        : `Nothing added yet`;
+      let list;
+      try { list = await ordersFor(d); } catch { return; }
+      if ($("ao-form") !== form || form.sunday.value !== d) return;   // form closed or Sunday changed meanwhile
+      form.querySelector("[data-ao-left]").innerHTML = "After this order: " + leftFor(list).map((f) => {
+        const after = f.left - (want[f.slug] || 0);
+        return `<span class="${after < 0 ? "o-left-out" : after <= 3 ? "o-left-low" : ""}">${esc(f.name)} ${after < 0 ? `${-after} over the cap` : `${after} left`}</span>`;
+      }).join(" · ");
     }
 
     function addFormHtml() {
@@ -369,8 +463,8 @@
         <div class="ops-field wide" data-ao-address hidden><label>Delivery address</label><input name="address" maxlength="300"></div>
 
         <div class="wide"><h3 class="ao-h">Single cookies</h3>
-          ${menu.flavors.filter((f) => f.single_price != null).map((f) => `<label class="ao-qty"><span>${esc(f.name)} <span class="o-small">${peso(f.single_price)}</span></span>
-            <input type="number" min="0" max="99" step="1" inputmode="numeric" value="0" data-single="${esc(f.slug)}"></label>`).join("")}
+          ${menu.flavors.filter((f) => f.single_price != null).map((f) => `<div class="ao-qty"><span>${esc(f.name)} <span class="o-small">${peso(Number(f.single_price))}</span></span>
+            ${qtyStepper(`data-single="${esc(f.slug)}"`, 0, 99, `${f.name} singles`)}</div>`).join("")}
         </div>
         <div class="wide"><h3 class="ao-h">Boxes</h3>
           <div id="ao-boxes">${draftBoxes.map(boxBlock).join("")}</div>
@@ -386,12 +480,16 @@
           <option value="gcash">GCash</option><option value="bank">Bank transfer</option><option value="cash">Cash</option><option value="other">Other</option></select></div>
         <div class="ops-field" data-ao-ref><label>GCash ref (optional)</label><input name="gcash" inputmode="numeric" maxlength="15"></div>
         <div class="ops-field wide"><label>Note for yourself (optional)</label><input name="note" maxlength="500"></div>
-        <div class="wide"><button type="submit" class="btn btn-block">Save order</button></div>
+        <div class="wide ao-total">
+          <p class="ao-total-line">Total: <span data-ao-total></span></p>
+          <p class="o-small" data-ao-left></p>
+          <button type="submit" class="btn btn-block">Save order</button>
+        </div>
       </form>`;
     }
 
     // Re-draw just the boxes part (keeps what's typed in the other fields)
-    function redrawBoxes() { $("ao-boxes").innerHTML = draftBoxes.map(boxBlock).join(""); }
+    function redrawBoxes() { $("ao-boxes").innerHTML = draftBoxes.map(boxBlock).join(""); updateDraft(); }
 
     function syncAddForm() {
       const f = $("ao-form"); if (!f) return;
@@ -421,6 +519,7 @@
         });
         const row = Array.isArray(res) ? res[0] : res;
         $("add-order").hidden = true; $("add-order").innerHTML = "";
+        for (const d in ordersBySunday) delete ordersBySunday[d];   // counts changed: fetch fresh next time
         // Show the Sunday the order went to
         if (row.sunday_date !== sunday) { const sel = $("sunday"); sel.value = row.sunday_date; sunday = row.sunday_date; }
         orders = await loadOrders(sunday); render();
@@ -438,22 +537,41 @@
       if (e.target.closest("[data-ao-close]")) { $("add-order").hidden = true; $("add-order").innerHTML = ""; return; }
       if (e.target.closest("[data-box-add]")) { draftBoxes.push({ size: menu.boxes[0]?.size || 3, qty: {} }); redrawBoxes(); return; }
       const rm = e.target.closest("[data-box-remove]");
-      if (rm) { draftBoxes.splice(Number(rm.closest("[data-box]").dataset.box), 1); redrawBoxes(); }
+      if (rm) { draftBoxes.splice(Number(rm.closest("[data-box]").dataset.box), 1); redrawBoxes(); return; }
+      // − / + next to a number: change it by one, then let the "input" handler below do the rest
+      const step = e.target.closest("[data-step]");
+      if (step) {
+        const input = step.parentElement.querySelector("input");
+        let v = Math.max(0, Math.floor(Number(input.value) || 0) + Number(step.dataset.step));
+        const box = step.closest("[data-box]");
+        if (box && Number(step.dataset.step) > 0) {               // a full box takes no more cookies
+          const b = draftBoxes[Number(box.dataset.box)];
+          if (boxCount(b) >= b.size) return;
+        }
+        input.value = Math.min(v, Number(input.max) || 99);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+    // Typing a number (or tapping − / +): keep the box count and the total up to date as you go
+    $("add-order").addEventListener("input", (e) => {
+      const box = e.target.closest("[data-box]");
+      if (box && e.target.matches("[data-box-qty]")) {
+        // Only update the "x of N picked" line, so the field you're typing in isn't replaced
+        const b = draftBoxes[Number(box.dataset.box)];
+        b.qty[e.target.dataset.boxQty] = Math.max(0, Math.floor(Number(e.target.value) || 0));
+        const n = boxCount(b);
+        const line = box.querySelector("[data-box-count]");
+        line.textContent = `${n} of ${b.size} picked${n === b.size ? " ✓" : ""}`; line.classList.toggle("ao-warn", n !== b.size);
+      }
+      if (e.target.matches("[data-box-qty], [data-single]")) updateDraft();
     });
     $("add-order").addEventListener("change", (e) => {
       const box = e.target.closest("[data-box]");
       if (box) {
-        const b = draftBoxes[Number(box.dataset.box)];
-        if (e.target.matches("[data-box-size]")) { b.size = Number(e.target.value); redrawBoxes(); return; }
-        if (e.target.matches("[data-box-qty]")) {
-          // Only update the "x of N picked" line, so the field you're typing in isn't replaced
-          b.qty[e.target.dataset.boxQty] = Math.max(0, Math.floor(Number(e.target.value) || 0));
-          const n = Object.values(b.qty).reduce((a, x) => a + x, 0);
-          const line = box.querySelector("p.o-small");
-          line.textContent = `${n} of ${b.size} picked`; line.classList.toggle("ao-warn", n !== b.size);
-        }
+        if (e.target.matches("[data-box-size]")) { draftBoxes[Number(box.dataset.box)].size = Number(e.target.value); redrawBoxes(); }
         return;
       }
+      if (e.target.name === "sunday") updateDraft();
       syncAddForm();
     });
     $("add-order").addEventListener("submit", (e) => { e.preventDefault(); saveOrder(e.target); });
@@ -463,6 +581,8 @@
       const b = e.target.closest("[data-filter]"); if (!b) return;
       filter = b.dataset.filter; render();
     });
+
+    $("search").addEventListener("input", (e) => { search = e.target.value.trim(); render(); });
 
 
     $("packing-btn").addEventListener("click", () => { packing = !packing; render(); });
@@ -512,6 +632,7 @@
           await rpc("admin_set_order_prep", { p_ref_code: pref, p_prep: prepBtn.dataset.prep });
           orders = await loadOrders(sunday);
           render();
+          flash(`${pref}: ${PREP_LABEL[prepBtn.dataset.prep]}`);     // the card may jump to another spot, so say what happened
         } catch (err) {
           console.error(err);
           prepBtn.disabled = false;
@@ -530,6 +651,7 @@
         await setStatus(ref, act);
         orders = await loadOrders(sunday);
         render();
+        flash(`${ref}: ${{ paid: "marked paid", cancelled: "cancelled", pending: "reopened" }[act] || STATUS_LABEL[act]}`);
       } catch (err) {
         console.error(err);
         btn.disabled = false;
