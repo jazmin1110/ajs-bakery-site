@@ -281,7 +281,8 @@ begin
   -- Take 10 dough balls out to bake: 5 left
   set local role authenticated;
   perform set_config('request.jwt.claims', json_build_object('sub', admin_id)::text, true);
-  perform public.admin_use_dough(v_chip, 10);
+  -- logged to an old Sunday: since 018 the plan subtracts cookies already baked for ITS Sunday
+  perform public.admin_use_dough(v_chip, 10, date '2000-01-02');
   ok := false;
   begin perform public.admin_use_dough(v_chip, 6); ok := true;
   exception when others then get stacked diagnostics h = pg_exception_hint; end;
