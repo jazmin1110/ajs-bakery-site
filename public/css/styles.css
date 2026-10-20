@@ -526,7 +526,6 @@ body.has-cart-bar { padding-bottom: calc(var(--bar-h, 4.5rem) + 1rem); }  /* --b
 
 .drawer-foot { flex: none; padding: 0.6rem 1.1rem calc(0.6rem + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); display: grid; gap: 0.5rem; background: var(--cream); }
 .drawer-total { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--font-display); font-size: 1.2rem; line-height: 1.2; }
-.drawer-foot .min-msg { margin: 0; padding: 0.4rem 0.7rem; font-size: 0.85rem; line-height: 1.3; }
 .drawer-add-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
 .drawer-add-btn { display: flex; align-items: center; justify-content: center; min-height: 44px; border: 2px solid var(--blue); border-radius: 999px; color: var(--blue-dark); font: 700 0.95rem var(--font-body); text-decoration: none; text-align: center; }
 .drawer-add-btn:hover { background: var(--blue-soft); }
@@ -573,6 +572,9 @@ body.has-cart-bar { padding-bottom: calc(var(--bar-h, 4.5rem) + 1rem); }  /* --b
 
 .note-box { background: var(--blue-soft); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.75rem 0.9rem; margin: 0 0 1.1rem; font-size: 0.95rem; }
 .note-box[hidden] { display: none; }
+/* Small-delivery nudge at checkout: plain hint text (no warning look), sits above the delivery note */
+.delivery-nudge { margin: 0 0 0.8rem; }
+.delivery-nudge a { font-weight: 700; white-space: nowrap; }
 
 .form-error { background: #fdeceb; color: #8a2b22; border: 1px solid #e0877d; border-radius: var(--radius-sm); padding: 0.8rem 1rem; margin-bottom: 1rem; font-weight: 600; }
 .form-error[hidden] { display: none; }
@@ -685,7 +687,6 @@ body.has-cart-bar { padding-bottom: calc(var(--bar-h, 4.5rem) + 1rem); }  /* --b
 
 .hint-save { background: #e3f6e5; border: 2px solid #5cb868; border-radius: var(--radius-sm); padding: 0.7rem 0.9rem; margin: 0.6rem 0; font-size: 0.95rem; }
 .hint-save a { font-weight: 700; display: inline-block; padding: 0.75rem 0.4rem; }   /* 44px tall tap target */
-.min-msg { background: var(--butter); border: 2px solid var(--accent); border-radius: var(--radius-sm); padding: 0.6rem 0.8rem; margin: 0; font-weight: 700; }
 
 .cart-bar .btn.is-disabled { background: #d9c9ae; color: var(--ink); box-shadow: none; pointer-events: none; }
 .btn:disabled { opacity: 0.6; }

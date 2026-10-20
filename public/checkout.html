@@ -88,6 +88,8 @@
                     placeholder="Unit / street / barangay / city"></textarea>
           <p class="field-error" id="address-error" role="alert"></p>
         </div>
+        <!-- Small-order nudge (plain text, never blocks checkout): filled in by applyRules() -->
+        <p class="field-hint delivery-nudge" id="delivery-nudge" hidden></p>
         <div class="note-box" id="delivery-note"></div>
       </div>
 
@@ -113,7 +115,7 @@
     import { fetchSundayInfo, fetchMenu, fetchAvailability, placeOrder } from "./js/supabase.js";
     import { orderingSunday, formatSunday, peso, esc } from "./js/ui.js";
     import * as cart from "./js/cart.js";
-    import { initCartUI, hintHtml, minimumHtml } from "./js/cart-ui.js";
+    import { initCartUI, hintHtml, deliveryNudgeHtml } from "./js/cart-ui.js";
 
     initCartUI({ showBar: false });
 
@@ -221,19 +223,20 @@
 
     // What stops checkout right now?
     //   - a flavor in the cart that ran out (or has fewer left than you have): offer a swap
-    //   - delivery chosen but under the delivery minimum (2 cookies or ₱200): say what's missing
-    // (Pickup has no minimum beyond 1 cookie.) The database re-checks every rule on submit.
+    // (No minimum beyond 1 cookie, for pickup or delivery.) The database re-checks every rule on submit.
+    // A small delivery order only gets a friendly "add a few more" line; it never blocks.
     function applyRules() {
       const over = overLimit();
       const delivery = form.fulfillment.value === "delivery";
-      const need = delivery ? cart.deliveryShortfall() : null;
 
-      $("submit-btn").disabled = over.length > 0 || !!need || sending;
+      $("submit-btn").disabled = over.length > 0 || sending;
       renderSwapPanel(over);
 
-      if (!over.length && need) {
-        showFormError(`Delivery needs at least ${cart.MIN_DELIVERY_COOKIES} cookies or ${peso(cart.MIN_DELIVERY_TOTAL)}. Add ${need.moreCookies} more cookie${need.moreCookies === 1 ? "" : "s"} (or ${peso(need.morePeso)}), or switch to pickup. <a href="index.html#menu">Add cookies</a>`, false);
-      } else if (!sending && !$("form-error").dataset.sticky) {
+      const nudge = delivery ? deliveryNudgeHtml() : "";
+      $("delivery-nudge").innerHTML = nudge;
+      $("delivery-nudge").hidden = !nudge;
+
+      if (!sending && !$("form-error").dataset.sticky) {
         $("form-error").hidden = true;   // (a server error message stays until the next try)
       }
     }
@@ -326,8 +329,7 @@
     $("delivery-note").textContent =
       `You'll book Lalamove or Grab for the Sunday ${CONFIG.pickupWindow} window; delivery fee is paid by you.`;
 
-    $("rule-note").textContent =
-      `Pickup: any order (at least ${CONFIG.minPickupCookies} cookie). Delivery: at least ${CONFIG.minDeliveryCookies} cookies or ₱${CONFIG.minDeliveryTotal}.`;
+    $("rule-note").textContent = "No minimum: even 1 cookie is fine, for pickup or delivery.";
 
     function updateFulfillment() {
       const v = form.fulfillment.value;

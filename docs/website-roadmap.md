@@ -34,7 +34,7 @@ These live in the database and in `CLAUDE.md` in the site folder. If one changes
 | Boxes | 3 = ₱285, 6 = ₱570, 12 = ₱1,080. Box of 4 is retired (switched off, old orders still point at it) |
 | Bueno Mucho surcharge | +₱30 per cookie inside a box |
 | Singles | Chimp Chips ₱105, Coco Loco ₱110, Bueno Mucho ₱135 |
-| Minimum order | Pickup: 1 cookie. Delivery: 2 cookies OR ₱200 |
+| Minimum order | 1 cookie, for pickup or delivery (delivery minimum removed in migration 017) |
 | Cap | 15 of each flavor per Sunday (boxes and singles both count). A flavor at 15 shows Sold out. All three sold out moves ordering to the next Sunday |
 | Order limits | Up to 3 boxes plus any singles, per order |
 | Cutoff | Wednesday 9:00pm Asia/Manila (a Sunday accepts orders until 4 days before at 9pm) |

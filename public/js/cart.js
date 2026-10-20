@@ -172,21 +172,16 @@ export function flavorTotals() {
   return out;
 }
 
-// Order minimums (display copy: the database enforces the real rules):
-//   pickup   = at least 1 cookie
-//   delivery = at least 2 cookies OR at least ₱200 (either one is enough)
+// Order minimum (display copy: the database enforces the real rule):
+//   at least 1 cookie, for pickup AND delivery (migration 017 removed the old delivery minimum)
 export const MIN_PICKUP_COOKIES = CONFIG.minPickupCookies;
-export const MIN_DELIVERY_COOKIES = CONFIG.minDeliveryCookies;
-export const MIN_DELIVERY_TOTAL = CONFIG.minDeliveryTotal;
 export function cookiesShort() { return Math.max(0, MIN_PICKUP_COOKIES - cookieCount()); }
 export function meetsMinimum() { return cookieCount() >= MIN_PICKUP_COOKIES; }   // the pickup minimum
 
-// What the cart is missing for DELIVERY, or null if it already qualifies.
-// { moreCookies, morePeso }: adding either amount (cookies OR pesos) would be enough.
-export function deliveryShortfall() {
-  const cookies = cookieCount(), pesos = total();
-  if (cookies >= MIN_DELIVERY_COOKIES || pesos >= MIN_DELIVERY_TOTAL) return null;
-  return { moreCookies: MIN_DELIVERY_COOKIES - cookies, morePeso: MIN_DELIVERY_TOTAL - pesos };
+// Is this a small order to send a rider for? (Only used for a friendly nudge, never to block.)
+export function smallForDelivery() {
+  const cookies = cookieCount();
+  return cookies > 0 && cookies <= CONFIG.deliveryNudgeMaxCookies;
 }
 
 // "1 box + 3 cookies", "2 boxes", "3 cookies"

@@ -72,10 +72,12 @@ export const CONFIG = {
   assetVersions: { logo: 2, gcashQr: 1 },
 
   maxBoxesPerOrder: 3, // cart limit (the checkout step must respect this too)
-  // Order minimums (copy only: the database enforces them): pickup = 1 cookie; delivery = 2 cookies OR ₱200.
+  // Order minimum (copy only: the database enforces it): 1 cookie, for pickup AND delivery.
   minPickupCookies: 1,
-  minDeliveryCookies: 2,
-  minDeliveryTotal: 200,
+  // Delivery has no minimum, but the rider fare is the same for 1 cookie or 12. At checkout, a delivery
+  // order with this many cookies or fewer gets a friendly "add a few more" line (never a block).
+  // 2 = "a cookie or two"; at 3+ they can already fill a box of 3.
+  deliveryNudgeMaxCookies: 2,
 
   // Copy only: the real limit (weekly_cap on each flavor, 15 each) and the cutoff are enforced by the database.
   // This number is just the fallback for the "15 of each flavor" wording until the live data loads.

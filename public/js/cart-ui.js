@@ -24,13 +24,11 @@ export function hintHtml() {
     <a href="/#boxes" data-goto="boxes">See boxes</a></p>`;
 }
 
-// Delivery has a minimum (2 cookies or ₱200); pickup doesn't. A gentle note, not a blocker:
-// the customer might be planning to pick up. Returns "" if the cart already qualifies for delivery.
-export function minimumHtml() {
-  if (cart.isEmpty()) return "";
-  const need = cart.deliveryShortfall();
-  if (!need) return "";
-  return `<p class="min-msg">Pickup: any order. Delivery needs at least ${cart.MIN_DELIVERY_COOKIES} cookies or ${peso(cart.MIN_DELIVERY_TOTAL)}: add ${need.moreCookies} more cookie${need.moreCookies === 1 ? "" : "s"} (or ${peso(need.morePeso)}) to qualify.</p>`;
+// No delivery minimum, but the rider fare costs the same for 1 cookie or 12. Checkout shows this
+// plain line when delivery is picked for a small order. A nudge only: it never stops checkout.
+export function deliveryNudgeHtml() {
+  if (!cart.smallForDelivery()) return "";
+  return `Sending a rider for just a cookie or two? The fare costs the same for 12, so add a few more (or grab a box) and you split it across more cookies. <a href="box.html">Build a box</a>`;
 }
 
 // A small notice under the header: what changed in the cart while the customer was away.
@@ -218,9 +216,8 @@ function render() {
   if (empty) {
     foot.innerHTML = `<a class="btn btn-block" href="/#menu" data-goto="menu">Browse the menu</a>`;
   } else {
-    // Compact, top to bottom: delivery note (only if needed), total, Checkout, "+ Singles" / "+ Box", then one small row
+    // Compact, top to bottom: total, Checkout, "+ Singles" / "+ Box", then one small row
     foot.innerHTML = `
-      ${minimumHtml()}
       <div class="drawer-total"><span>Total</span><span class="price">${peso(cart.total())}</span></div>
       ${canCheckout
         ? `<a class="btn btn-block" href="checkout.html">Checkout</a>`

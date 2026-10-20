@@ -31,7 +31,7 @@ Single source of truth for the numbers. The database is the enforcer and the sto
 | **Single cookie: Chimp Chips** (brown butter choc chip) | **₱105** |
 | **Single cookie: Coco Loco** (double chocolate) | **₱110** |
 | **Single cookie: Bueno Mucho** (Kinder Bueno) | **₱135** |
-| **Minimum order** | **Pickup: 1 cookie. Delivery: 2 cookies OR ₱200** (either is enough). Singles and box cookies both count |
+| **Minimum order** | **No minimum for pickup or delivery: 1 cookie is enough** (migration 017 removed the old delivery rule of 2 cookies OR ₱200). Singles and box cookies both count. Delivery is customer-booked and the fare is the same for 1 cookie or 12, so checkout shows a friendly "add a few more" line for delivery orders of `deliveryNudgeMaxCookies` (2) cookies or fewer. It never blocks |
 | **Cap** | **15 of each flavor per Sunday** (`flavors.weekly_cap`), not a total. Box cookies **and** singles both count toward their flavor's cap. When a flavor hits 15 it shows "Sold out"; the other flavors stay available. When ALL flavors are sold out, ordering moves to the next Sunday |
 | Order limits | Up to 3 boxes per order, plus any single cookies. An order can't take more of a flavor than is left (the error names the flavor and how many remain) |
 | Order cutoff | Wednesday 21:00 Asia/Manila |
@@ -41,7 +41,7 @@ Single source of truth for the numbers. The database is the enforcer and the sto
 
 **Singles vs boxes:** an order can hold boxes, loose single cookies, or both. A box is cheaper per cookie than singles (that is the point of boxes), so the cart nudges people toward a box when singles would cost more. `flavors.single_price` is the single price (null = not sold as a single). The old `flavors.price` column is unused legacy; ignore it.
 
-**All prices, the pickup/delivery minimums and each flavor's weekly cap are computed in the database** (`place_order`). "Reserved" for a flavor on a Sunday = its cookies in paid orders plus pending orders that haven't expired; expired and cancelled orders free their slots. The browser shows prices for display only and never sends a price.
+**All prices, the 1-cookie minimum and each flavor's weekly cap are computed in the database** (`place_order`). "Reserved" for a flavor on a Sunday = its cookies in paid orders plus pending orders that haven't expired; expired and cancelled orders free their slots. The browser shows prices for display only and never sends a price.
 
 **Cutoff rule:** a Sunday `S` accepts orders until `S − 4 days at 21:00` Asia/Manila (that's Wednesday 9pm). Orders placed after that go to the next Sunday.
 
@@ -114,7 +114,7 @@ public/                      <- what Vercel serves
   assets/                    flavors/*.jpg (compressed), gcash-qr.png, og-image.jpg
   assets/originals/          full-size flavor photos before compression, git-ignored (NOT deployed)
   robots.txt, sitemap.xml
-supabase/                    migrations 001-016, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql, tests_016.sql  (NOT deployed)
+supabase/                    migrations 001-017, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql, tests_016.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers
