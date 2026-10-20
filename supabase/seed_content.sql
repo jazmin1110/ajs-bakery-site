@@ -12,9 +12,9 @@ on conflict (key) do update set value = excluded.value;
 
 -- Chimp Chips
 update public.flavors set
-  short_description = $c$Brown butter and lots of dark chocolate. Soft, chewy, a little nutty.$c$,
-  long_description  = $c$Our classic. We brown the butter first, so every bite tastes nutty and a little caramel-y, then load the dough with dark chocolate. Soft and chewy, and a good place to start if it's your first AJ's cookie.$c$,
-  taste_notes       = array[$c$Nutty brown butter$c$, $c$Dark chocolate$c$, $c$Soft and chewy$c$]::text[],
+  short_description = $c$Nutty brown butter packed with Callebaut dark chocolate. Soft, chewy, and the one to start with.$c$,
+  long_description  = $c$This is the one to start with. We brown the butter until it smells like toasted caramel, then load the dough with chopped Callebaut dark chocolate, the Belgian chocolate bakers love. Soft and chewy, with a nutty, buttery edge and chocolate in every bite.$c$,
+  taste_notes       = array[$c$Toasted brown butter$c$, $c$Callebaut dark chocolate$c$, $c$Soft and chewy$c$]::text[],
   ingredients       = $c$All-purpose wheat flour, dark chocolate (cocoa mass, sugar, cocoa butter, soy lecithin, natural vanilla flavouring), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt.$c$,
   contains          = array[$c$Wheat (gluten)$c$, $c$Milk$c$, $c$Egg$c$, $c$Soy$c$]::text[],
   may_contain       = array[$c$Hazelnuts and other tree nuts$c$]::text[],
@@ -26,9 +26,9 @@ where slug in ('chimp-chips', 'choc-chip');
 
 -- Coco Loco
 update public.flavors set
-  short_description = $c$Brown butter, cocoa and dark chocolate. Deep, rich and extra chocolatey.$c$,
-  long_description  = $c$For the chocolate lovers. Same brown butter base, with Dutch cocoa in the dough and chunks of dark chocolate on top of that. Deep, rich, and the cocoa is mellow, not harsh.$c$,
-  taste_notes       = array[$c$Cocoa$c$, $c$Dark chocolate$c$, $c$Brown butter$c$]::text[],
+  short_description = $c$Dutch cocoa dough with Callebaut dark chocolate chunks. Rich, deep, and not bitter.$c$,
+  long_description  = $c$Made for people who take chocolate seriously. Dutch cocoa goes into the dough, then chunks of Callebaut dark chocolate on top of that, all on our brown butter base. Dutch cocoa is the mellow kind, so it's dark and rich without the harsh bitterness. Best with cold milk.$c$,
+  taste_notes       = array[$c$Dutch cocoa$c$, $c$Callebaut dark chocolate$c$, $c$Brown butter$c$]::text[],
   ingredients       = $c$All-purpose wheat flour, dark chocolate (cocoa mass, sugar, cocoa butter, soy lecithin, natural vanilla flavouring), brown butter (unsalted butter), dark brown sugar, sugar, eggs, Dutch-process cocoa powder, vanilla extract, baking soda, salt.$c$,
   contains          = array[$c$Wheat (gluten)$c$, $c$Milk$c$, $c$Egg$c$, $c$Soy$c$]::text[],
   may_contain       = array[$c$Hazelnuts and other tree nuts$c$]::text[],
@@ -40,9 +40,9 @@ where slug in ('coco-loco', 'double-choc');
 
 -- Bueno Mucho
 update public.flavors set
-  short_description = $c$Brown butter and milk chocolate with a Kinder Bueno hidden in the middle.$c$,
-  long_description  = $c$The fun one. Brown butter dough with milk chocolate, wrapped around half a Kinder Bueno bar, so the middle has wafer crunch and hazelnut cream. It's a bit bigger than our other cookies.$c$,
-  taste_notes       = array[$c$Milk chocolate$c$, $c$Hazelnut$c$, $c$Wafer crunch$c$]::text[],
+  short_description = $c$Half a Kinder Bueno hidden inside, with Kinder Maxi chocolate in the dough. Our biggest cookie.$c$,
+  long_description  = $c$The fun one. Brown butter dough loaded with chopped Kinder Maxi chocolate, wrapped around half a Kinder Bueno bar. Bite in and you hit wafer crunch and hazelnut cream. It's our biggest cookie at about 70g, and the wafer goes soft after a few days, so eat it within 2-3 days.$c$,
+  taste_notes       = array[$c$Kinder Maxi chocolate$c$, $c$Hazelnut cream$c$, $c$Wafer crunch$c$]::text[],
   ingredients       = $c$Kinder Bueno (milk chocolate, sugar, palm oil, wheat flour, hazelnuts, milk powder, soy lecithin), all-purpose wheat flour, Kinder Maxi milk chocolate (sugar, milk powder, cocoa butter, cocoa mass, palm oil, soy lecithin), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt.$c$,
   contains          = array[$c$Wheat (gluten)$c$, $c$Milk$c$, $c$Egg$c$, $c$Soy$c$, $c$Hazelnuts$c$]::text[],
   may_contain       = array[$c$Other tree nuts$c$]::text[],

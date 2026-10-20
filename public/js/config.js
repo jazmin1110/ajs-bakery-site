@@ -53,17 +53,17 @@ export const CONFIG = {
     "choc-chip": {
       emoji: "🍪",
       image: "assets/flavors/chimp-chips.jpg",
-      description: "Classic nutty brown butter chocolate chip cookie.",
+      description: "Nutty brown butter packed with Callebaut dark chocolate. Soft, chewy, and the one to start with.",
     },
     "double-choc": {
       emoji: "🍫",
       image: "assets/flavors/coco-loco.jpg",
-      description: "Double chocolate brown butter chocolate chip cookie.",
+      description: "Dutch cocoa dough with Callebaut dark chocolate chunks. Rich, deep, and not bitter.",
     },
     "kinder-bueno": {
       emoji: "🥜",
       image: "assets/flavors/bueno-mucho.jpg",
-      description: "Nutty brown butter with Kinder Maxi chocolate and a bueno center.",
+      description: "Half a Kinder Bueno hidden inside, with Kinder Maxi chocolate in the dough. Our biggest cookie.",
     },
   },
 
