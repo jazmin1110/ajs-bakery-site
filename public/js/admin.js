@@ -7,8 +7,6 @@
 import { getClient, isConfigured } from "./supabase.js";
 import { esc, formatSunday, addDays } from "./ui.js";
 
-export const BATCH_SIZE = 15;   // cookies per baking batch
-
 // ---- Login / access ---------------------------------------------------------------
 
 // Call at the top of every admin page. Resolves with the session if the user is
@@ -254,7 +252,7 @@ export function timeLeft(secondsLeft) {
   return h >= 1 ? `${h}h left` : `${Math.max(1, Math.floor(secondsLeft / 60))}m left`;
 }
 
-// Roll orders up into the numbers the Totals page shows.
+// Roll orders up into cookies per flavor, boxes and singles (Sales page, and "left to sell" on Orders).
 // Cookies per flavor count BOTH box cookies and single cookies; `singles` is the
 // loose-cookie part on its own.
 export function summarize(orders, flavors) {
@@ -290,10 +288,4 @@ export function summarize(orders, flavors) {
 export const SINGLES_BOX_FROM = 3;
 export function singlesPack(n) {
   return `${n >= SINGLES_BOX_FROM ? "Box" : "Bag"} of ${n}`;
-}
-
-// Batches for a number of cookies: round up, and say how many are left over
-export function batchesFor(cookies) {
-  const batches = Math.ceil(cookies / BATCH_SIZE);
-  return { batches, leftover: batches * BATCH_SIZE - cookies };
 }
