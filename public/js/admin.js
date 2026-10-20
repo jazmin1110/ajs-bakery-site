@@ -225,8 +225,11 @@ export async function loadFlavors() {
   return data;
 }
 
-export async function setStatus(refCode, status) {
-  const { error } = await getClient().rpc("admin_set_order_status", { p_ref_code: refCode, p_status: status });
+// allowOverCap: reopen / mark paid even if a flavor is now over its weekly cap (needs migration 018)
+export async function setStatus(refCode, status, allowOverCap = false) {
+  const args = { p_ref_code: refCode, p_status: status };
+  if (allowOverCap) args.p_allow_over_cap = true;
+  const { error } = await getClient().rpc("admin_set_order_status", args);
   if (error) throw fail(error);
 }
 

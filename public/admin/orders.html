@@ -53,7 +53,7 @@
   <script type="module">
     import {
       requireAdmin, renderNav, setupSundayPicker, selectedSunday, expireStale, loadOrders, setStatus,
-      formatWhen, timeLeft, singlesPack, rpc, select, loadFlavors, summarize,
+      formatWhen, timeLeft, singlesPack, rpc, select, loadFlavors, summarize, isLive,
     } from "../js/admin.js";
     import { esc, peso, formatSunday, addDays } from "../js/ui.js";
 
@@ -108,9 +108,9 @@
     const STAGE_TONE = { check: "st-check", to_bake: "st-kitchen", baking: "st-kitchen", ready: "st-kitchen",
                          unpaid: "st-wait", done: "st-done", closed: "st-problem" };
 
-    function flash(text) {
+    function flash(text, ms = 2500) {          // ms: keep money messages up longer
       $("flash").textContent = text; $("flash").hidden = false;
-      clearTimeout(flash.t); flash.t = setTimeout(() => { $("flash").hidden = true; }, 2500);
+      clearTimeout(flash.t); flash.t = setTimeout(() => { $("flash").hidden = true; }, ms);
     }
 
     function showMessage(text) {
@@ -183,7 +183,9 @@
       } else if (next) {
         main = `<button type="button" class="btn btn-block" data-prep="${next.to}">${esc(next.label)}</button>`;
       } else if (st === "closed") {
-        main = `<button type="button" class="btn btn-small btn-ghost" data-act="pending">Reopen</button>`;
+        main = `<div class="o-actions" style="margin:0">
+            <button type="button" class="btn btn-small" data-act="paid">Paid after all? Mark paid</button>
+            <button type="button" class="btn btn-small btn-ghost" data-act="pending">Reopen (24h to pay)</button></div>`;
       }
 
       return `
@@ -220,7 +222,7 @@
       const delivery = o.fulfillment === "delivery";
       const v = (x) => esc(x || "");
       return `<details class="o-more no-print" data-ref-d="${esc(o.ref_code)}"${openRefs.has(o.ref_code) ? " open" : ""}>
-        <summary>${delivery ? "Delivery, notes, more" : "Notes, more"}</summary>
+        <summary>${delivery ? "Edit, delivery, notes" : "Edit, notes"}</summary>
         <form class="ops-form" data-save-delivery>
           ${delivery ? `
           <div class="ops-field"><label>Courier</label><input name="courier" maxlength="60" placeholder="Lalamove, Grab..." value="${v(o.courier)}"></div>
@@ -231,6 +233,7 @@
           <div class="wide"><button type="submit" class="btn btn-small">Save</button></div>
         </form>
         <div class="o-actions">
+          <button type="button" class="btn btn-small" data-edit>Edit order</button>
           ${o.status === "paid" && prevStep(o) ? `<button type="button" class="btn btn-small btn-ghost" data-prep="${prevStep(o)}">Undo last step</button>` : ""}
           <button type="button" class="btn btn-small btn-ghost btn-danger-ghost" data-act="cancelled">Cancel order</button>
         </div>
@@ -350,13 +353,30 @@
       }
     }
 
-    // ---- Add an order yourself -------------------------------------------------------------
-    // For orders that come in by Instagram, Messenger or in person. The database prices it and
+    // ---- Add an order yourself, or edit one ---------------------------------------------------
+    // Add: for orders that come in by Instagram, Messenger or in person. The database prices it and
     // checks the 15-per-flavor cap exactly like a website order (admin_create_order).
+    // Edit: the same form filled in with an existing order (admin_update_order). Its cookies are
+    // only re-priced if you change them.
     let menu = null;                         // { flavors, boxes } loaded the first time the form opens
-    let draftBoxes = [];                     // [{ size, qty: {slug: n} }]
+    let draftBoxes = [];                     // [{ size, qty: {slug: n}, gift_note, price }]
+    let editing = null;                      // the order being edited, or null when adding
 
-    async function openAddForm() {
+    // An order's cookies as plain lists, so "did the cookies change?" is a simple comparison
+    const orderBoxesOf = (o) => o.boxes.map((b) => ({ size: b.size, gift_note: b.gift_note || "", price: Number(b.price),
+      qty: Object.fromEntries(b.items.map((i) => [i.slug, i.qty])) }));
+    function itemsKey(boxes, singles) {
+      const sortQ = (q) => Object.entries(q).filter(([, n]) => n > 0).sort();
+      return JSON.stringify([boxes.map((b) => [b.size, (b.gift_note || "").trim(), sortQ(b.qty)]), sortQ(singles)]);
+    }
+    function cookiesOf(o) {                  // {slug: n} across boxes and singles
+      const per = {};
+      for (const b of o.boxes) for (const i of b.items) per[i.slug] = (per[i.slug] || 0) + i.qty;
+      for (const x of o.singles || []) per[x.slug] = (per[x.slug] || 0) + x.qty;
+      return per;
+    }
+
+    async function openAddForm(order = null) {
       const el = $("add-order");
       if (!menu) {
         el.hidden = false; el.innerHTML = `<p class="loading">Loading the menu...</p>`;
@@ -368,8 +388,12 @@
           menu = { flavors, boxes };
         } catch (err) { el.innerHTML = ""; el.hidden = true; return showMessage(err.message); }
       }
-      draftBoxes = [];
+      editing = order;
+      draftBoxes = order ? orderBoxesOf(order) : [];
       el.innerHTML = addFormHtml(); el.hidden = false;
+      if (order) for (const x of order.singles || []) {      // fill in its single cookies
+        const input = el.querySelector(`[data-single="${CSS.escape(x.slug)}"]`); if (input) input.value = x.qty;
+      }
       syncAddForm(); updateDraft();
       el.scrollIntoView({ behavior: "smooth", block: "start" });
       el.querySelector("[name=name]").focus({ preventScroll: true });
@@ -388,11 +412,13 @@
       const n = boxCount(b);
       return `<div class="ao-box" data-box="${i}">
         <div class="ops-head"><strong>Box ${i + 1}</strong>
-          <select data-box-size aria-label="Box size">${menu.boxes.map((x) => `<option value="${x.size}"${x.size === b.size ? " selected" : ""}>Box of ${x.size} (${peso(x.price)})</option>`).join("")}</select>
+          <select data-box-size aria-label="Box size">${menu.boxes.map((x) => `<option value="${x.size}"${x.size === b.size ? " selected" : ""}>Box of ${x.size} (${peso(x.price)})</option>`).join("")}
+            ${menu.boxes.some((x) => x.size === b.size) ? "" : `<option value="${b.size}" selected>Box of ${b.size} (no longer sold)</option>`}</select>
           <button type="button" class="link-btn" data-box-remove>Remove</button></div>
         ${menu.flavors.map((f) => `<div class="ao-qty"><span>${esc(f.name)}${Number(f.surcharge) ? ` <span class="o-small">+${peso(Number(f.surcharge))} each</span>` : ""}</span>
           ${qtyStepper(`data-box-qty="${esc(f.slug)}"`, b.qty[f.slug] || 0, b.size, `${f.name} in box ${i + 1}`)}</div>`).join("")}
         <p class="o-small ${n === b.size ? "" : "ao-warn"}" data-box-count>${n} of ${b.size} picked${n === b.size ? " ✓" : ""}</p>
+        <div class="ops-field"><label>Gift note (optional)</label><input data-box-note maxlength="500" value="${esc(b.gift_note || "")}"></div>
       </div>`;
     }
 
@@ -405,7 +431,7 @@
         total += q * Number(bySlug[i.dataset.single].single_price); cookies += q;
       });
       for (const b of draftBoxes) {
-        total += Number(menu.boxes.find((x) => x.size === b.size)?.price || 0);
+        total += Number(menu.boxes.find((x) => x.size === b.size)?.price ?? b.price ?? 0);   // retired size: its old price
         for (const [slug, q] of Object.entries(b.qty)) { total += q * Number(bySlug[slug]?.surcharge || 0); cookies += q; }
       }
       return { total, cookies };
@@ -439,28 +465,37 @@
       let list;
       try { list = await ordersFor(d); } catch { return; }
       if ($("ao-form") !== form || form.sunday.value !== d) return;   // form closed or Sunday changed meanwhile
+      // Editing: this order's own cookies are already counted in "left", so add them back
+      const own = editing && isLive(editing) && editing.sunday_date === d ? cookiesOf(editing) : {};
       form.querySelector("[data-ao-left]").innerHTML = "After this order: " + leftFor(list).map((f) => {
-        const after = f.left - (want[f.slug] || 0);
+        const after = f.left + (own[f.slug] || 0) - (want[f.slug] || 0);
         return `<span class="${after < 0 ? "o-left-out" : after <= 3 ? "o-left-low" : ""}">${esc(f.name)} ${after < 0 ? `${-after} over the cap` : `${after} left`}</span>`;
       }).join(" · ");
     }
 
     function addFormHtml() {
       const sel = $("sunday");
+      const o = editing;
+      const v = (x) => esc(x || "");
+      const on = o ? o.sunday_date : sunday;
+      const sundays = [...sel.options].map((op) => [op.value, op.textContent]);
+      if (!sundays.some(([d]) => d === on)) sundays.unshift([on, formatSunday(on)]);   // an order on a Sunday outside the picker
       return `<form class="ops-form" id="ao-form" novalidate>
-        <div class="ops-head wide"><h2 style="margin:0">Add an order</h2><button type="button" class="link-btn" data-ao-close>Close</button></div>
-        <p class="t-sub wide" style="margin:0">For orders from Instagram, Messenger or in person. Prices and the weekly cap work like the website.</p>
-        <div class="ops-field"><label>For Sunday</label><select name="sunday">${[...sel.options].map((op) =>
-          `<option value="${op.value}"${op.value === sunday ? " selected" : ""}>${esc(op.textContent)}</option>`).join("")}</select></div>
-        <div class="ops-field"><label>Came from</label><select name="source">
+        <div class="ops-head wide"><h2 style="margin:0">${o ? `Edit ${esc(o.ref_code)}` : "Add an order"}</h2><button type="button" class="link-btn" data-ao-close>Close</button></div>
+        <p class="t-sub wide" style="margin:0">${o
+          ? "Fix the details, move it to another Sunday, or change the cookies. Changed cookies are priced again and checked against the cap."
+          : "For orders from Instagram, Messenger or in person. Prices and the weekly cap work like the website."}</p>
+        <div class="ops-field"><label>For Sunday</label><select name="sunday">${sundays.map(([d, label]) =>
+          `<option value="${d}"${d === on ? " selected" : ""}>${esc(label)}</option>`).join("")}</select></div>
+        ${o ? "" : `<div class="ops-field"><label>Came from</label><select name="source">
           <option value="instagram">Instagram</option><option value="messenger">Messenger</option>
-          <option value="walk_in">Walk-in</option><option value="other">Other</option></select></div>
-        <div class="ops-field"><label>Name</label><input name="name" maxlength="100" required autocomplete="off"></div>
-        <div class="ops-field"><label>Instagram (optional)</label><input name="ig" maxlength="60" autocapitalize="none" placeholder="@handle"></div>
-        <div class="ops-field"><label>Mobile (optional)</label><input name="phone" type="tel" inputmode="tel" maxlength="20"></div>
+          <option value="walk_in">Walk-in</option><option value="other">Other</option></select></div>`}
+        <div class="ops-field"><label>Name</label><input name="name" maxlength="100" required autocomplete="off" value="${v(o?.name)}"></div>
+        <div class="ops-field"><label>Instagram (optional)</label><input name="ig" maxlength="60" autocapitalize="none" placeholder="@handle" value="${v(o?.ig_handle)}"></div>
+        <div class="ops-field"><label>Mobile${o?.source === "website" ? "" : " (optional)"}</label><input name="phone" type="tel" inputmode="tel" maxlength="20" value="${v(o?.phone)}"></div>
         <div class="ops-field"><label>Pickup or delivery</label><select name="fulfillment">
-          <option value="pickup">Pickup</option><option value="delivery">Delivery</option></select></div>
-        <div class="ops-field wide" data-ao-address hidden><label>Delivery address</label><input name="address" maxlength="300"></div>
+          <option value="pickup">Pickup</option><option value="delivery"${o?.fulfillment === "delivery" ? " selected" : ""}>Delivery</option></select></div>
+        <div class="ops-field wide" data-ao-address hidden><label>Delivery address</label><input name="address" maxlength="300" value="${v(o?.address)}"></div>
 
         <div class="wide"><h3 class="ao-h">Single cookies</h3>
           ${menu.flavors.filter((f) => f.single_price != null).map((f) => `<div class="ao-qty"><span>${esc(f.name)} <span class="o-small">${peso(Number(f.single_price))}</span></span>
@@ -471,7 +506,7 @@
           <button type="button" class="btn btn-small btn-ghost" data-box-add>+ Add a box</button>
         </div>
 
-        <div class="ops-field wide"><label>Payment</label>
+        ${o ? "" : `<div class="ops-field wide"><label>Payment</label>
           <label class="choice"><input type="radio" name="payment" value="paid" checked> <span>Paid already</span></label>
           <label class="choice"><input type="radio" name="payment" value="pay_on_day"> <span>Pays on pickup / delivery (keeps the slot until Sunday)</span></label>
           <label class="choice"><input type="radio" name="payment" value="unpaid"> <span>Not paid yet (releases after 24 hours, like the website)</span></label>
@@ -479,11 +514,11 @@
         <div class="ops-field" data-ao-method><label>Paid / paying by</label><select name="method">
           <option value="gcash">GCash</option><option value="bank">Bank transfer</option><option value="cash">Cash</option><option value="other">Other</option></select></div>
         <div class="ops-field" data-ao-ref><label>GCash ref (optional)</label><input name="gcash" inputmode="numeric" maxlength="15"></div>
-        <div class="ops-field wide"><label>Note for yourself (optional)</label><input name="note" maxlength="500"></div>
+        <div class="ops-field wide"><label>Note for yourself (optional)</label><input name="note" maxlength="500"></div>`}
         <div class="wide ao-total">
-          <p class="ao-total-line">Total: <span data-ao-total></span></p>
+          <p class="ao-total-line">Total: <span data-ao-total></span>${o ? ` <span class="o-small">(was ${peso(Number(o.total))})</span>` : ""}</p>
           <p class="o-small" data-ao-left></p>
-          <button type="submit" class="btn btn-block">Save order</button>
+          <button type="submit" class="btn btn-block">${o ? "Save changes" : "Save order"}</button>
         </div>
       </form>`;
     }
@@ -494,6 +529,7 @@
     function syncAddForm() {
       const f = $("ao-form"); if (!f) return;
       f.querySelector("[data-ao-address]").hidden = f.fulfillment.value !== "delivery";
+      if (editing) return;                               // no payment fields when editing
       const pay = f.querySelector('input[name="payment"]:checked').value;
       f.querySelector("[data-ao-method]").hidden = pay === "unpaid";
       f.querySelector("[data-ao-ref]").hidden = !(pay === "paid" && f.method.value === "gcash");
@@ -502,10 +538,12 @@
     async function saveOrder(form, overCap = false) {
       const f = new FormData(form);
       const singles = [...form.querySelectorAll("[data-single]")].map((i) => ({ flavor_slug: i.dataset.single, qty: Math.floor(Number(i.value) || 0) })).filter((x) => x.qty > 0);
-      const boxes = draftBoxes.map((b) => ({ size: b.size, items: Object.entries(b.qty).filter(([, q]) => q > 0).map(([flavor_slug, qty]) => ({ flavor_slug, qty })) }));
+      const boxes = draftBoxes.map((b) => ({ size: b.size, gift_note: (b.gift_note || "").trim() || null,
+        items: Object.entries(b.qty).filter(([, q]) => q > 0).map(([flavor_slug, qty]) => ({ flavor_slug, qty })) }));
       const bad = draftBoxes.findIndex((b) => Object.values(b.qty).reduce((a, x) => a + x, 0) !== b.size);
       if (bad >= 0) return showMessage(`Box ${bad + 1} needs exactly ${draftBoxes[bad].size} cookies.`);
-      if (!singles.length && !boxes.length) return showMessage("Add at least one cookie or box.");
+      if (!singles.length && !boxes.length) return showMessage(editing ? "An order needs at least one cookie. To drop it, cancel it instead." : "Add at least one cookie or box.");
+      if (editing) return saveEdit(form, f, boxes, singles, overCap);
       const pay = f.get("payment");
       const btn = form.querySelector("button[type=submit]"); btn.disabled = true; showMessage("");
       try {
@@ -532,9 +570,41 @@
       }
     }
 
-    $("add-order-btn").addEventListener("click", openAddForm);
+    // Save an edit. Cookies are sent (and re-priced) only if they changed.
+    async function saveEdit(form, f, boxes, singles, overCap) {
+      const o = editing;
+      const singleQty = Object.fromEntries(singles.map((x) => [x.flavor_slug, x.qty]));
+      const origSingles = Object.fromEntries((o.singles || []).map((x) => [x.slug, x.qty]));
+      const changed = itemsKey(draftBoxes, singleQty) !== itemsKey(orderBoxesOf(o), origSingles);
+      const btn = form.querySelector("button[type=submit]"); btn.disabled = true; showMessage("");
+      try {
+        const res = await rpc("admin_update_order", {
+          p_ref_code: o.ref_code, p_name: f.get("name"), p_phone: f.get("phone"), p_ig_handle: f.get("ig"),
+          p_fulfillment: f.get("fulfillment"), p_address: f.get("address"), p_sunday: f.get("sunday"),
+          p_boxes: changed ? boxes : null, p_singles: changed ? singles : null, p_allow_over_cap: overCap,
+        });
+        const row = Array.isArray(res) ? res[0] : res;
+        $("add-order").hidden = true; $("add-order").innerHTML = ""; editing = null;
+        for (const d in ordersBySunday) delete ordersBySunday[d];
+        if (row.sunday_date !== sunday) { const sel = $("sunday"); sel.value = row.sunday_date; sunday = row.sunday_date; }
+        orders = await loadOrders(sunday); render();
+        // Paid order and the price changed: say how much to collect or give back
+        const diff = Number(row.total) - Number(row.old_total);
+        if (o.status === "paid" && Math.abs(diff) >= 0.01) {
+          flash(`Saved ${row.ref_code}. New total ${peso(Number(row.total))} (was ${peso(Number(row.old_total))}): ${diff > 0 ? `collect ${peso(diff)} more` : `give back ${peso(-diff)}`}.`, 10000);
+        } else {
+          flash(`Saved ${row.ref_code}${changed ? ` · ${peso(Number(row.total))}` : ""}`);
+        }
+      } catch (err) {
+        console.error(err); btn.disabled = false;
+        if (err.hint === "flavor_cap" && confirm(`${err.message}\n\nSave it anyway? Only do this if you'll bake extra.`)) return saveOrder(form, true);
+        showMessage(err.isNetwork ? "Couldn't reach the server. Nothing was saved." : err.message);
+      }
+    }
+
+    $("add-order-btn").addEventListener("click", () => openAddForm());
     $("add-order").addEventListener("click", (e) => {
-      if (e.target.closest("[data-ao-close]")) { $("add-order").hidden = true; $("add-order").innerHTML = ""; return; }
+      if (e.target.closest("[data-ao-close]")) { $("add-order").hidden = true; $("add-order").innerHTML = ""; editing = null; return; }
       if (e.target.closest("[data-box-add]")) { draftBoxes.push({ size: menu.boxes[0]?.size || 3, qty: {} }); redrawBoxes(); return; }
       const rm = e.target.closest("[data-box-remove]");
       if (rm) { draftBoxes.splice(Number(rm.closest("[data-box]").dataset.box), 1); redrawBoxes(); return; }
@@ -563,6 +633,7 @@
         const line = box.querySelector("[data-box-count]");
         line.textContent = `${n} of ${b.size} picked${n === b.size ? " ✓" : ""}`; line.classList.toggle("ao-warn", n !== b.size);
       }
+      if (box && e.target.matches("[data-box-note]")) draftBoxes[Number(box.dataset.box)].gift_note = e.target.value;
       if (e.target.matches("[data-box-qty], [data-single]")) updateDraft();
     });
     $("add-order").addEventListener("change", (e) => {
@@ -624,6 +695,12 @@
         sel.value = jump.dataset.jump; sel.dispatchEvent(new Event("change"));
         return;
       }
+      const editBtn = e.target.closest("[data-edit]");
+      if (editBtn) {                                           // open this order in the form
+        const o = orders.find((x) => x.ref_code === editBtn.closest("[data-ref]").dataset.ref);
+        if (o) openAddForm(o);
+        return;
+      }
       const prepBtn = e.target.closest("[data-prep]");
       if (prepBtn) {                                           // Start baking / Mark ready / Out for delivery / ...
         const pref = prepBtn.closest("[data-ref]").dataset.ref;
@@ -648,7 +725,13 @@
       showMessage("");
       btn.disabled = true;
       try {
-        await setStatus(ref, act);
+        try {
+          await setStatus(ref, act);
+        } catch (err) {
+          // A flavor sold out since this order expired: say so, and let her take it anyway
+          if (err.hint !== "flavor_cap" || !confirm(`${err.message}\n\nTake this order anyway? Only do this if you'll bake extra.`)) throw err;
+          await setStatus(ref, act, true);
+        }
         orders = await loadOrders(sunday);
         render();
         flash(`${ref}: ${{ paid: "marked paid", cancelled: "cancelled", pending: "reopened" }[act] || STATUS_LABEL[act]}`);
