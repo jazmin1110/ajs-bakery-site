@@ -58,7 +58,7 @@
     async function load() {
       try {
         [flavors, recipes, items, ingredients, costing, boxes] = await Promise.all([
-          select("flavors", "id, slug, name, single_price, surcharge, active", (q) => q.eq("active", true).order("id")),
+          select("flavors", "id, slug, name, single_price, surcharge, active", (q) => q.order("id")), // hidden ones = drafts
           select("recipes", "flavor_id, version, yield, dough_freezer_days, notes"),
           select("recipe_items", "id, flavor_id, ingredient_id, qty_per_batch, note", (q) => q.order("id")),
           select("ingredients", "id, name, unit, cost_per_unit, price_confirmed, active", (q) => q.order("name")),
@@ -81,9 +81,10 @@
 
     function recipeCard(f) {
       const r = recipes.find((x) => x.flavor_id === f.id);
-      const c = costing.find((x) => x.flavor_id === f.id);
       const rows = items.filter((i) => i.flavor_id === f.id);
       const ingById = Object.fromEntries(ingredients.map((i) => [i.id, i]));
+      // The flavor_costing view only covers menu flavors, so drafts are costed here the same way
+      const c = costing.find((x) => x.flavor_id === f.id) || draftCosting(r, rows, ingById);
       const unused = ingredients.filter((i) => i.active && !rows.some((x) => x.ingredient_id === i.id));
       if (!r) return `<section class="t-card" data-flavor="${f.id}"><h2>${esc(f.name)}</h2>
         <p class="t-sub">No recipe yet, so the Bake plan can't work out batches or shopping for it.</p>
@@ -149,7 +150,23 @@
       </section>`;
     }
 
-    function render() { $("out").innerHTML = flavors.map(recipeCard).join("") || `<p class="t-sub">No flavors found.</p>`; }
+    // Cost of a draft (hidden) flavor: ingredients per batch / yield, packaging copied from a menu flavor
+    function draftCosting(r, rows, ingById) {
+      if (!r) return null;
+      const batch = rows.reduce((sum, row) => sum + row.qty_per_batch * (ingById[row.ingredient_id]?.cost_per_unit || 0), 0);
+      return {
+        batch_cost: batch,
+        ingredient_cost_per_cookie: batch / r.yield,
+        packaging_cost_per_cookie: costing[0] ? Number(costing[0].packaging_cost_per_cookie) : 0,
+        assumed_prices: rows.filter((row) => ingById[row.ingredient_id]?.price_confirmed === false).length,
+      };
+    }
+
+    function render() {
+      const menu = flavors.filter((f) => f.active), drafts = flavors.filter((f) => !f.active);
+      $("out").innerHTML = (menu.map(recipeCard).join("") || `<p class="t-sub">No flavors found.</p>`)
+        + (drafts.length ? `<h2 style="margin-top:1.5rem">Drafts (not on the menu)</h2>${drafts.map(recipeCard).join("")}` : "");
+    }
 
     // ---- Events --------------------------------------------------------------------------
     // Run a database write, then reload so every number on the page updates

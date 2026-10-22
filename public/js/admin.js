@@ -220,7 +220,8 @@ export async function loadOrders(sunday) {
 }
 
 export async function loadFlavors() {
-  const { data, error } = await getClient().from("flavors").select("slug, name, weekly_cap").order("id");
+  // Menu flavors only (hidden drafts have no cap to show); summarize() still adds any other flavor found in orders
+  const { data, error } = await getClient().from("flavors").select("slug, name, weekly_cap").eq("active", true).order("id");
   if (error) throw fail(error);
   return data;
 }
