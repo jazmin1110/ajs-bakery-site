@@ -114,7 +114,7 @@ begin
   -- Chimp Chips reserved = 13 (2 left)
   insert into public.orders (ref_code, sunday_date, name, phone, fulfillment, total, status)
   values ('AJ-FIXTURE', v_sunday, 'Fixture', '09170000000', 'pickup', 0, 'paid') returning id into v_order;
-  insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, v_choc, 13 - v_have, 105);
+  insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, v_choc, 13 - v_have, 110);
 
   set local role anon;
 
@@ -597,7 +597,7 @@ rollback;
 
 -- ===========================================================================
 -- (k) Single cookies (migration 006).
---   single prices: Chimp Chips 105, Coco Loco 110, Bueno Mucho 135
+--   single prices: Chimp Chips 110, Coco Loco 110, Bueno Mucho 135
 --   minimum 2 cookies per order; singles count toward the 45 cap;
 --   the browser can never set a price.
 -- ===========================================================================
@@ -607,11 +607,11 @@ declare r record; n int;
 begin
   set local role anon;
 
-  -- Single-only order: 2 Chimp Chips = 2 x 105 = 210
+  -- Single-only order: 2 Chimp Chips = 2 x 110 = 220
   select * into r from public.place_order('Sam', null, '09175550001', 'pickup', null, '[]'::jsonb, null,
     '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
-  assert r.total = 210, 'two Chimp Chips should be 210, got ' || r.total;
-  raise notice 'PASS (k): single-only order total = % (2 x 105)', r.total;
+  assert r.total = 220, 'two Chimp Chips should be 220, got ' || r.total;
+  raise notice 'PASS (k): single-only order total = % (2 x 110)', r.total;
 
   -- Mixed order: box of 3 (2 Chimp + 1 Bueno = 285 + 30 = 315) + singles (1 Coco 110 + 1 Bueno 135 = 245) = 560
   select * into r from public.place_order('Sam', null, '09175550002', 'pickup', null,
@@ -645,13 +645,13 @@ begin
     -- PICKUP: 1 cookie is enough
     select * into r from public.place_order('Min', null, '09175550101', 'pickup', null, '[]'::jsonb, null,
       '[{"flavor_slug":"choc-chip","qty":1}]'::jsonb);
-    assert r.total = 105, 'one Chimp Chips for pickup should be 105, got ' || r.total;
+    assert r.total = 110, 'one Chimp Chips for pickup should be 110, got ' || r.total;
     raise notice 'PASS (k): pickup accepts a single cookie (total %)', r.total;
 
     -- DELIVERY: 1 cookie is enough too (migration 017 removed the old 2-cookies-or-P200 rule)
     select * into r from public.place_order('Min', null, '09175550102', 'delivery', '1 Test St', '[]'::jsonb, null,
       '[{"flavor_slug":"choc-chip","qty":1}]'::jsonb);
-    assert r.total = 105, 'one Chimp Chips by delivery should be accepted at 105, got ' || r.total;
+    assert r.total = 110, 'one Chimp Chips by delivery should be accepted at 110, got ' || r.total;
     raise notice 'PASS (k): delivery accepts a single cookie (total %)', r.total;
     select * into r from public.place_order('Min', null, '09175550103', 'delivery', '1 Test St', '[]'::jsonb, null,
       '[{"flavor_slug":"kinder-bueno","qty":1}]'::jsonb);
@@ -711,7 +711,7 @@ declare
 begin
   insert into public.orders (ref_code, sunday_date, name, phone, fulfillment, total, status)
   values ('AJ-FIXTURE', v_sunday, 'Fixture', '09170000000', 'pickup', 0, 'paid') returning id into v_order;
-  insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, v_flavor, 13 - v_have, 105);
+  insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price) values (v_order, null, v_flavor, 13 - v_have, 110);
   set local role anon;
   select * into r from public.place_order('Cap1', null, '09175550005', 'pickup', null, '[]'::jsonb, null, '[{"flavor_slug":"choc-chip","qty":2}]'::jsonb);
   assert r.sunday_date = v_sunday, '2 singles that fit under the cap stay on ' || v_sunday;
@@ -736,11 +736,11 @@ begin
   select * into r from public.place_order('Cheat', null, '09175550007', 'pickup', null,
     '[{"size":3,"price":1,"total":1,"items":[{"flavor_slug":"choc-chip","qty":3,"price":1}]}]'::jsonb, null,
     '[{"flavor_slug":"choc-chip","qty":2,"price":1,"unit_price":1,"single_price":1,"total":1}]'::jsonb);
-  assert r.total = 285 + 210, 'tampered prices must be ignored: expected 495, got ' || r.total;
+  assert r.total = 285 + 220, 'tampered prices must be ignored: expected 505, got ' || r.total;
   reset role;
   select count(*) into n from public.order_items where unit_price = 1;
   assert n = 0, 'no item may carry the tampered price';
-  assert (select unit_price from public.order_items where order_box_id is null limit 1) = 105, 'unit price must be the DB price';
+  assert (select unit_price from public.order_items where order_box_id is null limit 1) = 110, 'unit price must be the DB price';
   raise notice 'PASS (k): price tampering ignored (total %, singles priced by the database)', r.total;
 
   -- The DB, not the browser, decides which flavors can be bought as singles
@@ -783,7 +783,7 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', admin_id)::text, true);
   j := public.admin_orders(o.sunday_date);
   assert jsonb_array_length(j -> 0 -> 'singles') = 2 and jsonb_array_length(j -> 0 -> 'boxes') = 0, 'admin should see 2 single lines and no boxes';
-  assert (j -> 0 -> 'singles' -> 0 ->> 'unit_price')::numeric = 105 and (j -> 0 -> 'singles' -> 1 ->> 'qty')::int = 2, 'singles detail';
+  assert (j -> 0 -> 'singles' -> 0 ->> 'unit_price')::numeric = 110 and (j -> 0 -> 'singles' -> 1 ->> 'qty')::int = 2, 'singles detail';
   reset role;
   raise notice 'PASS (k): admin_orders lists singles with quantity and the price they were sold at';
 end $$;
@@ -933,7 +933,7 @@ begin
   values ('AJ-NFIXTR', v_sunday, 'Fixture', '09170000001', 'pickup', 0, 'paid') returning id into v_order;
   if v_have < 10 then
     insert into public.order_items (order_id, order_box_id, flavor_id, qty, unit_price)
-    values (v_order, null, v_choc, 10 - v_have, 105);
+    values (v_order, null, v_choc, 10 - v_have, 110);
   end if;
   set local role anon;
   begin

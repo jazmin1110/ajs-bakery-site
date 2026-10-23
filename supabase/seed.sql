@@ -4,7 +4,7 @@
 -- Per-cookie prices. Bueno Mucho (Kinder Bueno) carries a +30 surcharge inside box totals
 -- (125 = the 95 base + 30). Slugs match the ids in js/config.js.
 insert into public.flavors (slug, name, price, surcharge, single_price, weekly_cap, active) values
-  ('choc-chip',    'Chimp Chips', 95,  0,  105, 15, true),
+  ('choc-chip',    'Chimp Chips', 95,  0,  110, 15, true),
   ('double-choc',  'Coco Loco',   100, 0,  110, 15, true),
   ('kinder-bueno', 'Bueno Mucho', 125, 30, 135, 15, true)
 on conflict (slug) do update

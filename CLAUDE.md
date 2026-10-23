@@ -28,9 +28,9 @@ Single source of truth for the numbers. The database is the enforcer and the sto
 | Box of 12 | ₱1,080 (₱90 per cookie) |
 | Box of 4 | **Retired** (kept in the `boxes` table, switched off: old orders point at it) |
 | Bueno surcharge | +₱30 per Bueno Mucho cookie inside a box (so ₱125 each in a box) |
-| **Single cookie: Chimp Chips** (brown butter choc chip) | **₱105** |
-| **Single cookie: Coco Loco** (double chocolate) | **₱110** |
-| **Single cookie: Bueno Mucho** (Kinder Bueno) | **₱135** |
+| **Single cookie: Chimp Chips** (brown butter choc chip) | **₱110** (classic tier, migration 020) |
+| **Single cookie: Coco Loco** (double chocolate) | **₱110** (classic tier) |
+| **Single cookie: Bueno Mucho** (Kinder Bueno) | **₱135** (special tier). Drafts are set to ₱135 + ₱30 box surcharge too (020) |
 | **Minimum order** | **No minimum for pickup or delivery: 1 cookie is enough** (migration 017 removed the old delivery rule of 2 cookies OR ₱200). Singles and box cookies both count. Delivery is customer-booked and the fare is the same for 1 cookie or 12, so checkout shows a friendly "add a few more" line for delivery orders of `deliveryNudgeMaxCookies` (2) cookies or fewer. It never blocks |
 | **Cap** | **15 of each flavor per Sunday** (`flavors.weekly_cap`), not a total. Box cookies **and** singles both count toward their flavor's cap. When a flavor hits 15 it shows "Sold out"; the other flavors stay available. When ALL flavors are sold out, ordering moves to the next Sunday |
 | Order limits | Up to 3 boxes per order, plus any single cookies. An order can't take more of a flavor than is left (the error names the flavor and how many remain) |
@@ -116,7 +116,7 @@ public/                      <- what Vercel serves
   assets/                    flavors/*.jpg (compressed), gcash-qr.png, og-image.jpg
   assets/originals/          full-size flavor photos before compression, git-ignored (NOT deployed)
   robots.txt, sitemap.xml
-supabase/                    migrations 001-019, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql, tests_016.sql, tests_018.sql  (NOT deployed)
+supabase/                    migrations 001-020, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql, tests_016.sql, tests_018.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers
