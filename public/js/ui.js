@@ -231,8 +231,29 @@ function flavorBadge(flavor) {
 //   * Tapping the item (not the add control) opens the detail sheet.
 //   * The add control is a "+ Add" pill; once the flavor is in the cart it shows a "- N +" stepper.
 //     Both are in the page from the start and the page script shows one of them (see index.html).
+// The menu is split into two groups: Classics (no box surcharge, e.g. Chimp Chips, Coco Loco) and
+// Specials (anything with a box surcharge, e.g. Bueno Mucho). The surcharge is the tier marker, so a
+// new flavor lands in the right group by itself once it's switched on. An empty group isn't shown.
 export function renderMenu(container, flavors, boxes = [], availability = {}) {
-  container.innerHTML = flavors
+  const groups = [
+    { title: "Classics", sub: "The everyday favorites.", items: flavors.filter((f) => !(f.surcharge > 0)) },
+    { title: "Specials", sub: "Loaded with the good stuff.", items: flavors.filter((f) => f.surcharge > 0) },
+  ];
+  container.innerHTML = groups
+    .filter((g) => g.items.length)
+    .map((g) => `
+      <div class="menu-group">
+        <h3 class="menu-group-title">${esc(g.title)}</h3>
+        <p class="menu-group-sub">${esc(g.sub)}</p>
+        <div class="menu-list">${menuItems(g.items, boxes, availability)}</div>
+      </div>`)
+    .join("");
+  clampDescriptions(container);
+}
+
+// The flavor rows/cards inside one menu group
+function menuItems(flavors, boxes, availability) {
+  return flavors
     .map((f) => {
       const info = flavorInfo(f.slug);
       const left = availability[f.slug] ? availability[f.slug].remaining : null;
@@ -271,7 +292,6 @@ export function renderMenu(container, flavors, boxes = [], availability = {}) {
       </article>`;
     })
     .join("");
-  clampDescriptions(container);
 }
 
 // The "Coming soon" placeholders (COMING_SOON in js/config.js). Same row/card look as the menu, but no

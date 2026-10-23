@@ -802,6 +802,10 @@ body.sheet-open { overflow: hidden; }
 }
 .menu-list > .loading, .box-list > .loading { padding: 1rem; margin: 0; }
 .menu-list .closed-card { border: 0; box-shadow: none; margin: 0; }
+/* Classics / Specials: each group is a small heading + one-line sub + its own list */
+.menu-group + .menu-group { margin-top: 1.5rem; }
+.menu-group-title { font-size: 1.35rem; font-weight: 700; color: var(--blue); margin: 0 0 0.15rem; }
+.menu-group-sub { color: var(--ink-soft); margin: 0 0 0.75rem; }
 .menu-msg { min-height: 1.4em; margin: 0.5rem 0 0; color: var(--accent-dark); font-weight: 700; }
 
 .flavor-item { position: relative; border-top: 1px solid var(--cream-dark); }
