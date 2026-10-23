@@ -141,7 +141,9 @@
         <p class="builder-msg" id="builder-msg" aria-live="polite"></p>
 
         <ul class="flavor-list">
-          ${flavors.map((f) => `
+          ${flavors.map((f, i) => `
+          ${i === 0 || (f.surcharge > 0) !== (flavors[i - 1].surcharge > 0)
+            ? `<li class="flavor-list-label">${f.surcharge > 0 ? "Specials" : "Classics"}</li>` : ""}
           <li class="flavor-row" data-slug="${esc(f.slug)}">
             <div class="flavor-emoji">${flavorPhoto(f, "flavor-thumb", { width: 240, height: 240, sizes: "56px" })}</div>
             <div class="flavor-info">

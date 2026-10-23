@@ -54,7 +54,9 @@ export async function fetchMenu() {
       surcharge: Number(f.surcharge),
       // null = not sold as a single cookie (box only)
       single_price: f.single_price == null ? null : Number(f.single_price),
-    })),
+    }))
+      // Classics (no box surcharge) first, then Specials; oldest flavor first inside each group
+      .sort((a, b) => (a.surcharge > 0) - (b.surcharge > 0) || a.id - b.id),
     boxes: boxesRes.data.map((b) => ({ ...b, price: Number(b.price) })),
   };
 }

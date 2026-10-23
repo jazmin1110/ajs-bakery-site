@@ -395,6 +395,9 @@ body.has-builder-bar { padding-bottom: calc(var(--bar-h, 4.5rem) + 1rem); }
 .progress div { height: 100%; width: 0; background: var(--blue); border-radius: 999px; transition: width 0.2s; }
 
 .flavor-list { list-style: none; margin: 0 0 0.6rem; padding: 0; display: grid; gap: 0.5rem; }
+/* "Classics" / "Specials" label above each group in the box builder */
+.flavor-list-label { font-family: var(--font-display); font-weight: 700; color: var(--blue); font-size: 1.05rem; margin-top: 0.5rem; }
+.flavor-list-label:first-child { margin-top: 0; }
 .flavor-row {
   display: flex;
   align-items: center;

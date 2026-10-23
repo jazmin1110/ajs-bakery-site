@@ -1,6 +1,6 @@
 {
   "_readme": "Draft content for the AJ's Bakery flavor detail sheets. Nutrition is a CALCULATED ESTIMATE per cookie from the RD1 recipes, using the printed label values of Callebaut 811, Anchor unsalted butter, Kinder Maxi and Kinder Bueno, and standard values for flour, sugars, eggs, cocoa powder and vanilla (brands not recorded). Not lab tested. Allergens and ingredient lists follow those products' labels. VERIFY everything in each flavor's 'verify' list before launch. Copy is written in a plain, casual voice; edit freely.",
-  "global_allergen_note": "Made in a home kitchen that also handles milk, egg, wheat, soy and hazelnuts. If you have a serious allergy, message us before ordering.",
+  "global_allergen_note": "Made in a home kitchen that also handles milk, egg, wheat, soy, hazelnuts and peanuts. If you have a serious allergy, message us before ordering.",
   "nutrition_note": "Estimated per cookie. Calculated from our recipe and the labels of the ingredients we use, not lab tested. Actual values vary a little with each batch.",
   "_nutrition_inputs_per_100g": {
     "callebaut_811": {"kcal": 550, "fat_g": 36.6, "carbs_g": 45.8, "sugars_g": 43.1, "protein_g": 5.1, "source": "Barry Callebaut spec (kcal, fat, protein); carbs and sugars from UK distributor spec sheets of the same recipe 811"},
@@ -11,6 +11,12 @@
     "dark_brown_sugar": {"kcal": 380, "fat_g": 0, "carbs_g": 98.1, "sugars_g": 97.0, "protein_g": 0.1, "source": "standard value, brand not recorded"},
     "granulated_sugar": {"kcal": 387, "fat_g": 0, "carbs_g": 99.8, "sugars_g": 99.8, "protein_g": 0, "source": "standard value, brand not recorded"},
     "dutch_cocoa_powder": {"kcal": 228, "fat_g": 13.7, "carbs_g": 57.9, "sugars_g": 1.75, "protein_g": 19.6, "source": "standard value for alkalized cocoa, brand not recorded"},
+    "nutella": {"kcal": 539, "fat_g": 30.9, "carbs_g": 57.5, "sugars_g": 56.3, "protein_g": 6.3, "source": "Ferrero Nutella label (standard EU values), PH jar not checked"},
+    "lotus_biscoff_spread": {"kcal": 585, "fat_g": 38, "carbs_g": 55, "sugars_g": 35, "protein_g": 4, "source": "approximate Lotus Biscoff crunchy spread label, PH jar not checked"},
+    "lotus_biscoff_cookies": {"kcal": 484, "fat_g": 19, "carbs_g": 72.6, "sugars_g": 38.1, "protein_g": 4.9, "source": "Lotus Biscoff biscuit label (standard EU values), PH pack not checked"},
+    "skippy_creamy_peanut_butter": {"kcal": 594, "fat_g": 50, "carbs_g": 21.9, "sugars_g": 9.4, "protein_g": 21.9, "source": "Skippy creamy US label (190 kcal per 32g), PH jar not checked"},
+    "reeses_milk_chocolate_peanut_butter": {"kcal": 515, "fat_g": 30, "carbs_g": 55, "sugars_g": 47, "protein_g": 10, "source": "approximate Reese's label, Giant bar pack not checked"},
+    "banana_ripe_raw": {"kcal": 89, "fat_g": 0.3, "carbs_g": 22.8, "sugars_g": 12.2, "protein_g": 1.1, "source": "standard value for raw banana; cooking it down only loses water"},
     "eggs_1_whole_plus_1_yolk": {"kcal": 127, "fat_g": 9.3, "carbs_g": 1.0, "sugars_g": 0.3, "protein_g": 9.0, "source": "standard value for the whole batch quantity (not per 100g)"},
     "vanilla_extract_1_5_tsp": {"kcal": 18, "fat_g": 0, "carbs_g": 0.8, "sugars_g": 0.8, "protein_g": 0, "source": "standard value for the whole batch quantity (not per 100g)"}
   },
@@ -23,7 +29,7 @@
       "taste_notes": ["Toasted brown butter", "Callebaut dark chocolate", "Soft and chewy"],
       "ingredients": "All-purpose wheat flour, dark chocolate (cocoa mass, sugar, cocoa butter, soy lecithin, natural vanilla flavouring), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt.",
       "contains": ["Wheat (gluten)", "Milk", "Egg", "Soy"],
-      "may_contain": ["Hazelnuts and other tree nuts"],
+      "may_contain": ["Peanuts", "Hazelnuts and other tree nuts"],
       "weight_g": 60,
       "weight_label": "About 60g",
       "shelf_life": "Best within 4-5 days.",
@@ -52,7 +58,7 @@
       "taste_notes": ["Dutch cocoa", "Callebaut dark chocolate", "Brown butter"],
       "ingredients": "All-purpose wheat flour, dark chocolate (cocoa mass, sugar, cocoa butter, soy lecithin, natural vanilla flavouring), brown butter (unsalted butter), dark brown sugar, sugar, eggs, Dutch-process cocoa powder, vanilla extract, baking soda, salt.",
       "contains": ["Wheat (gluten)", "Milk", "Egg", "Soy"],
-      "may_contain": ["Hazelnuts and other tree nuts"],
+      "may_contain": ["Peanuts", "Hazelnuts and other tree nuts"],
       "weight_g": 60,
       "weight_label": "About 60g",
       "shelf_life": "Best within 4-5 days.",
@@ -80,7 +86,7 @@
       "taste_notes": ["Kinder Maxi chocolate", "Hazelnut cream", "Wafer crunch"],
       "ingredients": "Kinder Bueno (milk chocolate, sugar, palm oil, wheat flour, hazelnuts, milk powder, soy lecithin), all-purpose wheat flour, Kinder Maxi milk chocolate (sugar, milk powder, cocoa butter, cocoa mass, palm oil, soy lecithin), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt.",
       "contains": ["Wheat (gluten)", "Milk", "Egg", "Soy", "Hazelnuts"],
-      "may_contain": ["Other tree nuts"],
+      "may_contain": ["Peanuts", "Other tree nuts"],
       "weight_g": 71,
       "weight_label": "About 70g",
       "shelf_life": "Best within 2-3 days.",
@@ -99,6 +105,211 @@
         "Read the Kinder Maxi pack (I used Ferrero's label: 566 kcal, 35g fat, 53.5g carbs, 53.3g sugars, 8.7g protein per 100g) and the Kinder Bueno pack (572 kcal, 37.3g fat, 49.5g carbs, 41.2g sugars, 8.6g protein per 100g). Update if your PH packs differ.",
         "Confirm the center piece weighs about 10.75g (half of a 21.5g bar) and weigh 5 baked cookies. Dough is 60g plus the center, so roughly 71g before baking loss.",
         "Confirm the shelf life of 2-3 days (the wafer goes soft first) by testing Day 1, 2, 3 and 4 on a batch you keep."
+      ]
+    },
+    {
+      "slug": "banana-bread",
+      "name": "Banana Bread",
+      "short_description": "Banana bread in cookie form: ripe banana, a little cinnamon and Callebaut dark chocolate on our brown butter base.",
+      "long_description": "Everything you love about a warm slice of banana bread, squeezed into a cookie. We cook down very ripe bananas so the flavor gets deep and jammy, add a pinch of cinnamon, then fold in Callebaut dark chocolate. Soft, cozy and a little nostalgic.",
+      "taste_notes": [
+        "Ripe banana",
+        "Cinnamon",
+        "Callebaut dark chocolate"
+      ],
+      "ingredients": "All-purpose wheat flour, dark chocolate (cocoa mass, sugar, cocoa butter, soy lecithin, natural vanilla flavouring), brown butter (unsalted butter), dark brown sugar, ripe banana, sugar, eggs, vanilla extract, cinnamon, baking soda, salt.",
+      "contains": [
+        "Wheat (gluten)",
+        "Milk",
+        "Egg",
+        "Soy"
+      ],
+      "may_contain": [
+        "Peanuts",
+        "Hazelnuts and other tree nuts"
+      ],
+      "weight_g": 60,
+      "weight_label": "About 60g",
+      "shelf_life": "Best within 3-4 days.",
+      "storage_tip": "Keep in an airtight container at room temperature.",
+      "nutrition": {
+        "serving": "1 cookie (about 60g)",
+        "calories": 285,
+        "total_carbohydrate_g": 33,
+        "sugars_g": 20,
+        "total_fat_g": 15,
+        "protein_g": 3
+      },
+      "_calc": {
+        "cookies_per_batch": 15,
+        "recipe": "base with 237g flour + 130g ripe banana (cooked down) + 150g Callebaut 811 + 1/2 tsp cinnamon",
+        "batch_totals": {
+          "kcal": 4277,
+          "carbs_g": 499,
+          "sugars_g": 299,
+          "fat_g": 231,
+          "protein_g": 44
+        }
+      },
+      "verify": [
+        "ROUGH PLACEHOLDER from the RD1 draft recipe, before the first test bake. Replace everything with final values after testing.",
+        "Banana amount and flour are still guesses in RD1: recalculate once the recipe is locked.",
+        "Shelf life of 3-4 days is a guess (banana makes it moister): test Day 1-5.",
+        "Pick the final menu name (the recipe notes say to name it before launch)."
+      ]
+    },
+    {
+      "slug": "nutella",
+      "name": "Nutella",
+      "short_description": "A melty Nutella center hiding inside brown butter dough with Callebaut dark chocolate, finished with flaky salt.",
+      "long_description": "For the Nutella-from-the-jar crowd. Each cookie hides a frozen disc of Nutella that melts into a gooey hazelnut chocolate center as it bakes, wrapped in our brown butter dough with chopped Callebaut dark chocolate. A pinch of flaky salt on top keeps it from being too sweet.",
+      "taste_notes": [
+        "Gooey Nutella center",
+        "Callebaut dark chocolate",
+        "Flaky salt"
+      ],
+      "ingredients": "All-purpose wheat flour, Nutella (sugar, palm oil, hazelnuts, skimmed milk powder, fat-reduced cocoa, soy lecithin, vanillin), dark chocolate (cocoa mass, sugar, cocoa butter, soy lecithin, natural vanilla flavouring), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt, flaky sea salt.",
+      "contains": [
+        "Wheat (gluten)",
+        "Milk",
+        "Egg",
+        "Soy",
+        "Hazelnuts"
+      ],
+      "may_contain": [
+        "Peanuts",
+        "Other tree nuts"
+      ],
+      "weight_g": 71,
+      "weight_label": "About 70g",
+      "shelf_life": "Best within 3-4 days.",
+      "storage_tip": "Keep in an airtight container at room temperature.",
+      "nutrition": {
+        "serving": "1 cookie (about 70g)",
+        "calories": 355,
+        "total_carbohydrate_g": 39,
+        "sugars_g": 27,
+        "total_fat_g": 20,
+        "protein_g": 4
+      },
+      "_calc": {
+        "cookies_per_batch": 15,
+        "recipe": "base + 150g Callebaut 811 + 225g Nutella (15 x 15g discs); flaky salt and any topper not counted",
+        "batch_totals": {
+          "kcal": 5338,
+          "carbs_g": 591,
+          "sugars_g": 410,
+          "fat_g": 300,
+          "protein_g": 56
+        }
+      },
+      "verify": [
+        "ROUGH PLACEHOLDER from the RD1 draft recipe, before the first test bake. Replace everything with final values after testing.",
+        "If you add a Nutella biscuit topper, add it to the ingredients and nutrition.",
+        "Check the Nutella jar label from S&R against the values used.",
+        "Shelf life of 3-4 days is a guess: test it."
+      ]
+    },
+    {
+      "slug": "biscoff",
+      "name": "Biscoff",
+      "short_description": "Brown butter dough with crushed Lotus biscuits and a gooey cookie butter center. Warm, spiced and caramel-y.",
+      "long_description": "Cookie butter lovers, this one's yours. Crushed Lotus Biscoff biscuits go into our brown butter dough with a little cinnamon, and every cookie hides a frozen disc of Biscoff spread that turns soft and gooey in the oven. Think caramelized, cinnamon-spiced and very hard to share.",
+      "taste_notes": [
+        "Cookie butter center",
+        "Crushed Lotus biscuits",
+        "Warm cinnamon"
+      ],
+      "ingredients": "All-purpose wheat flour, Biscoff spread (caramelised biscuits (wheat flour, sugar, vegetable oils (palm, rapeseed), candy sugar syrup, raising agent (sodium bicarbonate), soy flour, salt, cinnamon), rapeseed oil, sugar, soy lecithin, citric acid), Lotus Biscoff biscuits (wheat flour, sugar, vegetable oils (palm, rapeseed), candy sugar syrup, raising agent (sodium bicarbonate), soy flour, salt, cinnamon), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, cinnamon, baking soda, salt.",
+      "contains": [
+        "Wheat (gluten)",
+        "Milk",
+        "Egg",
+        "Soy"
+      ],
+      "may_contain": [
+        "Peanuts",
+        "Hazelnuts and other tree nuts"
+      ],
+      "weight_g": 69,
+      "weight_label": "About 70g",
+      "shelf_life": "Best within 3-4 days.",
+      "storage_tip": "Keep in an airtight container at room temperature.",
+      "nutrition": {
+        "serving": "1 cookie (about 70g)",
+        "calories": 345,
+        "total_carbohydrate_g": 40,
+        "sugars_g": 23,
+        "total_fat_g": 19,
+        "protein_g": 3
+      },
+      "_calc": {
+        "cookies_per_batch": 15,
+        "recipe": "base (no chocolate) + 120g crushed Lotus biscuits + 225g Biscoff spread (15 x 15g discs); cinnamon and any topper not counted",
+        "batch_totals": {
+          "kcal": 5197,
+          "carbs_g": 604,
+          "sugars_g": 343,
+          "fat_g": 284,
+          "protein_g": 49
+        }
+      },
+      "verify": [
+        "ROUGH PLACEHOLDER from the RD1 draft recipe, before the first test bake. Replace everything with final values after testing.",
+        "Biscoff is a Lotus trademark: pick your own menu name before this goes much further.",
+        "Check the Lotus spread and biscuit labels from S&R (crunchy spread values are approximate).",
+        "Shelf life of 3-4 days is a guess: test it."
+      ]
+    },
+    {
+      "slug": "pb-reeses",
+      "name": "Peanut Butter Reese's",
+      "short_description": "Peanut butter brown butter dough loaded with chopped Reese's. Salty, sweet and very peanutty. Contains peanuts.",
+      "long_description": "Made for peanut butter people. Creamy peanut butter goes right into our brown butter dough, then we pack it with chopped Reese's peanut butter cups. Salty-sweet, soft in the middle and seriously peanutty. Please note: this cookie contains peanuts.",
+      "taste_notes": [
+        "Creamy peanut butter",
+        "Chopped Reese's",
+        "Salty-sweet"
+      ],
+      "ingredients": "All-purpose wheat flour, Reese's milk chocolate peanut butter cups (milk chocolate (sugar, cocoa butter, chocolate, skim milk, milk fat, lactose, soy lecithin, PGPR), peanuts, sugar, dextrose, salt, TBHQ), peanut butter (roasted peanuts, sugar, hydrogenated vegetable oils, salt), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt.",
+      "contains": [
+        "Peanuts",
+        "Wheat (gluten)",
+        "Milk",
+        "Egg",
+        "Soy"
+      ],
+      "may_contain": [
+        "Hazelnuts and other tree nuts"
+      ],
+      "weight_g": 72,
+      "weight_label": "About 70g",
+      "shelf_life": "Best within 4-5 days.",
+      "storage_tip": "Keep in an airtight container at room temperature.",
+      "nutrition": {
+        "serving": "1 cookie (about 70g)",
+        "calories": 355,
+        "total_carbohydrate_g": 37,
+        "sugars_g": 22,
+        "total_fat_g": 21,
+        "protein_g": 6
+      },
+      "_calc": {
+        "cookies_per_batch": 15,
+        "recipe": "version A: base with 247g flour + 150g Skippy creamy + 1 Reese's Giant bar (208.9g); no PB center, no mini cup topper",
+        "batch_totals": {
+          "kcal": 5340,
+          "carbs_g": 556,
+          "sugars_g": 331,
+          "fat_g": 313,
+          "protein_g": 90
+        }
+      },
+      "verify": [
+        "ROUGH PLACEHOLDER from the RD1 draft recipe, before the first test bake. Replace everything with final values after testing.",
+        "Peanut allergen decision is still open: peanuts are now in the shared kitchen, so every other flavor lists 'Peanuts' under may contain.",
+        "If you go with version B (PB center) or the mini cup topper, recalculate.",
+        "Check the Skippy and Reese's Giant labels against the values used."
       ]
     }
   ]

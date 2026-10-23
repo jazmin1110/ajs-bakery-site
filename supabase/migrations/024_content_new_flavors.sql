@@ -1,0 +1,6 @@
+-- 024: detail-sheet content for the 4 flavors launched in 023 (Oct 24, 2026). Data only.
+-- Same SQL as the matching parts of seed_content.sql (generated from flavor-content.json):
+-- Banana Bread, Nutella, Biscoff and PB Reese's content, plus "Peanuts" in every flavor's
+-- may_contain and in the global allergen note (peanuts are now in the kitchen).
+-- The new flavors' numbers are ROUGH estimates from the RD1 drafts; the owner will replace them.
+-- To re-apply: run supabase/seed_content.sql (it is safe to run more than once).

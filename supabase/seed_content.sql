@@ -6,7 +6,7 @@
 -- ============================================================================
 
 insert into public.site_settings (key, value) values
-  ('global_allergen_note', $c$Made in a home kitchen that also handles milk, egg, wheat, soy and hazelnuts. If you have a serious allergy, message us before ordering.$c$),
+  ('global_allergen_note', $c$Made in a home kitchen that also handles milk, egg, wheat, soy, hazelnuts and peanuts. If you have a serious allergy, message us before ordering.$c$),
   ('nutrition_note', $c$Estimated per cookie. Calculated from our recipe and the labels of the ingredients we use, not lab tested. Actual values vary a little with each batch.$c$)
 on conflict (key) do update set value = excluded.value;
 
@@ -17,7 +17,7 @@ update public.flavors set
   taste_notes       = array[$c$Toasted brown butter$c$, $c$Callebaut dark chocolate$c$, $c$Soft and chewy$c$]::text[],
   ingredients       = $c$All-purpose wheat flour, dark chocolate (cocoa mass, sugar, cocoa butter, soy lecithin, natural vanilla flavouring), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt.$c$,
   contains          = array[$c$Wheat (gluten)$c$, $c$Milk$c$, $c$Egg$c$, $c$Soy$c$]::text[],
-  may_contain       = array[$c$Hazelnuts and other tree nuts$c$]::text[],
+  may_contain       = array[$c$Peanuts$c$, $c$Hazelnuts and other tree nuts$c$]::text[],
   weight_label      = $c$About 60g$c$,
   shelf_life        = $c$Best within 4-5 days.$c$,
   storage_tip       = $c$Keep in an airtight container at room temperature.$c$,
@@ -31,7 +31,7 @@ update public.flavors set
   taste_notes       = array[$c$Dutch cocoa$c$, $c$Callebaut dark chocolate$c$, $c$Brown butter$c$]::text[],
   ingredients       = $c$All-purpose wheat flour, dark chocolate (cocoa mass, sugar, cocoa butter, soy lecithin, natural vanilla flavouring), brown butter (unsalted butter), dark brown sugar, sugar, eggs, Dutch-process cocoa powder, vanilla extract, baking soda, salt.$c$,
   contains          = array[$c$Wheat (gluten)$c$, $c$Milk$c$, $c$Egg$c$, $c$Soy$c$]::text[],
-  may_contain       = array[$c$Hazelnuts and other tree nuts$c$]::text[],
+  may_contain       = array[$c$Peanuts$c$, $c$Hazelnuts and other tree nuts$c$]::text[],
   weight_label      = $c$About 60g$c$,
   shelf_life        = $c$Best within 4-5 days.$c$,
   storage_tip       = $c$Keep in an airtight container at room temperature.$c$,
@@ -45,12 +45,68 @@ update public.flavors set
   taste_notes       = array[$c$Kinder Maxi chocolate$c$, $c$Hazelnut cream$c$, $c$Wafer crunch$c$]::text[],
   ingredients       = $c$Kinder Bueno (milk chocolate, sugar, palm oil, wheat flour, hazelnuts, milk powder, soy lecithin), all-purpose wheat flour, Kinder Maxi milk chocolate (sugar, milk powder, cocoa butter, cocoa mass, palm oil, soy lecithin), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt.$c$,
   contains          = array[$c$Wheat (gluten)$c$, $c$Milk$c$, $c$Egg$c$, $c$Soy$c$, $c$Hazelnuts$c$]::text[],
-  may_contain       = array[$c$Other tree nuts$c$]::text[],
+  may_contain       = array[$c$Peanuts$c$, $c$Other tree nuts$c$]::text[],
   weight_label      = $c$About 70g$c$,
   shelf_life        = $c$Best within 2-3 days.$c$,
   storage_tip       = $c$Keep in an airtight container at room temperature.$c$,
   nutrition         = $c${"serving": "1 cookie (about 70g)", "calories": 355, "total_carbohydrate_g": 39, "sugars_g": 26, "total_fat_g": 20, "protein_g": 4}$c$::jsonb
 where slug in ('bueno-mucho', 'kinder-bueno');
+
+-- Banana Bread
+update public.flavors set
+  short_description = $c$Banana bread in cookie form: ripe banana, a little cinnamon and Callebaut dark chocolate on our brown butter base.$c$,
+  long_description  = $c$Everything you love about a warm slice of banana bread, squeezed into a cookie. We cook down very ripe bananas so the flavor gets deep and jammy, add a pinch of cinnamon, then fold in Callebaut dark chocolate. Soft, cozy and a little nostalgic.$c$,
+  taste_notes       = array[$c$Ripe banana$c$, $c$Cinnamon$c$, $c$Callebaut dark chocolate$c$]::text[],
+  ingredients       = $c$All-purpose wheat flour, dark chocolate (cocoa mass, sugar, cocoa butter, soy lecithin, natural vanilla flavouring), brown butter (unsalted butter), dark brown sugar, ripe banana, sugar, eggs, vanilla extract, cinnamon, baking soda, salt.$c$,
+  contains          = array[$c$Wheat (gluten)$c$, $c$Milk$c$, $c$Egg$c$, $c$Soy$c$]::text[],
+  may_contain       = array[$c$Peanuts$c$, $c$Hazelnuts and other tree nuts$c$]::text[],
+  weight_label      = $c$About 60g$c$,
+  shelf_life        = $c$Best within 3-4 days.$c$,
+  storage_tip       = $c$Keep in an airtight container at room temperature.$c$,
+  nutrition         = $c${"serving": "1 cookie (about 60g)", "calories": 285, "total_carbohydrate_g": 33, "sugars_g": 20, "total_fat_g": 15, "protein_g": 3}$c$::jsonb
+where slug in ('banana-bread');
+
+-- Nutella
+update public.flavors set
+  short_description = $c$A melty Nutella center hiding inside brown butter dough with Callebaut dark chocolate, finished with flaky salt.$c$,
+  long_description  = $c$For the Nutella-from-the-jar crowd. Each cookie hides a frozen disc of Nutella that melts into a gooey hazelnut chocolate center as it bakes, wrapped in our brown butter dough with chopped Callebaut dark chocolate. A pinch of flaky salt on top keeps it from being too sweet.$c$,
+  taste_notes       = array[$c$Gooey Nutella center$c$, $c$Callebaut dark chocolate$c$, $c$Flaky salt$c$]::text[],
+  ingredients       = $c$All-purpose wheat flour, Nutella (sugar, palm oil, hazelnuts, skimmed milk powder, fat-reduced cocoa, soy lecithin, vanillin), dark chocolate (cocoa mass, sugar, cocoa butter, soy lecithin, natural vanilla flavouring), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt, flaky sea salt.$c$,
+  contains          = array[$c$Wheat (gluten)$c$, $c$Milk$c$, $c$Egg$c$, $c$Soy$c$, $c$Hazelnuts$c$]::text[],
+  may_contain       = array[$c$Peanuts$c$, $c$Other tree nuts$c$]::text[],
+  weight_label      = $c$About 70g$c$,
+  shelf_life        = $c$Best within 3-4 days.$c$,
+  storage_tip       = $c$Keep in an airtight container at room temperature.$c$,
+  nutrition         = $c${"serving": "1 cookie (about 70g)", "calories": 355, "total_carbohydrate_g": 39, "sugars_g": 27, "total_fat_g": 20, "protein_g": 4}$c$::jsonb
+where slug in ('nutella');
+
+-- Biscoff
+update public.flavors set
+  short_description = $c$Brown butter dough with crushed Lotus biscuits and a gooey cookie butter center. Warm, spiced and caramel-y.$c$,
+  long_description  = $c$Cookie butter lovers, this one's yours. Crushed Lotus Biscoff biscuits go into our brown butter dough with a little cinnamon, and every cookie hides a frozen disc of Biscoff spread that turns soft and gooey in the oven. Think caramelized, cinnamon-spiced and very hard to share.$c$,
+  taste_notes       = array[$c$Cookie butter center$c$, $c$Crushed Lotus biscuits$c$, $c$Warm cinnamon$c$]::text[],
+  ingredients       = $c$All-purpose wheat flour, Biscoff spread (caramelised biscuits (wheat flour, sugar, vegetable oils (palm, rapeseed), candy sugar syrup, raising agent (sodium bicarbonate), soy flour, salt, cinnamon), rapeseed oil, sugar, soy lecithin, citric acid), Lotus Biscoff biscuits (wheat flour, sugar, vegetable oils (palm, rapeseed), candy sugar syrup, raising agent (sodium bicarbonate), soy flour, salt, cinnamon), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, cinnamon, baking soda, salt.$c$,
+  contains          = array[$c$Wheat (gluten)$c$, $c$Milk$c$, $c$Egg$c$, $c$Soy$c$]::text[],
+  may_contain       = array[$c$Peanuts$c$, $c$Hazelnuts and other tree nuts$c$]::text[],
+  weight_label      = $c$About 70g$c$,
+  shelf_life        = $c$Best within 3-4 days.$c$,
+  storage_tip       = $c$Keep in an airtight container at room temperature.$c$,
+  nutrition         = $c${"serving": "1 cookie (about 70g)", "calories": 345, "total_carbohydrate_g": 40, "sugars_g": 23, "total_fat_g": 19, "protein_g": 3}$c$::jsonb
+where slug in ('biscoff');
+
+-- Peanut Butter Reese's
+update public.flavors set
+  short_description = $c$Peanut butter brown butter dough loaded with chopped Reese's. Salty, sweet and very peanutty. Contains peanuts.$c$,
+  long_description  = $c$Made for peanut butter people. Creamy peanut butter goes right into our brown butter dough, then we pack it with chopped Reese's peanut butter cups. Salty-sweet, soft in the middle and seriously peanutty. Please note: this cookie contains peanuts.$c$,
+  taste_notes       = array[$c$Creamy peanut butter$c$, $c$Chopped Reese's$c$, $c$Salty-sweet$c$]::text[],
+  ingredients       = $c$All-purpose wheat flour, Reese's milk chocolate peanut butter cups (milk chocolate (sugar, cocoa butter, chocolate, skim milk, milk fat, lactose, soy lecithin, PGPR), peanuts, sugar, dextrose, salt, TBHQ), peanut butter (roasted peanuts, sugar, hydrogenated vegetable oils, salt), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt.$c$,
+  contains          = array[$c$Peanuts$c$, $c$Wheat (gluten)$c$, $c$Milk$c$, $c$Egg$c$, $c$Soy$c$]::text[],
+  may_contain       = array[$c$Hazelnuts and other tree nuts$c$]::text[],
+  weight_label      = $c$About 70g$c$,
+  shelf_life        = $c$Best within 4-5 days.$c$,
+  storage_tip       = $c$Keep in an airtight container at room temperature.$c$,
+  nutrition         = $c${"serving": "1 cookie (about 70g)", "calories": 355, "total_carbohydrate_g": 37, "sugars_g": 22, "total_fat_g": 21, "protein_g": 6}$c$::jsonb
+where slug in ('pb-reeses');
 
 do $todo$ begin
   raise notice '=== TODO: things to verify before launch (from flavor-content.json) ===';
@@ -68,4 +124,24 @@ do $todo$ begin
   raise notice '%', $c$  [ ] Read the Kinder Maxi pack (I used Ferrero's label: 566 kcal, 35g fat, 53.5g carbs, 53.3g sugars, 8.7g protein per 100g) and the Kinder Bueno pack (572 kcal, 37.3g fat, 49.5g carbs, 41.2g sugars, 8.6g protein per 100g). Update if your PH packs differ.$c$;
   raise notice '%', $c$  [ ] Confirm the center piece weighs about 10.75g (half of a 21.5g bar) and weigh 5 baked cookies. Dough is 60g plus the center, so roughly 71g before baking loss.$c$;
   raise notice '%', $c$  [ ] Confirm the shelf life of 2-3 days (the wafer goes soft first) by testing Day 1, 2, 3 and 4 on a batch you keep.$c$;
+  raise notice '%', $c$BANANA BREAD:$c$;
+  raise notice '%', $c$  [ ] ROUGH PLACEHOLDER from the RD1 draft recipe, before the first test bake. Replace everything with final values after testing.$c$;
+  raise notice '%', $c$  [ ] Banana amount and flour are still guesses in RD1: recalculate once the recipe is locked.$c$;
+  raise notice '%', $c$  [ ] Shelf life of 3-4 days is a guess (banana makes it moister): test Day 1-5.$c$;
+  raise notice '%', $c$  [ ] Pick the final menu name (the recipe notes say to name it before launch).$c$;
+  raise notice '%', $c$NUTELLA:$c$;
+  raise notice '%', $c$  [ ] ROUGH PLACEHOLDER from the RD1 draft recipe, before the first test bake. Replace everything with final values after testing.$c$;
+  raise notice '%', $c$  [ ] If you add a Nutella biscuit topper, add it to the ingredients and nutrition.$c$;
+  raise notice '%', $c$  [ ] Check the Nutella jar label from S&R against the values used.$c$;
+  raise notice '%', $c$  [ ] Shelf life of 3-4 days is a guess: test it.$c$;
+  raise notice '%', $c$BISCOFF:$c$;
+  raise notice '%', $c$  [ ] ROUGH PLACEHOLDER from the RD1 draft recipe, before the first test bake. Replace everything with final values after testing.$c$;
+  raise notice '%', $c$  [ ] Biscoff is a Lotus trademark: pick your own menu name before this goes much further.$c$;
+  raise notice '%', $c$  [ ] Check the Lotus spread and biscuit labels from S&R (crunchy spread values are approximate).$c$;
+  raise notice '%', $c$  [ ] Shelf life of 3-4 days is a guess: test it.$c$;
+  raise notice '%', $c$PEANUT BUTTER REESE'S:$c$;
+  raise notice '%', $c$  [ ] ROUGH PLACEHOLDER from the RD1 draft recipe, before the first test bake. Replace everything with final values after testing.$c$;
+  raise notice '%', $c$  [ ] Peanut allergen decision is still open: peanuts are now in the shared kitchen, so every other flavor lists 'Peanuts' under may contain.$c$;
+  raise notice '%', $c$  [ ] If you go with version B (PB center) or the mini cup topper, recalculate.$c$;
+  raise notice '%', $c$  [ ] Check the Skippy and Reese's Giant labels against the values used.$c$;
 end $todo$;

@@ -81,7 +81,7 @@ Hand-drawn die-cut sticker style, blue anchor. The nav is brand blue with cream 
 - `ingredients.cost_per_unit` = `pack_price / pack_size` (generated). Receiving stock with the amount paid updates the price. `price_confirmed=false` means a guessed price (shown as "est.").
 - Production plan: cookies ordered - frozen dough = to make; batches = ceil(to make / `recipes.yield`); shopping = batches x recipe + packaging per cookie - usable stock, rounded up to whole packs.
 - Costing counts ingredients + packaging only. All 3 menu recipes are filled in (migration 019, from `../context/recipes-current.md`). **Never invent recipe quantities or prices.**
-- **Launched (023, Oct 24):** all 4 drafts are now active on the menu as `nutella`, `biscoff`, `pb-reeses` (Specials, ₱135 + ₱30 in a box) and `banana-bread` (Classic, ₱110). Owner asked for them orderable before their content is written: description is a placeholder, ingredients/allergens/nutrition/photo are EMPTY until the owner fills them in (PB Reese's description says "Contains peanuts"). `COMING_SOON` in `js/config.js` is now empty, so that section is hidden.
+- **Launched (023, Oct 24):** all 4 drafts are now active on the menu as `nutella`, `biscoff`, `pb-reeses` (Specials, ₱135 + ₱30 in a box) and `banana-bread` (Classic, ₱110). Owner asked for them orderable before testing. On the owner's request their full content (descriptions, ingredients, allergens, nutrition) is a ROUGH PLACEHOLDER calculated from the RD1 draft recipes in `flavor-content.json` (each has a 'verify' list); the owner replaces it with final values after test bakes. No photos yet (emoji shows). Peanuts are now in the kitchen, so every flavor's may_contain and the global allergen note mention peanuts. `COMING_SOON` in `js/config.js` is now empty, so that section is hidden.
 - **Drafts (019):** untested flavors (Nutella, Biscoff, Peanut Butter Reese's; Banana Bread added in 021 at the ₱110 classic price, no surcharge) are `flavors` rows with `active = false` and a `draft-` slug, so their recipes and cost live on the Recipes page under "Drafts" without ever reaching the storefront (RLS shows customers active flavors only) or the Orders/Sales pages. To launch one: give it a real name, slug, single price and content, then set `active = true`.
 - **Manual orders (015):** `admin_create_order` adds Instagram/Messenger/walk-in orders with the same prices and per-flavor cap as the website (the admin can deliberately go over the cap). `orders.source` (website/instagram/messenger/walk_in/other) and `orders.payment_method` (gcash/bank/cash/other). Phone is optional for manual orders only. "Pays on the day" holds the slot until that Sunday 6pm.
 - **Packaging (015):** baking dough balls (`admin_use_dough`) also takes `per_cookie` packaging out of stock. The shopping list tops items up to their `reorder_level` and lists low items even if the week doesn't need them.
@@ -100,7 +100,7 @@ Only `public/` is deployed (`vercel.json` sets `outputDirectory: public`). Docs,
 
 ```
 public/                      <- what Vercel serves
-  index.html                 storefront / menu (split into Classics and Specials: a flavor with a box surcharge is a Special)
+  index.html                 storefront / menu (split into Classics and Specials: a flavor with a box surcharge is a Special; fetchMenu sorts Classics first, so the box builder lists them in that order too)
   box.html                   box builder
   checkout.html              customer details + submit
   confirmed.html             order confirmation + GCash instructions
@@ -117,7 +117,7 @@ public/                      <- what Vercel serves
   assets/                    flavors/*.jpg (compressed), gcash-qr.png, og-image.jpg
   assets/originals/          full-size flavor photos before compression, git-ignored (NOT deployed)
   robots.txt, sitemap.xml
-supabase/                    migrations 001-023, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql, tests_016.sql, tests_018.sql  (NOT deployed)
+supabase/                    migrations 001-024, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql, tests_016.sql, tests_018.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers
