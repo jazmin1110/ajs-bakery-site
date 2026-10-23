@@ -25,11 +25,7 @@ export const BADGE_TYPES = {
 // When a flavor's final details are ready: add it to flavor-content.json + the flavors table,
 // then delete its line here. Delete them all and the section hides itself.
 //   teaser = optional one-liner (leave "" until the owner writes it; never invent ingredients)
-export const COMING_SOON = [
-  { name: "Nutella",       emoji: "🌰", teaser: "" },
-  { name: "Biscoff",       emoji: "🍪", teaser: "" },
-  { name: "Peanut Butter", emoji: "🥜", teaser: "" },
-];
+export const COMING_SOON = [];   // empty = the "Coming soon" section is hidden (all 4 drafts went on the menu in migration 023)
 
 export const CONFIG = {
   brandName: "AJ's Bakery",
@@ -65,6 +61,11 @@ export const CONFIG = {
       image: "assets/flavors/bueno-mucho.jpg",
       description: "Half a Kinder Bueno hidden inside, with Kinder Maxi chocolate in the dough. Our biggest cookie.",
     },
+    // Launched in migration 023 with no photo yet: the emoji shows until a photo_url is set
+    "nutella":      { emoji: "🌰", description: "" },
+    "biscoff":      { emoji: "🍪", description: "" },
+    "pb-reeses":    { emoji: "🥜", description: "" },
+    "banana-bread": { emoji: "🍌", description: "" },
   },
 
   // Cache-busting numbers for the photos that aren't flavor photos (those use flavors.photo_version in
