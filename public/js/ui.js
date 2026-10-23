@@ -358,11 +358,13 @@ export function renderBoxes(container, noteEl, boxes, flavors) {
     })
     .join("");
 
-  // Mention any flavor that costs extra inside a box
-  noteEl.innerHTML = flavors
-    .filter((f) => f.surcharge > 0)
-    .map((f) => `${esc(f.name)} adds <strong>+${peso(f.surcharge)}</strong> per cookie.`)
-    .join(" ");
+  // Mention the flavors that cost extra inside a box. When every special adds the same amount, say it once
+  // ("Specials add +₱30 per cookie.") instead of repeating it for each flavor.
+  const extras = flavors.filter((f) => f.surcharge > 0);
+  const amounts = [...new Set(extras.map((f) => f.surcharge))];
+  noteEl.innerHTML = extras.length > 1 && amounts.length === 1
+    ? `Specials (${extras.map((f) => esc(f.name)).join(", ")}) add <strong>+${peso(amounts[0])}</strong> per cookie.`
+    : extras.map((f) => `${esc(f.name)} adds <strong>+${peso(f.surcharge)}</strong> per cookie.`).join(" ");
 }
 
 // Fill [data-config="key"], [data-cutoff] and [data-weekly-cap] from static config copy
