@@ -49,7 +49,7 @@ begin
   if o.status <> 'paid' or o.payment_method <> 'cash' or o.source <> 'walk_in' or o.phone is not null then
     raise exception 'FAIL (v): saved wrong (% % % %)', o.status, o.payment_method, o.source, o.phone;
   end if;
-  if r.total <> (285 + 2 * (select surcharge from public.flavors where slug = bu))
+  if r.total <> (300 + 2 * (select surcharge from public.flavors where slug = bu))
                + 2 * (select single_price from public.flavors where slug = s1) then
     raise exception 'FAIL (v): total % not priced by the DB', r.total;
   end if;
@@ -194,8 +194,8 @@ begin
   if (rep ->> 'total_orders')::int <> 2 then raise exception 'FAIL (x): unpaid order counted'; end if;
 
   select e into b from jsonb_array_elements(rep -> 'flavors') e where e ->> 'slug' = bu;
-  -- box of 3 = 285 + 2 x 30; each cookie 95 base, Bueno gets +30 -> 2 x 125 = 250
-  if (b ->> 'revenue')::numeric <> 2 * (95 + (select surcharge from public.flavors where slug = bu)) then
+  -- box of 3 = 300 + 2 x 30; each cookie 100 base, Bueno gets +30 -> 2 x 130 = 260
+  if (b ->> 'revenue')::numeric <> 2 * (100 + (select surcharge from public.flavors where slug = bu)) then
     raise exception 'FAIL (x): Bueno revenue % wrong', b ->> 'revenue';
   end if;
   if (rep ->> 'total_cookies')::int <> 17 then raise exception 'FAIL (x): total cookies %', rep ->> 'total_cookies'; end if;

@@ -31,10 +31,10 @@ update public.flavors set focus_x = 48, focus_y = 49 where slug = 'kinder-bueno'
 
 -- Flat box prices. The box of 4 is retired (kept, switched off: old orders point at it).
 insert into public.boxes (size, price, active, description) values
-  (3,  285,  true,  'A little treat, or a gift for one.'),
+  (3,  300,  true,  'A little treat, or a gift for one.'),
   (4,  380,  false, null),
-  (6,  570,  true,  'Share it (or don''t).'),
-  (12, 1080, true,  'The party box. Best for gifting a crowd.')
+  (6,  590,  true,  'Share it (or don''t).'),
+  (12, 1140, true,  'The party box. Best for gifting a crowd.')
 on conflict (size) do update
   set price = excluded.price, active = excluded.active, description = excluded.description;
 

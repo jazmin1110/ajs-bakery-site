@@ -23,11 +23,11 @@ Single source of truth for the numbers. The database is the enforcer and the sto
 
 | Thing | Value |
 |---|---|
-| Box of 3 | ₱285 (₱95 per cookie) |
-| Box of 6 | ₱570 (₱95 per cookie) |
-| Box of 12 | ₱1,080 (₱90 per cookie) |
+| Box of 3 | ₱300 (₱100 per cookie, migration 022) |
+| Box of 6 | ₱590 (~₱98 per cookie) |
+| Box of 12 | ₱1,140 (₱95 per cookie) |
 | Box of 4 | **Retired** (kept in the `boxes` table, switched off: old orders point at it) |
-| Bueno surcharge | +₱30 per Bueno Mucho cookie inside a box (so ₱125 each in a box) |
+| Bueno surcharge | +₱30 per special (Bueno Mucho) cookie inside a box (so ₱125-₱130 each in a box) |
 | **Single cookie: Chimp Chips** (brown butter choc chip) | **₱110** (classic tier, migration 020) |
 | **Single cookie: Coco Loco** (double chocolate) | **₱110** (classic tier) |
 | **Single cookie: Bueno Mucho** (Kinder Bueno) | **₱135** (special tier). Drafts are set to ₱135 + ₱30 box surcharge too (020) |
@@ -99,7 +99,7 @@ Only `public/` is deployed (`vercel.json` sets `outputDirectory: public`). Docs,
 
 ```
 public/                      <- what Vercel serves
-  index.html                 storefront / menu
+  index.html                 storefront / menu (split into Classics and Specials: a flavor with a box surcharge is a Special)
   box.html                   box builder
   checkout.html              customer details + submit
   confirmed.html             order confirmation + GCash instructions
@@ -116,7 +116,7 @@ public/                      <- what Vercel serves
   assets/                    flavors/*.jpg (compressed), gcash-qr.png, og-image.jpg
   assets/originals/          full-size flavor photos before compression, git-ignored (NOT deployed)
   robots.txt, sitemap.xml
-supabase/                    migrations 001-021, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql, tests_016.sql, tests_018.sql  (NOT deployed)
+supabase/                    migrations 001-022, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql, tests_016.sql, tests_018.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers
