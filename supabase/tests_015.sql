@@ -194,7 +194,7 @@ begin
   if (rep ->> 'total_orders')::int <> 2 then raise exception 'FAIL (x): unpaid order counted'; end if;
 
   select e into b from jsonb_array_elements(rep -> 'flavors') e where e ->> 'slug' = bu;
-  -- box of 3 = 300 + 2 x 30; each cookie 100 base, Bueno gets +30 -> 2 x 130 = 260
+  -- box of 3 = 300 + 2 x 25; each cookie 100 base, Bueno gets +25 -> 2 x 125 = 250
   if (b ->> 'revenue')::numeric <> 2 * (100 + (select surcharge from public.flavors where slug = bu)) then
     raise exception 'FAIL (x): Bueno revenue % wrong', b ->> 'revenue';
   end if;

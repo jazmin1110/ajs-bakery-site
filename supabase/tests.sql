@@ -66,7 +66,7 @@ rollback;
 -- ===========================================================================
 -- (b) A bad flavor sum is rejected (box of 3 with only 2 cookies). A valid
 -- two-box order works, and the DB computes the total itself:
---   box of 3 with 2 Bueno = 300 + 2*30 = 360, plus box of 6 = 590  ->  950
+--   box of 3 with 2 Bueno = 300 + 2*25 = 350, plus box of 6 = 590  ->  940
 -- ===========================================================================
 begin;
 do $$
@@ -86,7 +86,7 @@ begin
   select * into r from public.place_order('Test', '@test', '09171234567', 'pickup', null,
     '[{"size":3,"gift_note":"For Tita","items":[{"flavor_slug":"choc-chip","qty":1},{"flavor_slug":"kinder-bueno","qty":2}]},
       {"size":6,"items":[{"flavor_slug":"double-choc","qty":6}]}]'::jsonb);
-  assert r.total = 950, 'total should be 360 + 590 = 950, got ' || r.total;
+  assert r.total = 940, 'total should be 350 + 590 = 940, got ' || r.total;
   raise notice 'PASS (b): two-box order accepted, ref %, total %, Sunday %', r.ref_code, r.total, r.sunday_date;
   reset role;
 end $$;
@@ -379,11 +379,11 @@ begin
     raise notice 'PASS (g): 4 boxes rejected -> %', sqlerrm;
   end;
 
-  -- 3 boxes with the same flavor in each: allowed. 3 x (300 + 3*30) = 1170.
+  -- 3 boxes with the same flavor in each: allowed. 3 x (300 + 3*25) = 1125.
   select * into r from public.place_order('Dan', null, '09171234567', 'pickup', null,
     ('[' || replace(box3, '{"size":3', '{"size":3,"gift_note":"A"') || ',' ||
             replace(box3, '{"size":3', '{"size":3,"gift_note":"B"') || ',' || box3 || ']')::jsonb);
-  assert r.total = 1170, 'three bueno boxes should total 1170, got ' || r.total;
+  assert r.total = 1125, 'three bueno boxes should total 1125, got ' || r.total;
   reset role;
 
   assert (select count(*) from public.order_boxes ob join public.orders o on o.id = ob.order_id where o.ref_code = r.ref_code) = 3;
@@ -613,12 +613,12 @@ begin
   assert r.total = 220, 'two Chimp Chips should be 220, got ' || r.total;
   raise notice 'PASS (k): single-only order total = % (2 x 110)', r.total;
 
-  -- Mixed order: box of 3 (2 Chimp + 1 Bueno = 300 + 30 = 330) + singles (1 Coco 110 + 1 Bueno 135 = 245) = 575
+  -- Mixed order: box of 3 (2 Chimp + 1 Bueno = 300 + 25 = 325) + singles (1 Coco 110 + 1 Bueno 135 = 245) = 570
   select * into r from public.place_order('Sam', null, '09175550002', 'pickup', null,
     '[{"size":3,"items":[{"flavor_slug":"choc-chip","qty":2},{"flavor_slug":"kinder-bueno","qty":1}]}]'::jsonb, null,
     '[{"flavor_slug":"double-choc","qty":1},{"flavor_slug":"kinder-bueno","qty":1}]'::jsonb);
-  assert r.total = 575, 'box 330 + singles 245 should be 575, got ' || r.total;
-  raise notice 'PASS (k): box + singles total = % (330 + 245)', r.total;
+  assert r.total = 570, 'box 325 + singles 245 should be 570, got ' || r.total;
+  raise notice 'PASS (k): box + singles total = % (325 + 245)', r.total;
 
   -- Duplicate slugs are merged; 3 Coco Loco = 330
   select * into r from public.place_order('Sam', null, '09175550003', 'pickup', null, '[]'::jsonb, null,
@@ -878,15 +878,15 @@ begin
   select * into r from public.place_order('N', null, '09175551001', 'pickup', null,
     '[{"size":3,"items":[{"flavor_slug":"choc-chip","qty":3}]}]'::jsonb);
   assert r.total = 300, 'box of 3 should be 300, got ' || r.total;
-  -- Box of 3 with Bueno: 300 + 3 x 30 = 390
+  -- Box of 3 with Bueno: 300 + 3 x 25 = 375
   select * into r from public.place_order('N', null, '09175551002', 'pickup', null,
     '[{"size":3,"items":[{"flavor_slug":"kinder-bueno","qty":3}]}]'::jsonb);
-  assert r.total = 390, 'box of 3 of Bueno should be 390, got ' || r.total;
-  -- Box of 12 = 1140; with 4 Bueno: 1140 + 120 = 1260
+  assert r.total = 375, 'box of 3 of Bueno should be 375, got ' || r.total;
+  -- Box of 12 = 1140; with 4 Bueno: 1140 + 100 = 1240
   select * into r from public.place_order('N', null, '09175551003', 'pickup', null,
     '[{"size":12,"items":[{"flavor_slug":"choc-chip","qty":4},{"flavor_slug":"double-choc","qty":4},{"flavor_slug":"kinder-bueno","qty":4}]}]'::jsonb);
-  assert r.total = 1260, 'box of 12 with 4 Bueno should be 1260, got ' || r.total;
-  raise notice 'PASS (n): totals are 300 (box of 3), 390 (3 Bueno) and 1260 (box of 12 with 4 Bueno)';
+  assert r.total = 1240, 'box of 12 with 4 Bueno should be 1240, got ' || r.total;
+  raise notice 'PASS (n): totals are 300 (box of 3), 375 (3 Bueno) and 1240 (box of 12 with 4 Bueno)';
 
   -- A box of 12 needs exactly 12
   begin

@@ -27,10 +27,10 @@ Single source of truth for the numbers. The database is the enforcer and the sto
 | Box of 6 | ₱590 (~₱98 per cookie) |
 | Box of 12 | ₱1,140 (₱95 per cookie) |
 | Box of 4 | **Retired** (kept in the `boxes` table, switched off: old orders point at it) |
-| Bueno surcharge | +₱30 per special (Bueno Mucho) cookie inside a box (so ₱125-₱130 each in a box) |
+| Specials surcharge | +₱25 per special cookie inside a box (migration 025, was +₱30). Matches the ₱25 gap between ₱135 specials and ₱110 classics, so every box saves ₱30 / ₱70 / ₱180 vs singles whatever the mix |
 | **Single cookie: Chimp Chips** (brown butter choc chip) | **₱110** (classic tier, migration 020) |
 | **Single cookie: Coco Loco** (double chocolate) | **₱110** (classic tier) |
-| **Single cookie: Bueno Mucho** (Kinder Bueno) | **₱135** (special tier). Drafts are set to ₱135 + ₱30 box surcharge too (020) |
+| **Single cookie: Bueno Mucho** (Kinder Bueno) | **₱135** (special tier). All specials: ₱135 + ₱25 box surcharge |
 | **Minimum order** | **No minimum for pickup or delivery: 1 cookie is enough** (migration 017 removed the old delivery rule of 2 cookies OR ₱200). Singles and box cookies both count. Delivery is customer-booked and the fare is the same for 1 cookie or 12, so checkout shows a friendly "add a few more" line for delivery orders of `deliveryNudgeMaxCookies` (2) cookies or fewer. It never blocks |
 | **Cap** | **15 of each flavor per Sunday** (`flavors.weekly_cap`), not a total. Box cookies **and** singles both count toward their flavor's cap. When a flavor hits 15 it shows "Sold out"; the other flavors stay available. When ALL flavors are sold out, ordering moves to the next Sunday |
 | Order limits | Up to 3 boxes per order, plus any single cookies. An order can't take more of a flavor than is left (the error names the flavor and how many remain) |
@@ -81,7 +81,7 @@ Hand-drawn die-cut sticker style, blue anchor. The nav is brand blue with cream 
 - `ingredients.cost_per_unit` = `pack_price / pack_size` (generated). Receiving stock with the amount paid updates the price. `price_confirmed=false` means a guessed price (shown as "est.").
 - Production plan: cookies ordered - frozen dough = to make; batches = ceil(to make / `recipes.yield`); shopping = batches x recipe + packaging per cookie - usable stock, rounded up to whole packs.
 - Costing counts ingredients + packaging only. All 3 menu recipes are filled in (migration 019, from `../context/recipes-current.md`). **Never invent recipe quantities or prices.**
-- **Launched (023, Oct 24):** all 4 drafts are now active on the menu as `nutella`, `biscoff`, `pb-reeses` (Specials, ₱135 + ₱30 in a box) and `banana-bread` (Classic, ₱110). Owner asked for them orderable before testing. On the owner's request their full content (descriptions, ingredients, allergens, nutrition) is a ROUGH PLACEHOLDER calculated from the RD1 draft recipes in `flavor-content.json` (each has a 'verify' list); the owner replaces it with final values after test bakes. No photos yet (emoji shows). Peanuts are now in the kitchen, so every flavor's may_contain and the global allergen note mention peanuts. `COMING_SOON` in `js/config.js` is now empty, so that section is hidden.
+- **Launched (023, Oct 24):** all 4 drafts are now active on the menu as `nutella`, `biscoff`, `pb-reeses` (Specials, ₱135 + ₱25 in a box since 025) and `banana-bread` (Classic, ₱110). Owner asked for them orderable before testing. On the owner's request their full content (descriptions, ingredients, allergens, nutrition) is a ROUGH PLACEHOLDER calculated from the RD1 draft recipes in `flavor-content.json` (each has a 'verify' list); the owner replaces it with final values after test bakes. No photos yet (emoji shows). Peanuts are now in the kitchen, so every flavor's may_contain and the global allergen note mention peanuts. `COMING_SOON` in `js/config.js` is now empty, so that section is hidden.
 - **Drafts (019):** untested flavors (Nutella, Biscoff, Peanut Butter Reese's; Banana Bread added in 021 at the ₱110 classic price, no surcharge) are `flavors` rows with `active = false` and a `draft-` slug, so their recipes and cost live on the Recipes page under "Drafts" without ever reaching the storefront (RLS shows customers active flavors only) or the Orders/Sales pages. To launch one: give it a real name, slug, single price and content, then set `active = true`.
 - **Manual orders (015):** `admin_create_order` adds Instagram/Messenger/walk-in orders with the same prices and per-flavor cap as the website (the admin can deliberately go over the cap). `orders.source` (website/instagram/messenger/walk_in/other) and `orders.payment_method` (gcash/bank/cash/other). Phone is optional for manual orders only. "Pays on the day" holds the slot until that Sunday 6pm.
 - **Packaging (015):** baking dough balls (`admin_use_dough`) also takes `per_cookie` packaging out of stock. The shopping list tops items up to their `reorder_level` and lists low items even if the week doesn't need them.
@@ -117,7 +117,7 @@ public/                      <- what Vercel serves
   assets/                    flavors/*.jpg (compressed), gcash-qr.png, og-image.jpg
   assets/originals/          full-size flavor photos before compression, git-ignored (NOT deployed)
   robots.txt, sitemap.xml
-supabase/                    migrations 001-024, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql, tests_016.sql, tests_018.sql  (NOT deployed)
+supabase/                    migrations 001-025, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql, tests_016.sql, tests_018.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers
