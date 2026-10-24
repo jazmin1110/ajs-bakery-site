@@ -24,7 +24,7 @@ Steps 0-7 keep the original prompts so you can see how it was built. **Where a n
 ## Current rules (these override older numbers further down)
 
 - Flavors: Chimp Chips (brown butter choc chip), Coco Loco (double chocolate), Bueno Mucho (Kinder Bueno).
-- Boxes: 3 = ₱300, 6 = ₱590, 12 = ₱1,140 (Oct 24). The box of 4 is retired. Bueno Mucho adds +₱30 per cookie inside a box.
+- Boxes: 3 = ₱300, 6 = ₱590, 12 = ₱1,140 (Oct 24). The box of 4 is retired. Specials add +₱25 per cookie inside a box (Oct 25).
 - Singles: Chimp Chips ₱105, Coco Loco ₱110, Bueno Mucho ₱135.
 - Minimum: 1 cookie, for pickup or delivery (migration 017 removed the old delivery minimum of 2 cookies or ₱200).
 - Cap: 15 of each flavor per Sunday (boxes and singles both count). Sold-out flavors show "Sold out"; when all three are out, ordering moves to the next Sunday. (The original plan was 45 cookies total.)
