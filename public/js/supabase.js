@@ -42,7 +42,9 @@ export async function fetchMenu() {
   const [flavorsRes, boxesRes] = await Promise.all([
     sb.from("flavors")
       .select("id, slug, name, surcharge, single_price, short_description, long_description, taste_notes, ingredients, contains, may_contain, weight_label, shelf_life, storage_tip, nutrition, photo_url, focus_x, focus_y, photo_version, nutrition_version")
-      .eq("active", true).order("id"),
+      // hidden = false too: RLS already hides them from customers, but a logged-in admin can read
+      // every flavor, and this page shares the admin's login in the same browser (026)
+      .eq("active", true).eq("hidden", false).order("id"),
     sb.from("boxes").select("id, size, price, description").eq("active", true).order("size"),
   ]);
   if (flavorsRes.error) throw flavorsRes.error;
