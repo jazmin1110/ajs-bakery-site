@@ -115,6 +115,7 @@ const NAV_PAGES = [
   // In the order you use them in a week: orders in, plan + bake, stock, recipes. Sales = best sellers and the numbers per Sunday.
   { page: "orders",     label: "Orders",     sunday: true },
   { page: "production", label: "Bake plan",  sunday: true },
+  { page: "menu",       label: "Menu",       sunday: false },  // hide a flavor / mark it sold out (026)
   { page: "inventory",  label: "Stock",      sunday: false },
   { page: "recipes",    label: "Recipes",    sunday: false },
   { page: "totals",     label: "Sales",      sunday: true },   // best sellers + one Sunday's totals

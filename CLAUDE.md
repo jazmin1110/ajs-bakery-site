@@ -82,6 +82,7 @@ Hand-drawn die-cut sticker style, blue anchor. The nav is brand blue with cream 
 - Production plan: cookies ordered - frozen dough = to make; batches = ceil(to make / `recipes.yield`); shopping = batches x recipe + packaging per cookie - usable stock, rounded up to whole packs.
 - Costing counts ingredients + packaging only. All 3 menu recipes are filled in (migration 019, from `../context/recipes-current.md`). **Never invent recipe quantities or prices.**
 - **Launched (023, Oct 24):** all 4 drafts are now active on the menu as `nutella`, `biscoff`, `pb-reeses` (Specials, ₱135 + ₱25 in a box since 025) and `banana-bread` (Classic, ₱110). Owner asked for them orderable before testing. On the owner's request their full content (descriptions, ingredients, allergens, nutrition) is a ROUGH PLACEHOLDER calculated from the RD1 draft recipes in `flavor-content.json` (each has a 'verify' list); the owner replaces it with final values after test bakes. No photos yet (emoji shows). Peanuts are now in the kitchen, so every flavor's may_contain and the global allergen note mention peanuts. `COMING_SOON` in `js/config.js` is now empty, so that section is hidden.
+- **Hide / sold out (026):** the admin **Menu** page has two switches per menu flavor, saved by `admin_set_flavor_menu(slug, hidden, sold_out)`. `flavors.sold_out` = still shown, but "Sold out" and can't be ordered (e.g. no ingredients this week). `flavors.hidden` = off the storefront completely (RLS shows visitors `active and not hidden`; `flavor_availability()` skips it). Both work by making `flavor_reserved()` report 0 remaining, so `place_order` refuses them and they don't count as "cookies left" when picking the Sunday; the admin Add order form warns and can still go over. Different from `active = false` (drafts/retired): recipes, costs and sales stay put. Switches stay on until switched back.
 - **Drafts (019):** untested flavors (Nutella, Biscoff, Peanut Butter Reese's; Banana Bread added in 021 at the ₱110 classic price, no surcharge) are `flavors` rows with `active = false` and a `draft-` slug, so their recipes and cost live on the Recipes page under "Drafts" without ever reaching the storefront (RLS shows customers active flavors only) or the Orders/Sales pages. To launch one: give it a real name, slug, single price and content, then set `active = true`.
 - **Manual orders (015):** `admin_create_order` adds Instagram/Messenger/walk-in orders with the same prices and per-flavor cap as the website (the admin can deliberately go over the cap). `orders.source` (website/instagram/messenger/walk_in/other) and `orders.payment_method` (gcash/bank/cash/other). Phone is optional for manual orders only. "Pays on the day" holds the slot until that Sunday 6pm.
 - **Packaging (015):** baking dough balls (`admin_use_dough`) also takes `per_cookie` packaging out of stock. The shopping list tops items up to their `reorder_level` and lists low items even if the week doesn't need them.
@@ -105,7 +106,7 @@ public/                      <- what Vercel serves
   checkout.html              customer details + submit
   confirmed.html             order confirmation + GCash instructions
   404.html                   not-found page
-  admin/                     login, orders (+ add order), production ("Bake plan"), inventory ("Stock"), recipes, totals ("Sales": best sellers) (auth required, noindex)
+  admin/                     login, orders (+ add order), production ("Bake plan"), menu (hide / sold out), inventory ("Stock"), recipes, totals ("Sales": best sellers) (auth required, noindex)
   css/styles.css             all styles
   js/config.js               Supabase URL + anon key, display copy (flavor text, pickup area, Instagram)
   js/supabase.js             Supabase client (anon key only) + database calls, 10s timeout
@@ -117,7 +118,7 @@ public/                      <- what Vercel serves
   assets/                    flavors/*.jpg (compressed), gcash-qr.png, og-image.jpg
   assets/originals/          full-size flavor photos before compression, git-ignored (NOT deployed)
   robots.txt, sitemap.xml
-supabase/                    migrations 001-025, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql, tests_016.sql, tests_018.sql  (NOT deployed)
+supabase/                    migrations 001-026, seed.sql, seed_ops.sql, tests.sql, tests_ops.sql, tests_015.sql, tests_016.sql, tests_018.sql  (NOT deployed)
 docs/                        planning docs                            (NOT deployed)
 source-images/               full-size original photos, git-ignored   (NOT deployed)
 vercel.json                  output folder + security headers

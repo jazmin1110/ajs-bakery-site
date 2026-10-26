@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Menu | AJ's Bakery admin</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32.png?v=3">
+  <link rel="icon" type="image/png" sizes="64x64" href="../assets/icons/favicon-64.png?v=3">
+  <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png?v=3">
+  <link rel="manifest" href="../site.webmanifest?v=3">
+  <link rel="preload" href="../assets/fonts/baloo-2-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../assets/fonts/nunito-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <meta name="theme-color" content="#2B4C93">
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="admin">
+
+  <header class="site-header no-print">
+    <div class="container admin-head">
+      <a class="logo-link" href="/"><img src="../assets/stickers/logo-badge-new-96.webp" srcset="../assets/stickers/logo-badge-new-96.webp 96w, ../assets/stickers/logo-badge-new-192.webp 192w" sizes="56px" alt="" width="56" height="56"><span>AJ's Admin</span></a>
+      <nav class="admin-nav" id="admin-nav" aria-label="Admin"></nav>
+    </div>
+  </header>
+
+  <main class="container admin-main">
+    <h1 style="margin:0 0 .3rem;font-size:1.6rem">Menu this week</h1>
+    <p class="t-sub" style="margin:0 0 .8rem">
+      <strong>Sold out</strong> = stays on the menu but can't be ordered (good for "not this week").
+      <strong>Hide</strong> = taken off the site completely. Changes show on the site straight away.
+    </p>
+
+    <div class="form-error" id="message" role="alert" hidden></div>
+    <div class="ops-ok ops-flash" id="flash" role="status" hidden></div>
+    <div id="out"><p class="loading">Loading flavors...</p></div>
+  </main>
+
+  <script type="module">
+    // MENU SWITCHES. Two per flavor: sold_out and hidden (migration 026).
+    // Writes go through admin_set_flavor_menu(), which checks is_admin(). The database
+    // then refuses orders for these flavors, so the storefront can't get around it.
+    import { requireAdmin, renderNav, select, rpc } from "../js/admin.js";
+    import { esc } from "../js/ui.js";
+
+    await requireAdmin();
+    renderNav("menu");
+
+    const $ = (id) => document.getElementById(id);
+    let flavors = [];
+
+    function showMessage(text) {
+      $("message").textContent = text || ""; $("message").hidden = !text;
+    }
+    function flash(text) {
+      $("flash").textContent = text; $("flash").hidden = false;
+      clearTimeout(flash.t); flash.t = setTimeout(() => { $("flash").hidden = true; }, 2000);
+    }
+
+    async function load() {
+      try {
+        // Menu flavors only (drafts have active = false and live on the Recipes page)
+        flavors = await select("flavors", "slug, name, surcharge, hidden, sold_out", (q) => q.eq("active", true).order("id"));
+        render();
+      } catch (err) {
+        console.error(err);
+        $("out").innerHTML = "";
+        showMessage(err.isNetwork ? "Couldn't reach the server. Check your connection and refresh." : `Couldn't load flavors: ${err.message}`);
+      }
+    }
+
+    // What customers see right now, as a tag
+    function statusTag(f) {
+      if (f.hidden) return `<span class="tag tag-info">hidden</span>`;
+      if (f.sold_out) return `<span class="tag tag-low">sold out</span>`;
+      return `<span class="tag tag-ok">on sale</span>`;
+    }
+
+    function card(f) {
+      return `<article class="t-card" data-slug="${esc(f.slug)}"${f.hidden ? ' style="opacity:.7"' : ""}>
+        <h2>${esc(f.name)} ${statusTag(f)}</h2>
+        <p class="t-sub" style="margin:0 0 .5rem">${Number(f.surcharge) > 0 ? "Special" : "Classic"}</p>
+        <label class="choice"><input type="checkbox" data-switch="sold_out"${f.sold_out ? " checked" : ""}><span>Sold out (still shows, can't order)</span></label>
+        <label class="choice"><input type="checkbox" data-switch="hidden"${f.hidden ? " checked" : ""}><span>Hide from the site</span></label>
+      </article>`;
+    }
+
+    function render() {
+      const onSale = flavors.filter((f) => !f.hidden && !f.sold_out).length;
+      $("out").innerHTML = `<p class="t-sub" style="margin:0 0 .8rem">${onSale} of ${flavors.length} flavors can be ordered.</p>`
+        + (flavors.map(card).join("") || `<p class="t-sub">No flavors on the menu.</p>`);
+    }
+
+    // Flip a switch: save it, then reload so the tags show what's really saved
+    $("out").addEventListener("change", async (e) => {
+      const box = e.target.closest("[data-switch]"); if (!box) return;
+      const slug = box.closest("[data-slug]").dataset.slug;
+      const args = { p_slug: slug };
+      args[box.dataset.switch === "hidden" ? "p_hidden" : "p_sold_out"] = box.checked;
+      showMessage("");
+      box.disabled = true;
+      try {
+        await rpc("admin_set_flavor_menu", args);
+        flash("Saved");
+      } catch (err) {
+        console.error(err);
+        showMessage(err.isNetwork ? "Couldn't reach the server. Nothing was changed." : err.message);
+      }
+      await load();
+    });
+
+    load();
+  </script>
+</body>
+</html>
