@@ -89,6 +89,8 @@ export function initFlavorSheet({ flavors, getRemaining, getLimit, settings = {}
   const panel = root.querySelector(".sheet");
   const content = root.querySelector("[data-sheet-content]");
   const actions = root.querySelector("[data-sheet-actions]");
+  const overlay = root.querySelector(".sheet-overlay");
+  const scroller = root.querySelector(".sheet-scroll");
 
   let current = null;        // the flavor being shown
   let qty = 1;               // the stepper's number
@@ -152,6 +154,7 @@ export function initFlavorSheet({ flavors, getRemaining, getLimit, settings = {}
     current = flavor; qty = 1;
     opener = document.activeElement;
     paintStatic(); refresh();
+    panel.style.transform = ""; overlay.style.opacity = "";   // clear what a swipe-to-close left behind
     root.hidden = false;
     void root.offsetWidth;                                // force a layout so the slide-up animation plays
     root.classList.add("open");
@@ -172,7 +175,7 @@ export function initFlavorSheet({ flavors, getRemaining, getLimit, settings = {}
     document.body.classList.remove("sheet-open");
     inerted.forEach((el) => el.removeAttribute("inert"));
     inerted = [];
-    setTimeout(() => { if (!current) root.hidden = true; }, 260);   // after the slide-down (unless it was reopened meanwhile)
+    setTimeout(() => { if (!current) root.hidden = true; }, 320);   // after the slide-down (unless it was reopened meanwhile)
     current = null; pushed = false;
     if (opener && opener.focus) opener.focus();
   }
@@ -220,6 +223,53 @@ export function initFlavorSheet({ flavors, getRemaining, getLimit, settings = {}
       setTimeout(() => { delete addBtn.dataset.busy; refresh(); }, 1600);
     }
   });
+
+  // ---- swipe down to close -----------------------------------------------------------------------
+  // The sheet follows the finger when the content is scrolled to the top (otherwise the swipe just scrolls).
+  // On release it closes if it was pulled far enough, or flicked: speed is projected forward to where it would land.
+  let startY = 0, lastY = 0, lastT = 0, speed = 0, canDrag = false, dragging = false;
+  const DEAD_ZONE = 10;                                   // px of movement before we decide it's a drag
+
+  panel.addEventListener("touchstart", (e) => {
+    canDrag = e.touches.length === 1 && scroller.scrollTop <= 0 && !e.target.closest(".sheet-actions");
+    dragging = false;
+    startY = lastY = e.touches[0].clientY;
+    lastT = e.timeStamp; speed = 0;
+  }, { passive: true });
+
+  panel.addEventListener("touchmove", (e) => {
+    if (!canDrag) return;
+    const y = e.touches[0].clientY, moved = y - startY;
+    if (!dragging) {
+      if (moved < -DEAD_ZONE) canDrag = false;            // swiping up = normal scrolling
+      if (moved < DEAD_ZONE) return;
+      dragging = true;
+      panel.style.transition = overlay.style.transition = "none";   // stay glued to the finger
+    }
+    e.preventDefault();                                   // this swipe moves the sheet, not the content
+    speed = (y - lastY) / Math.max(e.timeStamp - lastT, 1);   // px per millisecond
+    lastY = y; lastT = e.timeStamp;
+    const pulled = Math.max(moved - DEAD_ZONE, 0);
+    panel.style.transform = `translateY(${pulled}px)`;
+    overlay.style.opacity = String(1 - Math.min(pulled / panel.offsetHeight, 1));
+  }, { passive: false });
+
+  function endDrag(cancelled) {
+    if (!dragging) return;
+    dragging = false;
+    panel.style.transition = overlay.style.transition = "";
+    const pulled = Math.max(lastY - startY - DEAD_ZONE, 0);
+    const landsAt = pulled + speed * 99;                  // where a flick would come to rest
+    if (!cancelled && landsAt > panel.offsetHeight * 0.4) {
+      panel.style.transform = "translateY(105%)";         // finish the slide from where the finger left it
+      overlay.style.opacity = "0";
+      close();
+    } else {
+      panel.style.transform = ""; overlay.style.opacity = "";   // not far enough: slide back
+    }
+  }
+  panel.addEventListener("touchend", () => endDrag(false));
+  panel.addEventListener("touchcancel", () => endDrag(true));
 
   document.addEventListener("keydown", (e) => {
     if (!current) return;
