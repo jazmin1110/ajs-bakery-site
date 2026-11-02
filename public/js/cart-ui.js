@@ -140,7 +140,7 @@ function boxesSection(boxes) {
         ${b.giftNote ? `<p class="cart-box-note">🎁 ${esc(b.giftNote)}</p>` : ""}
         <button type="button" class="link-btn" data-remove-box="${esc(b.id)}">Remove</button>
       </article>`).join("")}
-      <div class="subtotal"><span>Boxes subtotal</span><span>${peso(cart.boxesTotal())}</span></div>
+      ${cart.getBoxes().length && cart.getSingles().length ? `<div class="subtotal"><span>Boxes subtotal</span><span>${peso(cart.boxesTotal())}</span></div>` : ""}
     </section>`;
 }
 
@@ -169,7 +169,7 @@ function singlesSection(singles) {
           </div>
         </div>
       </article>`).join("")}
-      <div class="subtotal"><span>Singles subtotal</span><span>${peso(cart.singlesTotal())}</span></div>
+      ${cart.getBoxes().length && cart.getSingles().length ? `<div class="subtotal"><span>Singles subtotal</span><span>${peso(cart.singlesTotal())}</span></div>` : ""}
     </section>`;
 }
 

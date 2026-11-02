@@ -2,6 +2,9 @@
 // Prices passed in here come from the database and are shown for display only.
 import { CONFIG, FLAVOR_BADGES, BADGE_TYPES, COMING_SOON } from "./config.js";
 
+// iPhones only show a button's pressed (:active) look if the page listens for touches
+document.addEventListener("touchstart", () => {}, { passive: true });
+
 // 95 -> "₱95"
 export function peso(amount) {
   return "₱" + amount.toLocaleString("en-PH");

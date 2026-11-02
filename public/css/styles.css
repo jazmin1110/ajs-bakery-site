@@ -60,6 +60,9 @@
 
   --gutter: 16px;
 
+  /* Motion: starts fast, settles gently, like something with weight. Used by the drawer and the sheet. */
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+
   /* Room at the bottom of every page: the iPhone home-indicator area PLUS extra, so Safari's
      floating toolbar never covers the last bit of content. */
   --bottom-room: calc(env(safe-area-inset-bottom) + 4.5rem);
@@ -157,7 +160,6 @@ section { padding: 2rem 0; }
   box-shadow: var(--shadow);
   transition: transform 0.15s;
 }
-.cart-btn:hover { background: var(--blue-dark); transform: rotate(-6deg); }
 .cart-btn svg { width: 24px; height: 24px; }
 .cart-count {
   position: absolute;
@@ -505,9 +507,9 @@ body.has-cart-bar { padding-bottom: calc(var(--bar-h, 4.5rem) + 1rem); }  /* --b
   box-shadow: var(--shadow-lg);
   transform: translateX(105%);
   visibility: hidden;               /* hidden = not focusable while closed */
-  transition: transform 0.25s, visibility 0s 0.25s;
+  transition: transform 0.3s var(--ease-sheet), visibility 0s 0.3s;
 }
-.drawer.open { transform: none; visibility: visible; transition: transform 0.25s; }
+.drawer.open { transform: none; visibility: visible; transition: transform 0.3s var(--ease-sheet); }
 
 .drawer-head { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0.7rem 1.1rem 0.3rem; }
 .drawer-head h2 { margin: 0; }
@@ -531,7 +533,6 @@ body.has-cart-bar { padding-bottom: calc(var(--bar-h, 4.5rem) + 1rem); }  /* --b
 .drawer-total { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--font-display); font-size: 1.2rem; line-height: 1.2; }
 .drawer-add-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
 .drawer-add-btn { display: flex; align-items: center; justify-content: center; min-height: 44px; border: 2px solid var(--blue); border-radius: 999px; color: var(--blue-dark); font: 700 0.95rem var(--font-body); text-decoration: none; text-align: center; }
-.drawer-add-btn:hover { background: var(--blue-soft); }
 .drawer-limit { margin: 0; align-self: center; text-align: center; font-size: 0.85rem; line-height: 1.2; color: var(--ink-soft); }   /* the one-line max note sits where "+ Box" would be */
 .drawer-small { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
 .drawer-small .link-btn { flex: none; padding: 0 0.3rem; }
@@ -711,7 +712,7 @@ body.sheet-open { overflow: hidden; }
   background: var(--cream);
   border-top-left-radius: var(--r-md); border-top-right-radius: var(--r-md);
   box-shadow: 0 -8px 28px rgba(58, 46, 42, 0.3);
-  transform: translateY(105%); transition: transform 0.28s;
+  transform: translateY(105%); transition: transform 0.3s var(--ease-sheet);
   outline: none;
 }
 .sheet-root.open .sheet { transform: none; }
@@ -1074,7 +1075,7 @@ body.has-cart-bar .site-footer { padding-bottom: calc(1.2rem + var(--bar-h, 4.5r
 .logo-link img { box-shadow: 0 0 0 2px var(--cream); }          /* a thin cream ring, like a die-cut sticker edge */
 /* The cart button is transparent, so it is the nav's own blue (before, it was a darker --blue-dark disc on the --blue bar: two near-identical blues clashing). */
 .cart-btn { background: transparent; color: var(--cream); box-shadow: none; }
-.cart-btn:hover, .cart-btn:focus-visible { background: var(--blue-dark); color: var(--cream); }
+.cart-btn:focus-visible { background: var(--blue-dark); color: var(--cream); }
 .cart-count { background: var(--cream); color: var(--blue); box-shadow: 0 0 0 2px var(--blue); }
 .site-header :focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }   /* the default dark outline would vanish on blue */
 /* admin pages share the header */
@@ -1384,3 +1385,77 @@ body.admin .t-table td { white-space: nowrap; }
 .ao-total-line { font-size: 1.15rem; margin: 0 0 0.2rem; }
 .ao-total .o-small { margin: 0 0 0.6rem; }
 .unit-now { display: flex; align-items: center; gap: 0.7rem; min-height: 44px; margin: 0; }   /* Stock > Edit: the unit + its Change link */
+
+/* ==========================================================================================
+   Design review fixes
+   ========================================================================================== */
+
+/* ---- Hover effects only on devices with a real mouse (on a phone they stick after a tap) ---- */
+@media (hover: hover) {
+  .cart-btn:hover { background: var(--blue-dark); color: var(--cream); transform: rotate(-6deg); }
+  .drawer-add-btn:hover { background: var(--blue-soft); }
+}
+
+/* ---- Pressed look: a small squeeze the moment a finger lands ---- */
+.chip, .drawer-add-btn, .back-link-sm, .cart-btn { transition: transform 0.1s ease-out; }
+.chip:active, .drawer-add-btn:active, .back-link-sm:active, .cart-btn:active { transform: scale(0.96); }
+.link-btn:active, .nutri-link:active, .card-open:active { opacity: 0.6; }
+
+/* ---- Large headings: letters read too far apart as they grow, so pull them in slightly ---- */
+h1 { letter-spacing: -0.01em; }
+.hero h1 { letter-spacing: -0.015em; }
+
+/* ---- The gift note is an add, not a delete: blue, not the red used for Remove ---- */
+.link-btn.gift-toggle { color: var(--blue-dark); }
+
+/* ---- Cart and checkout: the Total is the loudest price ---- */
+.cart-box-head .price { font-size: 1.05rem; }
+.drawer-total span:first-child { font-weight: 700; }
+
+/* ---- Same flat paper look as the menu (these still had the older shadow and thick border) ---- */
+.flavor-row, .summary { background: var(--paper); border: 1px solid var(--line); box-shadow: none; }
+
+/* ---- Bottom bars line up with the page content on wide screens ---- */
+.cart-bar, .builder-bar { padding-left: max(var(--gutter), calc((100% - 960px) / 2 + var(--gutter))); padding-right: max(var(--gutter), calc((100% - 960px) / 2 + var(--gutter))); }
+
+/* ---- Sheet: a small handle says it can be pulled down ---- */
+.sheet::before { content: ""; position: absolute; top: 7px; left: 50%; z-index: 2; width: 36px; height: 5px; margin-left: -18px; border-radius: 999px; background: var(--cream-dark); }
+
+/* ---- Menu on tablet and up: small groups share a row, so Classics + Specials leave no empty gaps.
+   Widths keep every card the same size as in a 3-column row. ---- */
+@media (min-width: 700px) {
+  .menu-groups { display: flex; flex-wrap: wrap; gap: 1.5rem 1.25rem; }
+  .menu-group { display: flex; flex-direction: column; width: 100%; }
+  .menu-group + .menu-group { margin-top: 0; }
+  .menu-group .menu-list { flex: 1; }
+  .menu-group:has(.flavor-item:first-child:nth-last-child(2)) { width: calc((100% - 2.5rem) * 2 / 3 + 1.25rem); }
+  .menu-group:has(.flavor-item:first-child:nth-last-child(2)) .menu-list { grid-template-columns: repeat(2, 1fr); }
+  .menu-group:has(.flavor-item:first-child:last-child) { width: calc((100% - 2.5rem) / 3); }
+  .menu-group:has(.flavor-item:first-child:last-child) .menu-list { grid-template-columns: 1fr; }
+}
+
+/* ---- Admin: a 44px tap area on order links. Padding on an inline link grows what you can tap without moving the text. ---- */
+body.admin .o-who a { padding: 12px 0; }
+body.admin .o-main + .o-meta { margin-top: 0.6rem; }   /* breathing room under the button on Check payment cards */
+
+/* ---- Admin: keep each "left to sell" name with its number ---- */
+.o-left span { white-space: nowrap; }
+
+/* ---- Admin laptop: logo, tabs and Log out share one row, so the whole header can stay ---- */
+@media (min-width: 1000px) {
+  body.admin .site-header { top: 0; }
+  body.admin .admin-head { flex-wrap: nowrap; }
+  body.admin .admin-nav { order: 2; flex: 1; width: auto; margin-left: 0.75rem; }
+  body.admin .admin-logout { order: 3; margin-left: 0; }
+}
+
+/* ---- Recipes on phones: name on its own line, then amount, cost and remove, so nothing is cut off ---- */
+@media (max-width: 520px) {
+  body.admin .ops-scroll .t-table th:first-child { min-width: 0; }
+  .t-stack thead { display: none; }
+  .t-stack, .t-stack tbody { display: block; }
+  .t-stack tr { display: grid; grid-template-columns: 1fr auto auto; align-items: center; column-gap: 0.5rem; padding: 0.4rem 0; border-bottom: 1px solid var(--cream-dark); }
+  .t-stack th, .t-stack td { border: 0; padding: 0.15rem 0.3rem; }
+  .t-stack th { grid-column: 1 / -1; }
+  .t-stack td:nth-of-type(1) { text-align: left; }
+}

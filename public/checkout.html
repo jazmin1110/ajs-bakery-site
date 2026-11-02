@@ -185,7 +185,7 @@
             ${b.giftNote ? `<p class="cart-box-note">🎁 ${esc(b.giftNote)}</p>` : ""}
 
           </div>`).join("")}
-        <div class="subtotal"><span>Boxes subtotal</span><span>${peso(cart.boxesTotal())}</span></div>` : "";
+        ${cart.getBoxes().length && cart.getSingles().length ? `<div class="subtotal"><span>Boxes subtotal</span><span>${peso(cart.boxesTotal())}</span></div>` : ""}` : "";
 
       const singlesHtml = singles.length ? `
         <h3 class="cart-section-title">Single cookies</h3>
@@ -197,7 +197,7 @@
             </div>
             ${s.qty > 1 ? `<p class="cart-box-items">${s.qty} × ${peso(s.unitPrice)}</p>` : ""}
           </div>`).join("")}
-        <div class="subtotal"><span>Singles subtotal</span><span>${peso(cart.singlesTotal())}</span></div>` : "";
+        ${cart.getBoxes().length && cart.getSingles().length ? `<div class="subtotal"><span>Singles subtotal</span><span>${peso(cart.singlesTotal())}</span></div>` : ""}` : "";
 
       summary.innerHTML = `
         ${sundayNotice ? `<p class="hint-save" role="status">📅 ${sundayNotice}</p>` : ""}
