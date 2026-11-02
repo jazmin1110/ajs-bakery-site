@@ -1124,6 +1124,10 @@ html.drawer-open, body.drawer-open { overflow: hidden; overscroll-behavior: none
 /* Same look as the rest of the admin: cream cards, blue buttons. Only new pieces live here. */
 .admin-nav { flex-wrap: nowrap; overflow-x: auto; width: 100%; gap: 0.2rem; scrollbar-width: none; }  /* one row; swipe sideways if it doesn't fit */
 .admin-nav::-webkit-scrollbar { display: none; }
+/* A soft fade on whichever side has more tabs to swipe to (admin.js sets these two classes) */
+.admin-nav.more-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+.admin-nav.more-left { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent); }
+.admin-nav.more-left.more-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); }
 .admin-nav a { flex: none; padding: 0.55rem 0.45rem; font-size: 0.97rem; }
 .admin-head { display: flex; align-items: center; }
 .admin-logout { margin-left: auto; color: var(--cream) !important; font-weight: 600; font-size: 0.9rem; }
@@ -1284,6 +1288,14 @@ html.drawer-open, body.drawer-open { overflow: hidden; overscroll-behavior: none
 body.admin { background: #FBF7F0; }                                   /* near-white paper, calmer than the storefront cream */
 body.admin .logo-link img { width: 40px; height: 40px; box-shadow: none; }
 body.admin .logo-link { min-height: 44px; }
+/* Scrolling: the logo row slides away and only the tabs stay stuck. -64px = the logo row (8px padding + 44px + 12px gap). */
+body.admin .site-header { top: -64px; }
+body.admin .ops-flash { top: 3.9rem; }   /* "Saved" messages stick just under the tabs, not behind them */
+/* Narrow phones: tighter tabs, so all six fit from about 375px up */
+@media (max-width: 420px) {
+  body.admin .admin-nav { gap: 0; justify-content: space-between; }
+  body.admin .admin-nav a { padding-left: 0.3rem; padding-right: 0.3rem; font-size: 0.9rem; }
+}
 
 /* Flat buttons: no 3D drop edge, no press-down jump */
 body.admin .btn, body.admin .btn:active { box-shadow: none; transform: none; }
@@ -1313,7 +1325,7 @@ body.admin .o-main { margin-top: 0.55rem; }
 
 /* Status pills: one color per meaning (see the key above) */
 body.admin .badge { border-width: 1px; font-weight: 700; font-size: 0.78rem; }
-body.admin .st-check   { background: #D99A20; border: 1px solid #D99A20; color: #fff; }
+body.admin .st-check   { background: #D99A20; border: 1px solid #D99A20; color: #3B2412; }   /* dark on amber: 6:1 (white was only 2.4:1) */
 body.admin .st-kitchen { background: var(--blue-soft); border: 1px solid var(--blue); color: var(--blue-dark); }
 body.admin .st-done    { background: #E3F4E6; border: 1px solid #3E9A50; color: #1F5F2A; }
 body.admin .st-wait    { background: #F2EEE7; border: 1px solid #CFC5B4; color: var(--ink); }

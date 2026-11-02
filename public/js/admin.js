@@ -132,6 +132,20 @@ export function renderNav(active) {
   }
   document.getElementById("logout-btn").addEventListener("click", signOut);
   syncNav();
+
+  // On a narrow phone not every tab fits: bring the current one into view and fade the side with more tabs
+  const current = nav.querySelector('[aria-current="page"]');
+  if (current) {
+    const box = nav.getBoundingClientRect(), tab = current.getBoundingClientRect();
+    nav.scrollLeft += tab.left - box.left - (box.width - tab.width) / 2;   // centre the tab (changes this row only, not the page)
+  }
+  const updateFade = () => {
+    nav.classList.toggle("more-left", nav.scrollLeft > 1);
+    nav.classList.toggle("more-right", nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1);
+  };
+  nav.addEventListener("scroll", updateFade, { passive: true });
+  window.addEventListener("resize", updateFade);
+  updateFade();
 }
 
 // Keep the chosen Sunday when switching between the Sunday-based pages
