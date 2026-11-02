@@ -198,14 +198,15 @@
           ${ig ? ` · <a href="https://instagram.com/${encodeURIComponent(ig)}" target="_blank" rel="noopener">@${esc(ig)}</a>` : ""}
           ${o.phone ? ` · <a href="tel:${esc(phoneDigits)}">${esc(o.phone)}</a>` : ""}</p>
         ${o.source && o.source !== "website" ? `<p class="o-meta o-small">${esc(SOURCE_LABEL[o.source] || o.source)} order${o.payment_method ? ` · ${o.status === "paid" ? "paid by" : "paying by"} ${esc(METHOD_LABEL[o.payment_method])}` : ""}</p>` : ""}
+        ${st === "check" ? `<div class="o-main no-print">${main}</div>` /* checking a payment doesn't need the box contents, so the button comes first */ : ""}
         <p class="o-meta">${o.fulfillment === "delivery"
           ? `🚚 Delivery: ${esc(o.address || "(no address)")}` : "🏠 Pickup"}</p>
         ${boxesHtml(o)}
         ${singlesHtml(o)}
-        <p class="o-meta"><strong>${peso(o.total)}</strong>${o.gcash_ref ? ` · GCash ref <strong>${esc(o.gcash_ref)}</strong>` : ""}
+        <p class="o-meta"><strong>${peso(o.total)}</strong>${o.gcash_ref && st !== "check" ? ` · GCash ref <strong>${esc(o.gcash_ref)}</strong>` : ""}
           <span class="o-small"> · ordered ${esc(formatWhen(o.created_at))}</span></p>
         ${deliverySummary(o)}
-        <div class="o-main no-print">${main}</div>
+        ${st === "check" ? "" : `<div class="o-main no-print">${main}</div>`}
         ${st === "closed" ? "" : detailsHtml(o)}
       </article>`;
     }
@@ -315,7 +316,7 @@
     // opening another page. Same count as the website: paid + unpaid-not-expired orders hold cookies.
     function leftFor(list) {
       const per = summarize(list, flavors).perFlavor;
-      return flavors.map((f) => ({ slug: f.slug, name: f.name, left: (f.weekly_cap ?? 0) - per[f.slug].paid - per[f.slug].pending }));
+      return flavors.filter((f) => !f.hidden).map((f) => ({ slug: f.slug, name: f.name, left: (f.weekly_cap ?? 0) - per[f.slug].paid - per[f.slug].pending }));
     }
     function leftLine() {
       if (!flavors.length) return "";

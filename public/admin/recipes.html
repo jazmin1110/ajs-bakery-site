@@ -117,7 +117,7 @@
         : `<div class="ops-note">No ingredients entered yet, so the production plan can't count this flavor's ingredients and there's no cost.
             ${r.notes ? `<br><span class="o-small">${esc(r.notes)}</span>` : ""}</div>`}
 
-        <div class="ops-scroll"><table class="t-table" style="margin-top:.6rem">
+        <div class="ops-scroll"><table class="t-table t-stack" style="margin-top:.6rem">
           <thead><tr><th class="left">Ingredient</th><th>Per batch</th><th>Cost</th><th></th></tr></thead>
           <tbody>
             ${rows.map((row) => {
