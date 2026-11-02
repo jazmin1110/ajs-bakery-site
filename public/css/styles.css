@@ -985,9 +985,9 @@ p, li { max-width: 66ch; }                                                /* com
 
 /* ---- Hero: big tilted Bueno sticker beside the headline ---- */
 .hero { text-align: left; padding: 1rem 0 0.4rem; overflow-x: clip; }   /* the tilted sticker must never make the page scroll sideways */
-.hero .container { display: grid; grid-template-columns: minmax(0, 1fr) 150px; grid-template-areas: "title pic" "text text" "actions actions"; column-gap: 0.4rem; align-items: center; }
-.hero h1 { grid-area: title; font-size: 2.6rem; line-height: 1.02; margin: 0; }
-.hero-sticker { grid-area: pic; justify-self: end; width: 186px; max-width: none; height: auto; margin: -0.4rem 0 -0.2rem 0; transform: rotate(8deg); filter: drop-shadow(0 8px 14px rgba(92, 58, 34, 0.22)); position: relative; z-index: 1; }
+.hero .container { display: grid; grid-template-columns: minmax(0, 1fr) min(42vw, 186px); grid-template-areas: "title pic" "text text" "actions actions"; column-gap: 0.4rem; align-items: center; }
+.hero h1 { grid-area: title; font-size: clamp(2rem, 10.5vw, 2.6rem); line-height: 1.02; margin: 0; }
+.hero-sticker { grid-area: pic; justify-self: end; width: min(42vw, 186px); max-width: none; height: auto; margin: -0.4rem 0 -0.2rem 0; transform: rotate(8deg); filter: drop-shadow(0 8px 14px rgba(92, 58, 34, 0.22)); position: relative; z-index: 1; }
 .hero p { grid-area: text; font-size: 1.1rem; max-width: 34ch; margin: 0.4rem 0 1rem; }
 .hero-actions { grid-area: actions; justify-content: flex-start; }
 @media (min-width: 700px) {
