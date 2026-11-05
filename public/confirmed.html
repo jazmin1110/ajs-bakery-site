@@ -131,15 +131,21 @@
           <h2 class="pay-title">Next: pay <strong>${esc(amount)}</strong> by GCash</h2>
           <p class="expiry-warning">⏰ Please pay within <strong>${CONFIG.unpaidExpiryHours} hours</strong>. After that we release your spot to someone else.</p>
 
+          ${gcashCardHtml()}
+
           <div class="qr-wrap">
             <img src="${assetUrl("gcashQr")}" alt="AJ's Bakery GCash QR code" class="qr"
                  onerror="this.replaceWith(Object.assign(document.createElement('p'),{className:'qr-missing',textContent:'Our GCash QR code is coming soon. Message us on Instagram for payment details.'}))">
           </div>
 
-          <p class="qr-tip">Tip: press and hold the QR to save it, then in GCash choose <strong>Pay QR</strong> and pick it from your photos.</p>
+          <p class="qr-tip">${hasGcash()
+            ? `Or press and hold the QR to save it, then in GCash choose <strong>Pay QR</strong> and pick it from your photos.`
+            : `Tip: press and hold the QR to save it, then in GCash choose <strong>Pay QR</strong> and pick it from your photos.`}</p>
 
           <ol class="pay-steps">
-            <li>Pay exactly <strong class="pay-amount">${esc(amount)}</strong> via GCash.</li>
+            ${hasGcash()
+              ? `<li>In GCash tap <strong>Send Money</strong>, enter the number above and pay exactly <strong class="pay-amount">${esc(amount)}</strong>. (Or scan the QR.)</li>`
+              : `<li>Pay exactly <strong class="pay-amount">${esc(amount)}</strong> via GCash.</li>`}
             <li>Type your GCash reference number below.</li>
             <li>Your order is confirmed once we verify the payment.</li>
           </ol>
@@ -152,7 +158,44 @@
         <p class="fine-print">Keep this page or save your code. It's the only way to look up your order. We'll message you on Instagram too.</p>`;
 
       document.getElementById("copy-btn").addEventListener("click", copyCode);
+      const copyNum = document.getElementById("copy-gcash");
+      if (copyNum) copyNum.addEventListener("click", copyGcashNumber);
       if (showPay) wireGcash();
+    }
+
+    // ---- GCash "Send Money" details (CONFIG.gcash in js/config.js) -----------------------
+    // Shown only when both the number and the name are filled in, so an empty config never
+    // prints "Send to: " with nothing after it.
+    const hasGcash = () => !!(CONFIG.gcash && CONFIG.gcash.number && CONFIG.gcash.name);
+
+    function gcashCardHtml() {
+      if (!hasGcash()) return "";
+      return `
+        <div class="gcash-card">
+          <span class="gcash-label">Send Money to this GCash number</span>
+          <div class="gcash-number-row">
+            <strong class="gcash-number" id="gcash-number">${esc(CONFIG.gcash.number)}</strong>
+            <button type="button" class="btn btn-small btn-ghost" id="copy-gcash">Copy number</button>
+          </div>
+          <p class="gcash-name">Account name: <strong>${esc(CONFIG.gcash.name)}</strong></p>
+          <p class="gcash-amount">Amount: <strong class="pay-amount">${esc(peso(order.total))}</strong></p>
+        </div>`;
+    }
+
+    async function copyGcashNumber() {
+      const btn = document.getElementById("copy-gcash");
+      const digits = CONFIG.gcash.number.replace(/\D/g, "");   // copy "09177981234", not "0917 798 1234"
+      try {
+        await navigator.clipboard.writeText(digits);
+      } catch (e) {
+        const range = document.createRange();
+        range.selectNodeContents(document.getElementById("gcash-number"));
+        const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+        btn.textContent = "Press and hold to copy";
+        return;
+      }
+      btn.textContent = "Copied ✓";
+      setTimeout(() => { btn.textContent = "Copy number"; }, 2000);
     }
 
     // ---- Copy button ------------------------------------------------------------

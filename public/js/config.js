@@ -72,6 +72,13 @@ export const CONFIG = {
   // the database). Replaced a file? Add 1 here, deploy. The site loads it as assets/logo.png?v=<number>.
   assetVersions: { logo: 2, gcashQr: 1 },
 
+  // GCash account shown on the payment page next to the QR, for people who pay by "Send Money"
+  // (and anyone reading the page on the phone they'll pay from, who can't scan their own screen).
+  //   number = the GCash mobile number, as customers should type it (e.g. "0917 798 1234")
+  //   name   = the account name GCash shows them before they confirm, so they can check it matches
+  // The block stays hidden until BOTH are filled in.
+  gcash: { number: "0917 798 8286", name: "Renee Jazmin Ang" },
+
   maxBoxesPerOrder: 3, // cart limit (the checkout step must respect this too)
   // Order minimum (copy only: the database enforces it): 1 cookie, for pickup AND delivery.
   minPickupCookies: 1,

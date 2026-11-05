@@ -598,6 +598,13 @@ body.has-cart-bar { padding-bottom: calc(var(--bar-h, 4.5rem) + 1rem); }  /* --b
 .ref-sunday { margin: 0.9rem 0 0; font-size: 1.1rem; }
 
 .expiry-warning { background: var(--butter); border-radius: var(--radius-sm); padding: 0.7rem 0.9rem; margin: 0 0 1rem; }
+/* GCash "Send Money" card: the number is the thing to read, so it's big; the QR below is the alternative */
+.gcash-card { background: #fff; border: 2px solid var(--cream-dark); border-radius: var(--radius-sm); padding: 0.9rem 1rem; margin: 0 0 1rem; box-shadow: var(--shadow); }
+.gcash-label { display: block; font-size: 0.9rem; color: var(--ink-soft); }
+.gcash-number-row { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; margin: 0.25rem 0 0.4rem; }
+.gcash-number { font-family: var(--font-display); font-weight: 700; font-size: 1.7rem; letter-spacing: 0.04em; color: var(--blue-dark); overflow-wrap: anywhere; }
+.gcash-name, .gcash-amount { margin: 0.15rem 0; }
+
 /* The saved screenshot has a lot of empty blue below the card: crop it to the card */
 .qr-wrap { aspect-ratio: 1179 / 1880; max-width: 340px; margin: 0 auto 0.5rem; overflow: hidden; border-radius: var(--radius-sm); box-shadow: var(--shadow); }
 .qr { width: 100%; height: 100%; object-fit: cover; object-position: top; }
