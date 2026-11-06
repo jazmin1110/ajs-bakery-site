@@ -50,7 +50,7 @@ begin
     return false;                       -- not set up yet: skip quietly
   end if;
 
-  perform extensions.net.http_post(
+  perform net.http_post(
     url     := 'https://api.resend.com/emails',
     headers := jsonb_build_object(
       'Authorization', 'Bearer ' || v_key,
@@ -78,18 +78,24 @@ returns text
 language sql stable set search_path = ''
 as $$
   select concat_ws(E'\n',
-    'Order ' || o.ref_code,
-    'Total: P' || to_char(o.total, 'FM999,990'),
-    'For Sunday ' || to_char(o.sunday_date, 'Mon DD'),
-    case when o.fulfillment = 'delivery' then 'Delivery (customer books rider): ' || coalesce(o.address, '')
+    'Order ' || (o).ref_code,
+    'Total: P' || to_char((o).total, 'FM999,990'),
+    'For Sunday ' || to_char((o).sunday_date, 'Mon DD'),
+    case when (o).fulfillment = 'delivery' then 'Delivery (customer books rider): ' || coalesce((o).address, '')
          else 'Pickup' end,
-    'Customer: ' || o.name
-      || coalesce(' · ' || o.ig_handle, '')
-      || coalesce(' · ' || o.phone, ''),
-    case when o.gift_note is not null then 'Gift note: ' || o.gift_note end,
+    'Customer: ' || (o).name
+      || coalesce(' · ' || (o).ig_handle, '')
+      || coalesce(' · ' || (o).phone, ''),
+    -- every cookie in the order (boxes and singles both live in order_items), e.g. "3 × Chimp Chips, 3 × Bueno Mucho"
+    'Cookies: ' || coalesce((
+      select string_agg(t.qty || ' × ' || t.name, ', ' order by t.name)
+      from (select f.name, sum(i.qty) as qty
+            from public.order_items i join public.flavors f on f.id = i.flavor_id
+            where i.order_id = (o).id group by f.name) t), '(none yet)'),
     '',
-    'Open the admin: https://ajs-bakery.vercel.app/admin/orders.html?sunday=' || to_char(o.sunday_date, 'YYYY-MM-DD'))
+    'Open the admin: https://ajs-bakery.vercel.app/admin/orders.html?sunday=' || to_char((o).sunday_date, 'YYYY-MM-DD'))
 $$;
+revoke all on function public.order_email_lines(public.orders) from public, anon, authenticated;
 
 -- New website order: subject "New order AJ-K7M2QX · P775 · Sunday Dec 7"
 create or replace function public.trg_notify_new_order()
@@ -122,9 +128,12 @@ begin
   return new;
 end $$;
 
+-- DEFERRED: fires at the end of place_order's transaction, after the cookies (order_items)
+-- are saved, so the email can list them. A failed order never emails (it rolls back first).
 drop trigger if exists orders_notify_new on public.orders;
-create trigger orders_notify_new
+create constraint trigger orders_notify_new
   after insert on public.orders
+  deferrable initially deferred
   for each row execute function public.trg_notify_new_order();
 
 drop trigger if exists orders_notify_gcash on public.orders;
