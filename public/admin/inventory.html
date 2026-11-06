@@ -29,7 +29,7 @@
       <button type="button" class="btn btn-small" id="add-btn">Add item</button>
     </div>
 
-    <p class="t-sub" style="margin:0 0 .8rem">Tap "I bought some" after every grocery run. Shopping list, expiry alerts and costs all come from this.</p>
+    <p class="t-sub" style="margin:0 0 .8rem">What you have at home. Tap <strong>+ Bought</strong> after every grocery run, and tap an item's name for its price, purchases and more.</p>
     <input type="search" id="search" class="admin-search no-print" placeholder="Find an item: butter, flour, bags..." aria-label="Find an item" autocomplete="off">
     <div class="form-error" id="message" role="alert" hidden></div>
     <div class="ops-ok ops-flash" id="flash" role="status" hidden></div>
@@ -55,6 +55,7 @@
     let log = [];            // recent stock movements
     let openForm = null;     // { id, kind, lot }  kind: receive | use | count | edit | fix   (id "new" = adding an item)
     let showHidden = false;
+    const openItems = new Set();   // items tapped open (their details showing)
     let search = "";         // what's typed in the Find box
 
     const UNITS = [["g", "grams (g)"], ["ml", "millilitres (ml)"], ["pc", "pieces (pc)"], ["tsp", "teaspoons (tsp)"]];
@@ -87,60 +88,60 @@
       }
     }
 
-    // Lots that still have something in them, earliest expiry first (the order they get used)
-    const openLots = () => allLots.filter((l) => l.qty_remaining > 0)
-      .sort((a, b) => (a.expires_on || "9999") < (b.expires_on || "9999") ? -1 : (a.expires_on || "9999") > (b.expires_on || "9999") ? 1 : a.id - b.id);
-
     // ---- Drawing -------------------------------------------------------------------------
+    // One short line per item: name, what state it's in, how much you have, and "+ Bought".
+    // Tap the name to open the rest (price, purchases, used some / recount / edit).
+    // Items that need you (expired, low, expiring this week) are listed first under "Needs attention".
+
+    // What the line says under the name, and its color: bad = red, warn = amber, none = grey, ok = green
+    function statusOf(i) {
+      const days = i.next_expiry ? daysUntil(i.next_expiry) : null;
+      if (i.expired_qty > 0) return { tone: "bad", text: `${fmtQty(i.expired_qty, i.unit)} past its expiry date` };
+      if (i.is_low) return { tone: "warn", text: `Running low (buy more below ${fmtQty(i.reorder_level, i.unit)})` };
+      if (days !== null && days <= 7) return { tone: "warn", text: days === 0 ? "Some expires today: use it first" : `Use some by ${shortDate(i.next_expiry)}` };
+      if (!(Number(i.on_hand) > 0)) return { tone: "none", text: "None at home" };
+      return { tone: "ok", text: "In stock" };
+    }
+    const needsYou = (i) => i.active && ["bad", "warn"].includes(statusOf(i).tone);
+
     function render() {
-      const lots = openLots();
       const visible = items.filter((i) => (i.active || showHidden) && i.name.toLowerCase().includes(search.toLowerCase()));
-      const byId = Object.fromEntries(items.map((i) => [i.ingredient_id, i]));
-      const low = items.filter((i) => i.active && i.is_low);
-      const soon = lots.filter((l) => l.expires_on && daysUntil(l.expires_on) >= 0 && daysUntil(l.expires_on) <= 7);
-      const expired = lots.filter((l) => l.expires_on && daysUntil(l.expires_on) < 0);
-      const worth = items.filter((i) => i.active).reduce((s, i) => s + Number(i.stock_value || 0), 0);
-      const shelfEmpty = items.some((i) => i.active) && items.filter((i) => i.active).every((i) => !(Number(i.on_hand) > 0));
+      const active = items.filter((i) => i.active);
+      const worth = active.reduce((s, i) => s + Number(i.stock_value || 0), 0);
+      const guessed = active.filter((i) => !i.price_confirmed).length;
+      const shelfEmpty = active.length && active.every((i) => !(Number(i.on_hand) > 0));
 
-      const alerts = [
-        ...low.map((i) => `<span class="tag tag-low">Low</span> ${esc(i.name)}: ${esc(fmtQty(i.on_hand, i.unit))} left (reorder at ${esc(fmtQty(i.reorder_level, i.unit))})`),
-        ...expired.map((l) => `<span data-lot="${l.id}"><span class="tag tag-low">Expired</span> ${esc(byId[l.ingredient_id]?.name || "Item")}: ${esc(fmtQty(l.qty_remaining, byId[l.ingredient_id]?.unit || ""))} expired ${esc(shortDate(l.expires_on))}.
-          <button type="button" class="btn btn-small btn-ghost" data-act="discard">Throw away</button></span>`),
-        ...soon.map((l) => `<span class="tag tag-warn">Soon</span> ${esc(byId[l.ingredient_id]?.name || "Item")}: ${esc(fmtQty(l.qty_remaining, byId[l.ingredient_id]?.unit || ""))} expires ${daysUntil(l.expires_on) === 0 ? "today" : esc(shortDate(l.expires_on))}`),
-      ];
+      // While searching, one plain list. Otherwise: Needs attention, then Ingredients, then Packaging.
+      const attention = search ? [] : visible.filter(needsYou);
+      const rest = visible.filter((i) => !attention.includes(i));
+      const group = (title, rows, hint = "") => rows.length
+        ? `<h2 class="inv-group">${title} <span class="o-small">(${rows.length})</span></h2>${hint}<div class="st-list">${rows.map(itemRow).join("")}</div>` : "";
 
-      const groups = ["ingredient", "packaging"].map((cat) => {
-        const rows = visible.filter((i) => i.category === cat);
-        if (!rows.length) return "";
-        return `<h2 class="inv-group">${cat === "ingredient" ? "Ingredients" : "Packaging"}</h2><div class="inv-grid">${rows.map(itemCard).join("")}</div>`;
-      }).join("");
-
-      // While searching, skip the tiles and alerts so the matching items sit right under the Find box
       $("out").innerHTML = `
-        ${search ? "" : `<div class="ops-stats inv-stats">
-          <div class="ops-stat"><strong>${peso2(Math.round(worth))}</strong><span>stock on the shelf (what you paid)</span></div>
-          <div class="ops-stat"><strong>${low.length}</strong><span>running low</span></div>
-          <div class="ops-stat"><strong>${items.filter((i) => i.active && !i.price_confirmed).length}</strong><span>prices still guessed</span></div>
-        </div>
-        ${alerts.length ? `<section class="t-card"><h2>Needs attention</h2>${alerts.map((a) => `<p class="o-meta">${a}</p>`).join("")}</section>`
-          : shelfEmpty ? `<div class="ops-note"><strong>Your shelf is empty in the system</strong>: every item reads 0. Before your first bake, tap
-              <strong>More → Recount</strong> on what you already have at home, and <strong>+ I bought some</strong> after shopping.
-              Until then the Bake plan's shopping list will tell you to buy everything.</div>`
-          : `<div class="ops-ok">Nothing low and nothing about to expire.</div>`}`}
+        ${search ? "" : `<p class="st-summary"><strong>${peso2(Math.round(worth))}</strong> worth on the shelf${guessed
+          ? ` · <strong>${guessed}</strong> guessed price${guessed === 1 ? "" : "s"} <span class="o-small">(log a purchase to fix)</span>` : ""}</p>
+        ${shelfEmpty ? `<div class="ops-note"><strong>Nothing is logged yet</strong>, so everything reads 0. Two ways to fill it in:
+            tap an item and use <strong>Recount</strong> for what you already have at home, or <strong>+ Bought</strong> after shopping.
+            Until then the Bake plan's shopping list will say to buy everything.</div>` : ""}`}
         ${openForm?.id === "new" ? `<section class="t-card"><h2>Add an item</h2>${editForm(null)}</section>` : ""}
-        ${groups || `<p class="t-sub">${search ? `Nothing called "${esc(search)}". Tap Add item to add it.` : "No items yet."}</p>`}
+        ${group("Needs attention", attention)}
+        ${group(search ? "Found" : "Ingredients", search ? rest : rest.filter((i) => i.category === "ingredient"))}
+        ${search ? "" : group("Packaging", rest.filter((i) => i.category === "packaging"),
+            `<p class="t-sub" style="margin:-.2rem 0 .5rem">Bags, boxes, stickers, cards. The Bake plan adds them to the shopping list.</p>`)}
+        ${visible.length ? "" : `<p class="t-sub">${search ? `Nothing called "${esc(search)}". Tap Add item to add it.` : "No items yet."}</p>`}
         <label class="choice t-toggle no-print" style="margin-top:1rem"><input type="checkbox" id="show-hidden" ${showHidden ? "checked" : ""}><span>Show hidden items</span></label>
-        <section class="t-card">
-          <h2>Recent activity</h2>
-          ${log.length ? log.map((r) => `<div class="lot-row"><span>${esc(byId[r.ingredient_id]?.name || "Item")}
+        <details class="o-more st-log"><summary>Recent activity</summary>
+          ${log.length ? log.map((r) => `<div class="lot-row"><span>${esc(byIdName(r.ingredient_id))}
               <span class="o-small">· ${esc(REASON[r.reason] || r.reason)}${r.note ? " · " + esc(r.note) : ""}</span></span>
-              <span><strong>${r.delta > 0 ? "+" : "−"}${esc(fmtQty(Math.abs(r.delta), byId[r.ingredient_id]?.unit || ""))}</strong>
+              <span><strong>${r.delta > 0 ? "+" : "−"}${esc(fmtQty(Math.abs(r.delta), byIdUnit(r.ingredient_id)))}</strong>
               <span class="o-small">${esc(new Date(r.created_at).toLocaleDateString("en-US", { timeZone: "Asia/Manila", month: "short", day: "numeric" }))}</span></span></div>`).join("")
             : `<p class="t-sub">Nothing logged yet.</p>`}
-        </section>`;
+        </details>`;
       wireReceiveForm();
       wireUnitForm();
     }
+    const byIdName = (id) => items.find((x) => x.ingredient_id === id)?.name || "Item";
+    const byIdUnit = (id) => items.find((x) => x.ingredient_id === id)?.unit || "";
 
     // One purchase, as a line: "Oct 12 · 2 kg for ₱200 (₱100 per bag) · 1.5 kg left · expires Nov 2"
     function purchaseRow(i, l) {
@@ -174,43 +175,40 @@
       return `${lead} ${peso2(i.pack_price)} for ${esc(fmtQty(size, i.unit))}${extra} · ${peso2(i.cost_per_unit)} per ${esc(i.unit)}`;
     }
 
-    function itemCard(i) {
+    function itemRow(i) {
+      const st = statusOf(i);
       const itemLots = allLots.filter((l) => l.ingredient_id === i.ingredient_id);
       const shown = itemLots.filter((l, n) => l.qty_remaining > 0 || n < 6);      // everything with stock, plus the last few
-      const days = i.next_expiry ? daysUntil(i.next_expiry) : null;
-      const form = openForm?.id === i.ingredient_id && openForm.kind !== "fix"
+      const formOpen = openForm?.id === i.ingredient_id;
+      const open = formOpen || openItems.has(i.ingredient_id);
+      const form = formOpen && openForm.kind !== "fix"
         ? ({ receive: receiveForm, use: useForm, count: countForm, edit: editForm, unit: unitForm }[openForm.kind])(i) : "";
-      const moreOpen = openForm?.id === i.ingredient_id && openForm.kind === "fix";     // keep the purchases open while fixing one
-      return `<article class="t-card item-card" data-ing="${i.ingredient_id}"${i.active ? "" : ' style="opacity:.6"'}>
-        <div class="item-top"><h3 class="item-name">${esc(i.name)}</h3><span class="item-qty">${esc(fmtQty(i.on_hand, i.unit))}</span></div>
-        <div class="item-tags">
-          ${i.is_low ? `<span class="tag tag-low">Low</span>` : ""}
-          ${i.expired_qty > 0 ? `<span class="tag tag-low">${esc(fmtQty(i.expired_qty, i.unit))} expired</span>` : ""}
-          ${days !== null && days <= 7 ? `<span class="tag tag-warn">${days === 0 ? "expires today" : "expires " + esc(shortDate(i.next_expiry))}</span>` : ""}
-          ${i.price_confirmed ? "" : `<span class="tag tag-warn">price is a guess</span>`}
-          ${i.active ? "" : `<span class="tag tag-info">hidden</span>`}
+      return `<article class="st-row st-${st.tone}${open ? " is-open" : ""}" data-ing="${i.ingredient_id}"${i.active ? "" : ' style="opacity:.6"'}>
+        <div class="st-line">
+          <button type="button" class="st-toggle" data-toggle aria-expanded="${open}">
+            <span class="st-name">${esc(i.name)}${i.active ? "" : ` <span class="tag tag-info">hidden</span>`}</span>
+            <span class="st-status">${esc(st.text)}${i.price_confirmed ? "" : ` · <span class="st-guess">price guessed</span>`}</span>
+          </button>
+          <span class="st-qty">${esc(fmtQty(i.on_hand, i.unit))}</span>
+          <button type="button" class="btn btn-small no-print" data-open="receive" aria-label="I bought some ${esc(i.name)}">+ Bought</button>
         </div>
-        <p class="o-small" style="margin:.2rem 0">${priceLine(i)}
-          ${Number(i.stock_value) > 0 ? ` · worth ${peso2(i.stock_value)}` : ""}
-          ${i.next_expiry ? ` · next expiry ${esc(shortDate(i.next_expiry))}` : ""}${i.supplier ? ` · ${esc(i.supplier)}` : ""}
-          ${i.reorder_level > 0 ? ` · reorder at ${esc(fmtQty(i.reorder_level, i.unit))}` : ""}</p>
-        <div class="ops-actions no-print">
-          <button type="button" class="btn btn-small" data-open="receive">+ I bought some</button>
-          <!-- The less common jobs, folded away (stays open while one of their forms is open) -->
-          <details class="item-more"${openForm?.id === i.ingredient_id && ["use", "count", "edit", "unit"].includes(openForm.kind) ? " open" : ""}>
-            <summary class="btn btn-small btn-ghost">More</summary>
-            <div class="item-more-btns">
-              <button type="button" class="btn btn-small btn-ghost" data-open="use">Used some</button>
-              <button type="button" class="btn btn-small btn-ghost" data-open="count">Recount</button>
-              <button type="button" class="btn btn-small btn-ghost" data-open="edit">Edit</button>
-            </div>
-          </details>
-        </div>
-        ${form}
-        ${itemLots.length ? `<details class="o-more no-print"${moreOpen ? " open" : ""}><summary>Purchases (${itemLots.length})</summary>
-          ${shown.length ? `<p class="lot-head">Purchases (newest first). Typed something wrong? Tap Fix.</p>${shown.map((l) => purchaseRow(i, l)).join("")}` : ""}
-          ${itemLots.length > shown.length ? `<p class="o-small">+ ${itemLots.length - shown.length} older purchase${itemLots.length - shown.length === 1 ? "" : "s"} (used up)</p>` : ""}
-        </details>` : ""}
+        ${open ? `<div class="st-body">
+          <p class="o-small" style="margin:0 0 .3rem">${priceLine(i)}
+            ${Number(i.stock_value) > 0 ? ` · worth ${peso2(i.stock_value)}` : ""}
+            ${i.supplier ? ` · ${esc(i.supplier)}` : ""}
+            ${i.reorder_level > 0 ? ` · buy more below ${esc(fmtQty(i.reorder_level, i.unit))}` : ""}
+            ${i.category === "packaging" && Number(i.per_cookie) > 0 ? ` · ${num(i.per_cookie)} used per cookie baked` : ""}</p>
+          <div class="ops-actions no-print" style="margin-top:.3rem">
+            <button type="button" class="btn btn-small btn-ghost" data-open="use">Used some</button>
+            <button type="button" class="btn btn-small btn-ghost" data-open="count">Recount</button>
+            <button type="button" class="btn btn-small btn-ghost" data-open="edit">Edit</button>
+          </div>
+          ${form}
+          ${itemLots.length ? `<details class="o-more no-print"${openForm?.kind === "fix" && formOpen ? " open" : ""}><summary>Purchases (${itemLots.length})</summary>
+            ${shown.length ? `<p class="lot-head">Newest first. Typed something wrong? Tap Fix.</p>${shown.map((l) => purchaseRow(i, l)).join("")}` : ""}
+            ${itemLots.length > shown.length ? `<p class="o-small">+ ${itemLots.length - shown.length} older purchase${itemLots.length - shown.length === 1 ? "" : "s"} (used up)</p>` : ""}
+          </details>` : `<p class="o-small">No purchases logged yet.</p>`}
+        </div>` : ""}
       </article>`;
     }
 
@@ -360,6 +358,13 @@
     const errText = (err) => err.isNetwork ? "Couldn't reach the server. Nothing was changed." : err.message;
 
     $("out").addEventListener("click", async (e) => {
+      const toggle = e.target.closest("[data-toggle]");
+      if (toggle) {                                                // tap an item's name: show / hide its details
+        const id = Number(toggle.closest("[data-ing]").dataset.ing);
+        if (openItems.has(id) || openForm?.id === id) { openItems.delete(id); if (openForm?.id === id) openForm = null; }
+        else openItems.add(id);
+        render(); return;
+      }
       const open = e.target.closest("[data-open]");
       if (open) {
         const id = Number(open.closest("[data-ing]").dataset.ing);
