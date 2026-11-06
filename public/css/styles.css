@@ -1538,7 +1538,7 @@ h1 { letter-spacing: -0.01em; }
 .week-faq summary:focus-visible { outline: 3px solid #fff; outline-offset: 2px; border-radius: var(--radius-sm); }
 /* The blue section is the last thing in <main>: run it straight into the footer, no cream strip between */
 .week-section:last-child { margin-bottom: 0; }
-main:has(> .week-section:last-child) + .site-footer { margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; background: var(--blue); }   /* the same blue as the section, so the page ends in one block */
+main:has(> .week-section:last-child) + .site-footer { margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }   /* sits flush under the blue section (square corners, no cream gap); keeps its own dark blue so the footer reads as its own block */
 
 @media (min-width: 700px) {
   .week-section { padding: 3.5rem 0 3.6rem; }
