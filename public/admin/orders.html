@@ -377,13 +377,25 @@
       return per;
     }
 
+    // Flavors to list in the form: hidden ones are left out (so a mis-tap can't sell an untested flavor),
+    // unless the order being edited already has some of it. Sold-out ones stay, with a tag.
+    function formFlavors() {
+      const has = editing ? cookiesOf(editing) : {};
+      return menu.flavors.filter((f) => !f.hidden || has[f.slug] > 0);
+    }
+    function flavorTag(f) {
+      if (f.hidden) return ` <span class="tag tag-info">hidden</span>`;
+      if (f.sold_out) return ` <span class="tag tag-low">sold out</span>`;
+      return "";
+    }
+
     async function openAddForm(order = null) {
       const el = $("add-order");
       if (!menu) {
         el.hidden = false; el.innerHTML = `<p class="loading">Loading the menu...</p>`;
         try {
           const [flavors, boxes] = await Promise.all([
-            select("flavors", "slug, name, single_price, surcharge, active", (q) => q.eq("active", true).order("id")),
+            select("flavors", "slug, name, single_price, surcharge, active, hidden, sold_out", (q) => q.eq("active", true).order("id")),
             select("boxes", "size, price, active", (q) => q.eq("active", true).order("size")),
           ]);
           menu = { flavors, boxes };
@@ -416,7 +428,7 @@
           <select data-box-size aria-label="Box size">${menu.boxes.map((x) => `<option value="${x.size}"${x.size === b.size ? " selected" : ""}>Box of ${x.size} (${peso(x.price)})</option>`).join("")}
             ${menu.boxes.some((x) => x.size === b.size) ? "" : `<option value="${b.size}" selected>Box of ${b.size} (no longer sold)</option>`}</select>
           <button type="button" class="link-btn" data-box-remove>Remove</button></div>
-        ${menu.flavors.map((f) => `<div class="ao-qty"><span>${esc(f.name)}${Number(f.surcharge) ? ` <span class="o-small">+${peso(Number(f.surcharge))} each</span>` : ""}</span>
+        ${formFlavors().map((f) => `<div class="ao-qty"><span>${esc(f.name)}${flavorTag(f)}${Number(f.surcharge) ? ` <span class="o-small">+${peso(Number(f.surcharge))} each</span>` : ""}</span>
           ${qtyStepper(`data-box-qty="${esc(f.slug)}"`, b.qty[f.slug] || 0, b.size, `${f.name} in box ${i + 1}`)}</div>`).join("")}
         <p class="o-small ${n === b.size ? "" : "ao-warn"}" data-box-count>${n} of ${b.size} picked${n === b.size ? " ✓" : ""}</p>
         <div class="ops-field"><label>Gift note (optional)</label><input data-box-note maxlength="500" value="${esc(b.gift_note || "")}"></div>
@@ -499,7 +511,7 @@
         <div class="ops-field wide" data-ao-address hidden><label>Delivery address</label><input name="address" maxlength="300" value="${v(o?.address)}"></div>
 
         <div class="wide"><h3 class="ao-h">Single cookies</h3>
-          ${menu.flavors.filter((f) => f.single_price != null).map((f) => `<div class="ao-qty"><span>${esc(f.name)} <span class="o-small">${peso(Number(f.single_price))}</span></span>
+          ${formFlavors().filter((f) => f.single_price != null).map((f) => `<div class="ao-qty"><span>${esc(f.name)}${flavorTag(f)} <span class="o-small">${peso(Number(f.single_price))}</span></span>
             ${qtyStepper(`data-single="${esc(f.slug)}"`, 0, 99, `${f.name} singles`)}</div>`).join("")}
         </div>
         <div class="wide"><h3 class="ao-h">Boxes</h3>

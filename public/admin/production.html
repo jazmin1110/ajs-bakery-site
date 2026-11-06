@@ -103,6 +103,38 @@
       const batchCost = (f) => (costing[f.flavor_id] ? Number(costing[f.flavor_id].batch_cost) : 0) * (f.batches || 0);
       const mixCost = flavors.filter((f) => f.recipe_ready && f.to_make > 0).reduce((t, f) => t + batchCost(f), 0);
 
+      // Flavors with something to do (ordered, baked, or dough in the freezer) show first;
+      // the rest (e.g. hidden flavors) fold away so the page stays short.
+      const idleFlavor = (f) => f.cookies_needed === 0 && !f.baked && !f.dough_on_hand;
+      const busy = flavors.filter((f) => !idleFlavor(f));
+      const idle = flavors.filter(idleFlavor);
+      const makeRow = (f) => `
+            <div class="mk-row" data-flavor="${f.flavor_id}">
+              <div class="mk-head"><strong>${esc(f.name)}</strong>
+                ${f.recipe_ready ? "" : `<a class="tag tag-warn" href="recipes.html">no recipe yet</a>`}</div>
+              <p class="mk-big">${f.cookies_needed === 0 && !f.baked ? "Nothing ordered"
+                : f.still_to_bake === 0 ? `All ${f.cookies_needed} baked ✓${f.baked > f.cookies_needed ? ` (${f.baked - f.cookies_needed} extra)` : ""}`
+                : f.to_make === 0 ? `${f.still_to_bake} to bake, all covered by frozen dough`
+                : `Make ${f.to_make} cookie${f.to_make === 1 ? "" : "s"}${f.recipe_ready ? ` = <strong>${f.batches} batch${f.batches === 1 ? "" : "es"}</strong>` : ""}`}</p>
+              <p class="o-small">${f.cookies_needed} ordered${includePending && f.pending_cookies ? ` (${f.paid_cookies} paid, ${f.pending_cookies} not paid yet)` : ""}${f.baked ? ` · ${f.baked} baked already` : ""}
+                · ${f.dough_on_hand} dough ball${f.dough_on_hand === 1 ? "" : "s"} in the freezer${f.recipe_ready && f.leftover ? ` · ${f.leftover} spare` : ""}
+                ${f.recipe_ready && f.to_make > 0 && costing[f.flavor_id] ? `<br>~${peso2(Math.round(batchCost(f)))} in ingredients (${peso2(costing[f.flavor_id].batch_cost)} per batch, today's prices)` : ""}</p>
+              ${f.recipe_ready ? (() => {
+                // Only show the step that applies: mix when there's dough to make, bake when there's dough in the freezer
+                const mix = `<div class="mk-act">
+                  <div class="ops-field"><label>Batches</label><input type="number" min="1" max="20" step="1" inputmode="numeric" value="${Math.max(f.batches, 1)}" data-batches></div>
+                  <button type="button" class="btn btn-small" data-act="mix">I made the dough</button></div>`;
+                const bake = `<div class="mk-act">
+                  <div class="ops-field"><label>Dough balls</label><input type="number" min="1" step="1" inputmode="numeric" value="${Math.min(Math.max(f.still_to_bake, 1), Math.max(f.dough_on_hand, 1))}" data-balls></div>
+                  <button type="button" class="btn btn-small${f.to_make > 0 ? " btn-ghost" : ""}" data-act="bake">I baked these</button></div>`;
+                // Still dough in the freezer but nothing left to bake: keep the button, folded away
+                const bakeShown = f.dough_on_hand > 0 && f.still_to_bake > 0 ? bake
+                  : f.dough_on_hand > 0 ? `<details class="o-more"><summary>Baked extra?</summary>${bake}</details>` : "";
+                return (f.to_make > 0 ? mix : "") + bakeShown
+                  + (f.to_make > 0 ? "" : `<details class="o-more"><summary>Made extra dough anyway?</summary>${mix}</details>`);
+              })() : ""}
+            </div>`;
+
       $("out").innerHTML = `
         <section class="t-card">
           <h2>${esc(formatSunday(sunday))}</h2>
@@ -153,32 +185,9 @@
           <p class="t-sub">Tap the buttons as you go, so your stock and freezer stay right.</p>
           <details class="how"><summary>How "make" is worked out</summary>
             Cookies ordered, minus dough balls already in the freezer, is what to make. Batches are rounded up to whole batches.</details>
-          ${flavors.map((f) => `
-            <div class="mk-row" data-flavor="${f.flavor_id}">
-              <div class="mk-head"><strong>${esc(f.name)}</strong>
-                ${f.recipe_ready ? "" : `<a class="tag tag-warn" href="recipes.html">no recipe yet</a>`}</div>
-              <p class="mk-big">${f.cookies_needed === 0 && !f.baked ? "Nothing ordered"
-                : f.still_to_bake === 0 ? `All ${f.cookies_needed} baked ✓${f.baked > f.cookies_needed ? ` (${f.baked - f.cookies_needed} extra)` : ""}`
-                : f.to_make === 0 ? `${f.still_to_bake} to bake, all covered by frozen dough`
-                : `Make ${f.to_make} cookie${f.to_make === 1 ? "" : "s"}${f.recipe_ready ? ` = <strong>${f.batches} batch${f.batches === 1 ? "" : "es"}</strong>` : ""}`}</p>
-              <p class="o-small">${f.cookies_needed} ordered${includePending && f.pending_cookies ? ` (${f.paid_cookies} paid, ${f.pending_cookies} not paid yet)` : ""}${f.baked ? ` · ${f.baked} baked already` : ""}
-                · ${f.dough_on_hand} dough ball${f.dough_on_hand === 1 ? "" : "s"} in the freezer${f.recipe_ready && f.leftover ? ` · ${f.leftover} spare` : ""}
-                ${f.recipe_ready && f.to_make > 0 && costing[f.flavor_id] ? `<br>~${peso2(Math.round(batchCost(f)))} in ingredients (${peso2(costing[f.flavor_id].batch_cost)} per batch, today's prices)` : ""}</p>
-              ${f.recipe_ready ? (() => {
-                // Only show the step that applies: mix when there's dough to make, bake when there's dough in the freezer
-                const mix = `<div class="mk-act">
-                  <div class="ops-field"><label>Batches</label><input type="number" min="1" max="20" step="1" inputmode="numeric" value="${Math.max(f.batches, 1)}" data-batches></div>
-                  <button type="button" class="btn btn-small" data-act="mix">I made the dough</button></div>`;
-                const bake = `<div class="mk-act">
-                  <div class="ops-field"><label>Dough balls</label><input type="number" min="1" step="1" inputmode="numeric" value="${Math.min(Math.max(f.still_to_bake, 1), Math.max(f.dough_on_hand, 1))}" data-balls></div>
-                  <button type="button" class="btn btn-small${f.to_make > 0 ? " btn-ghost" : ""}" data-act="bake">I baked these</button></div>`;
-                // Still dough in the freezer but nothing left to bake: keep the button, folded away
-                const bakeShown = f.dough_on_hand > 0 && f.still_to_bake > 0 ? bake
-                  : f.dough_on_hand > 0 ? `<details class="o-more"><summary>Baked extra?</summary>${bake}</details>` : "";
-                return (f.to_make > 0 ? mix : "") + bakeShown
-                  + (f.to_make > 0 ? "" : `<details class="o-more"><summary>Made extra dough anyway?</summary>${mix}</details>`);
-              })() : ""}
-            </div>`).join("")}
+          ${busy.length ? busy.map(makeRow).join("") : `<p class="t-sub">Nothing ordered for this Sunday yet.</p>`}
+          ${idle.length ? `<details class="o-more"><summary>${idle.length} flavor${idle.length === 1 ? "" : "s"} with nothing ordered</summary>
+            ${idle.map(makeRow).join("")}</details>` : ""}
         </section>
 
         <section class="t-card">

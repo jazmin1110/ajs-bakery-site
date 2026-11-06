@@ -212,7 +212,8 @@
 
     function render() {
       const { summary } = data;
-      const flavors = Object.values(summary.perFlavor);
+      // Hidden flavors (Menu page) only show when this Sunday has orders for them, so the table isn't padded with "15 of 15"
+      const flavors = Object.values(summary.perFlavor).filter((f) => !f.hidden || f.paid + f.pending > 0);
       const sizes = Object.keys(summary.boxes).map(Number).sort((a, b) => a - b);
       const m = data.money;
 

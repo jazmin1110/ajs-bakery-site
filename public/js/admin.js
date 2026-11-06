@@ -275,7 +275,7 @@ export function timeLeft(secondsLeft) {
 // Cookies per flavor count BOTH box cookies and single cookies; `singles` is the
 // loose-cookie part on its own.
 export function summarize(orders, flavors) {
-  const perFlavor = Object.fromEntries(flavors.map((f) => [f.slug, { name: f.name, cap: f.weekly_cap, paid: 0, pending: 0 }]));
+  const perFlavor = Object.fromEntries(flavors.map((f) => [f.slug, { name: f.name, cap: f.weekly_cap, hidden: !!f.hidden, paid: 0, pending: 0 }]));
   const boxes = {}; // size -> { paid, pending }
   const singles = { paid: 0, pending: 0 };
   let paid = 0, pending = 0;
