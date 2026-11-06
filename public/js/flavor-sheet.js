@@ -131,7 +131,7 @@ export function initFlavorSheet({ flavors, getRemaining, getLimit, settings = {}
 
     const status = content.querySelector("[data-sheet-status]");
     status.innerHTML = left === null ? ""
-      : soldOut ? `<strong>Sold out for this Sunday.</strong> Unpaid orders release after 24 hours, so check back.`
+      : soldOut ? `<strong>Sold out this Sunday.</strong> A few may come back if unpaid orders expire, so check again tomorrow.`
       : left <= 5 ? `Only <strong>${left} left</strong> for this Sunday.`
       : "Available for this Sunday.";
     panel.classList.toggle("is-soldout", soldOut);

@@ -29,7 +29,7 @@ export const COMING_SOON = [];   // empty = the "Coming soon" section is hidden 
 
 export const CONFIG = {
   brandName: "AJ's Bakery",
-  tagline: "Small-batch brown butter cookies, baked at home in Manila.",
+  tagline: "Made in our home kitchen in Quezon City, one small batch at a time.",
   timezone: "Asia/Manila",
 
   // --- Supabase connection (Project Settings > API in the dashboard) ---
@@ -49,7 +49,7 @@ export const CONFIG = {
     "choc-chip": {
       emoji: "🍪",
       image: "assets/flavors/chimp-chips.jpg",
-      description: "Nutty brown butter packed with Callebaut dark chocolate. Soft, chewy, and the one to start with.",
+      description: "Our brown butter dough loaded with Callebaut dark chocolate. Soft, chewy, the classic.",
     },
     "double-choc": {
       emoji: "🍫",
@@ -59,7 +59,7 @@ export const CONFIG = {
     "kinder-bueno": {
       emoji: "🥜",
       image: "assets/flavors/bueno-mucho.jpg",
-      description: "Half a Kinder Bueno hidden inside, with Kinder Maxi chocolate in the dough. Our biggest cookie.",
+      description: "Half a Kinder Bueno hidden inside. Wafer crunch, hazelnut cream, all of it.",
     },
     // Launched in migration 023 with no photo yet: the emoji shows until a photo_url is set
     "nutella":      { emoji: "🌰", description: "" },

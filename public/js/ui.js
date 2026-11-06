@@ -83,7 +83,7 @@ export function renderBanner(el, ordering, { compact = false } = {}) {
   const lead = ordering.isFull
     ? `This Sunday is full, ordering for <strong>${esc(ordering.label)}</strong>`
     : `Now ordering for <strong>${esc(ordering.label)}</strong>`;
-  const small = `Order by ${esc(ordering.cutoffLong)} · only ${CONFIG.weeklyCapPerFlavor} of each flavor, once they're gone, they're gone`;
+  const small = `Order by ${esc(ordering.cutoffLong)} · only ${CONFIG.weeklyCapPerFlavor} of each flavor this bake`;
   // compact = one line (the box builder wants its screen space for the flavors)
   el.innerHTML = compact ? `${lead} <span class="banner-by">· by ${esc(ordering.cutoffLabel)}</span>` : `${lead}<small>${small}</small>`;
 }

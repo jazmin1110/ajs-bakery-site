@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>AJ's Bakery | Brown butter cookies, Metro Manila</title>
-  <meta name="description" content="Small-batch brown butter cookies baked at home in Metro Manila: Chimp Chips, Coco Loco and Bueno Mucho. Order by Wednesday 9pm for Sunday pickup or delivery.">
+  <title>Brown butter cookies in Quezon City | AJ's Bakery</title>
+  <meta name="description" content="Brown butter cookies baked every Sunday in Quezon City. Only 15 of each flavor. Order by Wednesday 9pm for Sunday pickup or delivery in Metro Manila.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=3">
   <link rel="icon" type="image/png" sizes="64x64" href="assets/icons/favicon-64.png?v=3">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=4">
@@ -16,8 +16,8 @@
   <link rel="canonical" href="https://ajs-bakery.vercel.app/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="AJ's Bakery">
-  <meta property="og:title" content="AJ's Bakery | Brown butter cookies, Metro Manila">
-  <meta property="og:description" content="Small-batch brown butter cookies baked at home in Metro Manila: Chimp Chips, Coco Loco and Bueno Mucho. Order by Wednesday 9pm for Sunday pickup or delivery.">
+  <meta property="og:title" content="Brown butter cookies in Quezon City | AJ's Bakery">
+  <meta property="og:description" content="Brown butter cookies baked every Sunday in Quezon City. Only 15 of each flavor. Order by Wednesday 9pm for Sunday pickup or delivery in Metro Manila.">
   <meta property="og:url" content="https://ajs-bakery.vercel.app/">
   <meta property="og:image" content="https://ajs-bakery.vercel.app/assets/og-image.jpg">
   <meta property="og:image:width" content="1200">
@@ -25,11 +25,11 @@
   <meta property="og:image:alt" content="Freshly baked Bueno Mucho cookies from AJ's Bakery">
   <meta property="og:locale" content="en_PH">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="AJ's Bakery | Brown butter cookies, Metro Manila">
-  <meta name="twitter:description" content="Small-batch brown butter cookies baked at home in Metro Manila: Chimp Chips, Coco Loco and Bueno Mucho. Order by Wednesday 9pm for Sunday pickup or delivery.">
+  <meta name="twitter:title" content="Brown butter cookies in Quezon City | AJ's Bakery">
+  <meta name="twitter:description" content="Brown butter cookies baked every Sunday in Quezon City. Only 15 of each flavor. Order by Wednesday 9pm for Sunday pickup or delivery in Metro Manila.">
   <meta name="twitter:image" content="https://ajs-bakery.vercel.app/assets/og-image.jpg">
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"Bakery","name":"AJ's Bakery","description":"Small-batch brown butter cookies baked at home in Metro Manila.","url":"https://ajs-bakery.vercel.app/","image":"https://ajs-bakery.vercel.app/assets/og-image.jpg","areaServed":"Metro Manila, Philippines","servesCuisine":"Cookies","sameAs":["https://instagram.com/ajs.mnl"],"priceRange":"₱₱"}
+  {"@context":"https://schema.org","@type":"Bakery","name":"AJ's Bakery","description":"Brown butter cookies baked every Sunday in Quezon City.","url":"https://ajs-bakery.vercel.app/","image":"https://ajs-bakery.vercel.app/assets/og-image.jpg","areaServed":"Metro Manila, Philippines","servesCuisine":"Cookies","sameAs":["https://instagram.com/ajs.mnl"],"priceRange":"₱₱"}
   </script>
   <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -64,12 +64,12 @@
   <main id="main">
     <section class="hero">
       <div class="container">
-        <h1>Warm cookies, made at home.</h1>
+        <h1>Brown butter cookies, baked every Sunday.</h1>
         <!-- A big tilted Bueno Mucho sticker beside the headline (decorative: the menu below names it) -->
         <img class="hero-sticker" src="assets/stickers/bueno-mucho-sticker-480.webp" srcset="assets/stickers/bueno-mucho-sticker-240.webp 240w, assets/stickers/bueno-mucho-sticker-480.webp 480w" sizes="(min-width: 700px) 280px, 190px" width="480" height="470" alt="">
         <p data-config="tagline"></p>
         <div class="hero-actions">
-          <a class="btn" href="#menu">Order cookies</a>
+          <a class="btn" href="#menu">See the menu</a>
           <a class="btn btn-ghost" href="#boxes">Build a box</a>
         </div>
       </div>
@@ -78,8 +78,8 @@
     <section id="menu">
       <div class="container">
         <h2>Cookies</h2>
-        <p class="section-sub">All on our brown butter base. Grab a single cookie or save with a box.</p>
-        <!-- One line for the box saving instead of repeating it on every card. Filled in once the boxes load. -->
+        <p class="section-sub">All on our brown butter base. <strong>Know what's in every cookie:</strong> tap one for its ingredients, allergens and macros.</p>
+        <!-- One line for the box saving ("Buy singles, or save up to ₱180 with a box") instead of repeating it on every card. Filled in once the boxes load. -->
         <p class="menu-boxnote" id="menu-boxnote" hidden></p>
         <!-- Filled with a "Classics" and a "Specials" group, each with its own list (renderMenu in js/ui.js) -->
         <div class="menu-groups" id="menu-grid"><div class="menu-list"><p class="loading">Loading the menu...</p></div></div>
@@ -99,7 +99,7 @@
     <section id="boxes">
       <div class="container">
         <h2>Boxes</h2>
-        <p class="section-sub">Mix your flavors however you like.</p>
+        <p class="section-sub">Mix any flavors. Every box saves you money vs singles.</p>
         <div class="box-list" id="box-grid"><p class="loading">Loading boxes...</p></div>
         <p class="box-note" id="box-note"></p>
       </div>
@@ -131,9 +131,9 @@
 
         <!-- The three steps. They also carry what the old FAQ repeated (paying, the 24 hours, sold-out flavors, where pickup is). -->
         <ul class="week-steps">
-          <li><strong>Order, then pay by GCash.</strong> After checkout you'll see our QR code. Pay, then send us the reference number. Unpaid orders are released after 24 hours.</li>
+          <li><strong>Order, then pay by GCash.</strong> After checkout you'll see our QR code. Pay, then send us the reference number. No payment in 24 hours? We cancel the order so someone else can grab those cookies.</li>
           <li><strong>We bake on Sunday,</strong> only <span data-weekly-cap></span> of each flavor. If one sells out the others are still there, and if everything sells out we open the next Sunday.</li>
-          <li><strong>Pick up or send a rider.</strong> <span data-config="pickupArea"></span></li>
+          <li><strong>Pick up or get it delivered.</strong> <span data-config="pickupArea"></span></li>
         </ul>
         <p class="week-late">Missed Wednesday? Order anyway and your cookies go out the following Sunday.</p>
 
@@ -142,7 +142,7 @@
           <h3>Good to know</h3>
           <details>
             <summary>Pickup or delivery?</summary>
-            <p>Pickup is free, even for one cookie. For delivery, you book your own Lalamove or Grab rider to collect from us on Sunday and pay the fare in the app, within Metro Manila for now. The fare is the same for 1 cookie or 12, so a box is the best deal. We pack everything so it travels safely.</p>
+            <p>Pickup is free, even for one cookie. For delivery, you book your own Lalamove or Grab rider to collect from us on Sunday, and you pay the rider's fare through the app (within Metro Manila for now). The fare is the same for 1 cookie or 12, so a box is the best deal. We pack everything so it travels safely.</p>
           </details>
           <details>
             <summary>How do I store and reheat my cookies?</summary>
@@ -157,11 +157,19 @@
         </div>
       </div>
     </section>
+
+    <!-- Who's behind AJ's: a short personal note, so the brand feels like a person, not a generic bakery -->
+    <section id="about" class="about">
+      <div class="container">
+        <h2>Hi, I'm Jazmin, the J in AJ's.</h2>
+        <p class="section-sub">I bake every batch myself in our home kitchen in Quezon City, on Sundays only, so they're as fresh as they get. Say hi on Instagram <a data-instagram href="#">@ajs.mnl</a>.</p>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer">
     <img class="footer-logo" data-asset="logo" alt="AJ's Bakery" width="48" height="48" sizes="48px">
-    <p><strong>AJ's Bakery</strong> · Baked at home in Metro Manila</p>
+    <p><strong>AJ's Bakery</strong> · Baked by AJ in Quezon City</p>
     <p>Follow us: <a data-instagram href="#">@ajs.mnl</a></p>
   </footer>
 
@@ -172,7 +180,7 @@
     import {
       orderingSunday, renderBanner, renderBannerError,
       renderMenu, renderBoxes, renderConfigText, renderClosed, stockLabel, clampDescriptions, renderComingSoon,
-      renderWeek, cheapestBoxCookie, peso,
+      renderWeek, boxSavings, peso,
     } from "./js/ui.js";
     import { initCartUI } from "./js/cart-ui.js";
     import { initFlavorSheet } from "./js/flavor-sheet.js";
@@ -182,9 +190,11 @@
     initCartUI();
     renderComingSoon(document.getElementById("coming-soon"), document.getElementById("coming-grid"));   // doesn't need the database
 
-    const ig = document.querySelector("[data-instagram]");
-    ig.href = CONFIG.instagramUrl;
-    ig.textContent = CONFIG.instagramHandle;
+    // Every Instagram link on the page (the "Hi, I'm Jazmin" note and the footer)
+    document.querySelectorAll("[data-instagram]").forEach((ig) => {
+      ig.href = CONFIG.instagramUrl;
+      ig.textContent = CONFIG.instagramHandle;
+    });
 
     // How many of each flavor are left this Sunday (from the database). null = unknown (no limits shown).
     let availability = null;
@@ -341,11 +351,12 @@
         refreshStock();
         renderBoxes(document.getElementById("box-grid"), document.getElementById("box-note"), boxes, flavors);
         refreshBoxes();
-        // "Save in a box: from ₱95 a cookie" once above the menu (it used to repeat on every card)
-        const from = cheapestBoxCookie(boxes);
-        if (from) {
+        // "Buy singles, or save up to ₱180 with a box" once above the menu (it used to repeat on every card).
+        // The biggest saving of any box vs buying the same cookies as singles (boxSavings in js/ui.js).
+        const bestSaving = Math.max(0, ...boxes.map((b) => boxSavings(b, flavors) || 0));
+        if (bestSaving) {
           const note = document.getElementById("menu-boxnote");
-          note.innerHTML = `Cheaper in a box: <strong>from ${peso(from)} a cookie</strong>. <a href="#boxes">See boxes</a>`;
+          note.innerHTML = `Buy singles, or <strong>save up to ${peso(bestSaving)} with a box</strong>. <a href="#boxes">See boxes</a>`;
           note.hidden = false;
         }
         cart.syncWithMenu({ flavors, boxes });   // keep the cart in line with today's menu (retired items are removed, with a notice)

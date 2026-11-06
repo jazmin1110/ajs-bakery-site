@@ -12,7 +12,7 @@ on conflict (key) do update set value = excluded.value;
 
 -- Chimp Chips
 update public.flavors set
-  short_description = $c$Nutty brown butter packed with Callebaut dark chocolate. Soft, chewy, and the one to start with.$c$,
+  short_description = $c$Our brown butter dough loaded with Callebaut dark chocolate. Soft, chewy, the classic.$c$,
   long_description  = $c$This is the one to start with. We brown the butter until it smells like toasted caramel, then load the dough with chopped Callebaut dark chocolate, the Belgian chocolate bakers love. Soft and chewy, with a nutty, buttery edge and chocolate in every bite.$c$,
   taste_notes       = array[$c$Toasted brown butter$c$, $c$Callebaut dark chocolate$c$, $c$Soft and chewy$c$]::text[],
   ingredients       = $c$All-purpose wheat flour, dark chocolate (cocoa mass, sugar, cocoa butter, soy lecithin, natural vanilla flavouring), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt.$c$,
@@ -40,8 +40,8 @@ where slug in ('coco-loco', 'double-choc');
 
 -- Bueno Mucho
 update public.flavors set
-  short_description = $c$Half a Kinder Bueno hidden inside, with Kinder Maxi chocolate in the dough. Our biggest cookie.$c$,
-  long_description  = $c$The fun one. Brown butter dough loaded with chopped Kinder Maxi chocolate, wrapped around half a Kinder Bueno bar. Bite in and you hit wafer crunch and hazelnut cream. It's our biggest cookie at about 70g, and the wafer goes soft after a few days, so eat it within 2-3 days.$c$,
+  short_description = $c$Half a Kinder Bueno hidden inside. Wafer crunch, hazelnut cream, all of it.$c$,
+  long_description  = $c$The fun one. Brown butter dough loaded with chopped Kinder Maxi chocolate, wrapped around half a Kinder Bueno bar. Bite in and you hit wafer crunch and hazelnut cream. It's a big one at about 70g, and the wafer goes soft after a few days, so eat it within 2-3 days.$c$,
   taste_notes       = array[$c$Kinder Maxi chocolate$c$, $c$Hazelnut cream$c$, $c$Wafer crunch$c$]::text[],
   ingredients       = $c$Kinder Bueno (milk chocolate, sugar, palm oil, wheat flour, hazelnuts, milk powder, soy lecithin), all-purpose wheat flour, Kinder Maxi milk chocolate (sugar, milk powder, cocoa butter, cocoa mass, palm oil, soy lecithin), brown butter (unsalted butter), dark brown sugar, sugar, eggs, vanilla extract, baking soda, salt.$c$,
   contains          = array[$c$Wheat (gluten)$c$, $c$Milk$c$, $c$Egg$c$, $c$Soy$c$, $c$Hazelnuts$c$]::text[],

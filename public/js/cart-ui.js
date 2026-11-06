@@ -28,7 +28,7 @@ export function hintHtml() {
 // plain line when delivery is picked for a small order. A nudge only: it never stops checkout.
 export function deliveryNudgeHtml() {
   if (!cart.smallForDelivery()) return "";
-  return `Sending a rider for just a cookie or two? The fare costs the same for 12, so add a few more (or grab a box) and you split it across more cookies. <a href="box.html">Build a box</a>`;
+  return `Riders charge the same for 1 cookie or 12. Add a few more, or <a href="box.html">build a box</a>.`;
 }
 
 // A small notice under the header: what changed in the cart while the customer was away.
@@ -230,7 +230,7 @@ function render() {
       </div>
       <div class="drawer-small">
         <button type="button" class="link-btn drawer-clear" data-clear-cart>Clear cart</button>
-        <small class="drawer-fine">Final price confirmed at checkout.</small>
+        <small class="drawer-fine">Pickup is free. For delivery, you pay the rider's fare in the Lalamove or Grab app.</small>
       </div>`;
   }
 
