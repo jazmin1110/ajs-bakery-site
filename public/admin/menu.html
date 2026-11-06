@@ -24,11 +24,8 @@
   </header>
 
   <main class="container admin-main">
-    <h1 style="margin:0 0 .3rem;font-size:1.6rem">Menu this week</h1>
-    <p class="t-sub" style="margin:0 0 .8rem">
-      <strong>Sold out</strong> = stays on the menu but can't be ordered (good for "not this week").
-      <strong>Hide</strong> = taken off the site completely. Changes show on the site straight away.
-    </p>
+    <h1 style="margin:0 0 .3rem;font-size:1.6rem">Menu</h1>
+    <p class="t-sub" style="margin:0 0 .8rem">Pick one for each flavor. Changes show on the website straight away and stay until you change them back.</p>
 
     <div class="form-error" id="message" role="alert" hidden></div>
     <div class="ops-ok ops-flash" id="flash" role="status" hidden></div>
@@ -36,7 +33,8 @@
   </main>
 
   <script type="module">
-    // MENU SWITCHES. Two per flavor: sold_out and hidden (migration 026).
+    // MENU SWITCHES. One choice per flavor: On sale / Sold out / Hidden. Saved as the two
+    // database switches sold_out and hidden (migration 026); only one of them is ever on.
     // Writes go through admin_set_flavor_menu(), which checks is_admin(). The database
     // then refuses orders for these flavors, so the storefront can't get around it.
     import { requireAdmin, renderNav, select, rpc } from "../js/admin.js";
@@ -68,19 +66,21 @@
       }
     }
 
-    // What customers see right now, as a tag
-    function statusTag(f) {
-      if (f.hidden) return `<span class="tag tag-info">hidden</span>`;
-      if (f.sold_out) return `<span class="tag tag-low">sold out</span>`;
-      return `<span class="tag tag-ok">on sale</span>`;
-    }
+    const CHOICES = [
+      ["on_sale",  "On sale",              "Customers can order it."],
+      ["sold_out", "Sold out this week",   "Still shows on the website, but can't be ordered."],
+      ["hidden",   "Hidden",               "Not on the website at all (e.g. still testing it)."],
+    ];
+    const current = (f) => f.hidden ? "hidden" : f.sold_out ? "sold_out" : "on_sale";
 
     function card(f) {
-      return `<article class="t-card" data-slug="${esc(f.slug)}"${f.hidden ? ' style="opacity:.7"' : ""}>
-        <h2>${esc(f.name)} ${statusTag(f)}</h2>
-        <p class="t-sub" style="margin:0 0 .5rem">${Number(f.surcharge) > 0 ? "Special" : "Classic"}</p>
-        <label class="choice"><input type="checkbox" data-switch="sold_out"${f.sold_out ? " checked" : ""}><span>Sold out (still shows, can't order)</span></label>
-        <label class="choice"><input type="checkbox" data-switch="hidden"${f.hidden ? " checked" : ""}><span>Hide from the site</span></label>
+      const now = current(f);
+      return `<article class="t-card" data-slug="${esc(f.slug)}">
+        <h2>${esc(f.name)} <span class="o-small" style="font-weight:600">${Number(f.surcharge) > 0 ? "Special" : "Classic"}</span></h2>
+        <div role="radiogroup" aria-label="${esc(f.name)}">
+        ${CHOICES.map(([value, label, hint]) => `<label class="choice"><input type="radio" name="menu-${esc(f.slug)}" value="${value}"${now === value ? " checked" : ""}>
+          <span><strong>${label}</strong> <span class="o-small">${hint}</span></span></label>`).join("")}
+        </div>
       </article>`;
     }
 
@@ -92,12 +92,12 @@
 
     // Flip a switch: save it, then reload so the tags show what's really saved
     $("out").addEventListener("change", async (e) => {
-      const box = e.target.closest("[data-switch]"); if (!box) return;
+      const box = e.target.closest('input[type="radio"]'); if (!box) return;
       const slug = box.closest("[data-slug]").dataset.slug;
-      const args = { p_slug: slug };
-      args[box.dataset.switch === "hidden" ? "p_hidden" : "p_sold_out"] = box.checked;
+      // Set both switches every time, so a flavor is never "sold out" AND "hidden"
+      const args = { p_slug: slug, p_hidden: box.value === "hidden", p_sold_out: box.value === "sold_out" };
       showMessage("");
-      box.disabled = true;
+      box.closest("[role=radiogroup]").querySelectorAll("input").forEach((i) => { i.disabled = true; });
       try {
         await rpc("admin_set_flavor_menu", args);
         flash("Saved");
