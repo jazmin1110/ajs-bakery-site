@@ -108,6 +108,7 @@
       const idleFlavor = (f) => f.cookies_needed === 0 && !f.baked && !f.dough_on_hand;
       const busy = flavors.filter((f) => !idleFlavor(f));
       const idle = flavors.filter(idleFlavor);
+      const empty = !busy.length;                     // nothing ordered, baked or in the freezer for this Sunday
       const makeRow = (f) => `
             <div class="mk-row" data-flavor="${f.flavor_id}">
               <div class="mk-head"><strong>${esc(f.name)}</strong>
@@ -138,22 +139,23 @@
       $("out").innerHTML = `
         <section class="t-card">
           <h2>${esc(formatSunday(sunday))}</h2>
+          ${empty ? `<div class="ops-ok">${includePending ? "No orders" : "No paid orders"} for this Sunday yet, so there's nothing to bake. This page fills in by itself as orders come in.</div>` : `
           <div class="ops-stats ops-stats-4">
             <div class="ops-stat"><strong>${num(plan.totals.cookies)}</strong><span>cookies ordered${plan.totals.baked ? `, ${num(plan.totals.baked)} baked` : ""}</span></div>
-            <div class="ops-stat"><strong>${num(plan.totals.batches)}</strong><span>batches to mix</span></div>
-            <div class="ops-stat"><strong>${peso2(plan.totals.est_shopping_cost)}</strong><span>to buy (est.)</span></div>
-            <div class="ops-stat"><strong>${peso2(Math.round(mixCost))}</strong><span>batch ingredients (est.)</span></div>
-          </div>
+            <div class="ops-stat"><strong>${num(plan.totals.batches)}</strong><span>batches of dough to make</span></div>
+            <div class="ops-stat"><strong>${peso2(plan.totals.est_shopping_cost)}</strong><span>shopping, about</span></div>
+            <div class="ops-stat"><strong>${peso2(Math.round(mixCost))}</strong><span>ingredients for that dough, about</span></div>
+          </div>`}
           ${money && money.cookies_baked ? `<p class="o-small">Baked so far for this Sunday: <strong>${num(money.cookies_baked)} cookies</strong>, which cost
             <strong>${peso2(money.cookie_cost)}</strong> (what you paid for the stock used)${money.estimated ? ", partly estimated" : ""}. Profit is on the <a href="totals.html?sunday=${sunday}">Sales</a> page.</p>` : ""}
-          <label class="choice t-toggle"><input type="checkbox" id="inc-pending" ${includePending ? "checked" : ""}>
-            <span>Include orders not paid yet</span></label>
+          ${empty && includePending ? "" : `<label class="choice t-toggle"><input type="checkbox" id="inc-pending" ${includePending ? "checked" : ""}>
+            <span>Also plan for orders that aren't paid yet <span class="o-small">(safer: most of them pay)</span></span></label>`}
         </section>
 
         ${noRecipe.length ? `<div class="ops-note">No recipe entered yet for <strong>${noRecipe.map((f) => esc(f.name)).join(", ")}</strong>,
           so the batches and shopping list below leave it out. <a href="recipes.html">Add the recipe</a>.</div>` : ""}
 
-        <section class="t-card">
+        ${empty && !toBuy.length ? "" : `<section class="t-card">
           <div class="ops-head"><h2>1. Shopping list</h2>
             ${toBuy.length ? `<span class="ops-actions no-print" style="margin:0">
               <button type="button" class="btn btn-small btn-ghost" id="copy-btn">Copy list</button>
@@ -178,9 +180,12 @@
           : `<div class="ops-ok">${plan.shopping.length ? "Nothing to buy: you have enough of everything for this plan." : "Nothing to list yet. Orders and recipes make this list."}</div>`}
           ${covered.length ? `<details class="o-more"><summary>Already covered (${covered.length})</summary>
             <p class="t-sub">${covered.map((s) => `${esc(s.name)}: need ${esc(fmtQty(s.needed, s.unit))}, have ${esc(fmtQty(s.on_hand, s.unit))}`).join("<br>")}</p></details>` : ""}
-        </section>
+        </section>`}
 
-        <section class="t-card">
+        ${empty ? `<section class="t-card">
+          <details class="o-more"><summary>Made dough ahead of time? Record it here</summary>
+            ${idle.map(makeRow).join("")}</details>
+        </section>` : `<section class="t-card">
           <h2>2. Make and bake</h2>
           <p class="t-sub">Tap the buttons as you go, so your stock and freezer stay right.</p>
           <details class="how"><summary>How "make" is worked out</summary>
@@ -188,10 +193,10 @@
           ${busy.length ? busy.map(makeRow).join("") : `<p class="t-sub">Nothing ordered for this Sunday yet.</p>`}
           ${idle.length ? `<details class="o-more"><summary>${idle.length} flavor${idle.length === 1 ? "" : "s"} with nothing ordered</summary>
             ${idle.map(makeRow).join("")}</details>` : ""}
-        </section>
+        </section>`}
 
         <section class="t-card">
-          <h2>3. Dough in the freezer</h2>
+          <h2>${empty ? "" : "3. "}Dough in the freezer</h2>
           ${dough.length ? dough.map((d) => {
             const left = daysUntil(d.best_by);
             const tag = left < 0 ? `<span class="tag tag-low">past best-by</span>` : left <= 7 ? `<span class="tag tag-warn">${left === 0 ? "last day" : left + " days left"}</span>` : "";
@@ -199,10 +204,10 @@
               <span><strong>${esc(nameOf[d.flavor_id] || "Flavor")}</strong>: ${d.balls_left} of ${d.balls_made} balls
                 <span class="o-small">· made ${esc(shortDate(d.made_on))} · best by ${esc(shortDate(d.best_by))}${d.cost_per_ball != null ? ` · ${peso2(Math.round(d.cost_per_ball * 100) / 100)} a ball` : ""}</span> ${tag}</span>
               <button type="button" class="btn btn-small btn-ghost" data-act="toss">Throw away</button></div>`;
-          }).join("") : `<p class="t-sub">No dough in the freezer. Tap \"I made the dough\" above when you mix a batch.</p>`}
+          }).join("") : `<p class="t-sub">No dough in the freezer yet. Dough you record as made shows up here.</p>`}
         </section>`;
 
-      $("inc-pending").addEventListener("change", (e) => { includePending = e.target.checked; load(); });
+      $("inc-pending")?.addEventListener("change", (e) => { includePending = e.target.checked; load(); });
       const copy = $("copy-btn"); if (copy) copy.addEventListener("click", () => copyList(toBuy));
       const shop = $("shop-btn"); if (shop) shop.addEventListener("click", () => { shopping = !shopping; render(); });
       wireShopForm();
