@@ -164,15 +164,15 @@
         <img class="mascot" src="assets/stickers/mascot-badge.webp" width="96" height="96" alt="" loading="lazy">
         <div>
           <h2>Hi, I'm AJ.</h2>
-          <p class="section-sub">Every batch is baked by hand in my home kitchen in Quezon City, on Sundays only, so they're as fresh as they get. Say hi on Instagram <a data-instagram href="#">@ajs.mnl</a>.</p>
+          <p class="section-sub">Every batch is baked by hand in my home kitchen, on Sundays only, so they're as fresh as they get.</p>
         </div>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">
-    <img class="footer-logo" data-asset="logo" alt="AJ's Bakery" width="48" height="48" sizes="48px">
-    <p><strong>AJ's Bakery</strong> · Baked by AJ in Quezon City</p>
+    <!-- No logo here: the monkey in the "Hi, I'm AJ" note sits right above the footer -->
+    <p><strong>AJ's Bakery</strong> · Quezon City, Metro Manila</p>
     <p>Follow us: <a data-instagram href="#">@ajs.mnl</a></p>
   </footer>
 
@@ -193,7 +193,7 @@
     initCartUI();
     renderComingSoon(document.getElementById("coming-soon"), document.getElementById("coming-grid"));   // doesn't need the database
 
-    // Every Instagram link on the page (the "Hi, I'm AJ" note and the footer)
+    // Every Instagram link on the page (the footer)
     document.querySelectorAll("[data-instagram]").forEach((ig) => {
       ig.href = CONFIG.instagramUrl;
       ig.textContent = CONFIG.instagramHandle;
