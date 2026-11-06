@@ -296,9 +296,9 @@ function menuItems(flavors, boxes, availability) {
       const stock = stockLabel(left);
       const canSingle = f.single_price != null;
       const desc = f.short_description || f.long_description || info.description;
-      // Order inside a row/card: name, description, "Nutrition" pill + stock tag, then the price on the
+      // Order inside a row/card: name, description, "Nutrition info" link + stock tag, then the price on the
       // LAST line so it sits level with the "+ Add" pill. (The sticker is beside it on phones, on top on cards.)
-      // The pill says "Nutrition", not the calorie number: the numbers are one tap away in the sheet,
+      // A small quiet "Nutrition info" link, not the calorie number: the numbers are one tap away in the sheet,
       // but the menu leads with the cookie (mindful eating, never diet framing).
       return `
       <article class="flavor-item" data-slug="${esc(f.slug)}">
@@ -307,7 +307,7 @@ function menuItems(flavors, boxes, availability) {
             <h3><button type="button" class="card-open" data-open-sheet aria-haspopup="dialog">${esc(f.name)}</button></h3>
             <p class="fi-desc" data-full="${esc(desc)}">${esc(desc)}</p>
             <p class="fi-extra">
-              ${f.nutrition ? `<button type="button" class="nutri-link" data-open-nutrition aria-haspopup="dialog" aria-label="Nutrition info for ${esc(f.name)}">Nutrition</button>` : ""}
+              ${f.nutrition ? `<button type="button" class="nutri-link" data-open-nutrition aria-haspopup="dialog" aria-label="Nutrition info for ${esc(f.name)}">Nutrition info</button>` : ""}
               <span class="stock sticker${left !== null && left <= 0 ? " stock-out" : ""}" data-stock${stock ? "" : " hidden"}>${stock}</span>
             </p>
             ${canSingle
