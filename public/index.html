@@ -79,6 +79,8 @@
       <div class="container">
         <h2>Cookies</h2>
         <p class="section-sub">All on our brown butter base. Grab a single cookie or save with a box.</p>
+        <!-- One line for the box saving instead of repeating it on every card. Filled in once the boxes load. -->
+        <p class="menu-boxnote" id="menu-boxnote" hidden></p>
         <!-- Filled with a "Classics" and a "Specials" group, each with its own list (renderMenu in js/ui.js) -->
         <div class="menu-groups" id="menu-grid"><div class="menu-list"><p class="loading">Loading the menu...</p></div></div>
         <p class="menu-msg" id="menu-msg" role="status"></p>
@@ -103,20 +105,36 @@
       </div>
     </section>
 
-    <section id="how">
+    <!-- How it works = our week, drawn as a Mon-Sun strip on a blue field.
+         Works without the script (weekday names only); the script adds the dates of the
+         ordering week and rings today (renderWeek in js/ui.js). -->
+    <section id="how" class="week-section">
       <div class="container">
         <h2>How it works</h2>
-        <ol class="steps">
-          <li><strong>Order</strong>Pick your box and flavors, then check out.</li>
-          <li><strong>Pay via GCash</strong>Send payment and enter your reference number.</li>
-          <li><strong>We bake Sunday</strong>Everything is baked fresh for your Sunday.</li>
-          <li><strong>Pickup or delivery</strong>Sundays, <span data-config="pickupWindow"></span>.</li>
+        <p class="week-lead">One bake a week. Order by Wednesday night, eat cookies on Sunday.</p>
+
+        <p class="week-range" id="week-range" hidden></p>
+        <ol class="week" id="week" aria-label="This week">
+          <li class="wk-day"><span class="wk-name">Mon</span><span class="wk-date"></span></li>
+          <li class="wk-day"><span class="wk-name">Tue</span><span class="wk-date"></span></li>
+          <li class="wk-day wk-cutoff"><span class="wk-name">Wed</span><span class="wk-date"></span></li>
+          <li class="wk-day"><span class="wk-name">Thu</span><span class="wk-date"></span></li>
+          <li class="wk-day"><span class="wk-name">Fri</span><span class="wk-date"></span></li>
+          <li class="wk-day"><span class="wk-name">Sat</span><span class="wk-date"></span></li>
+          <li class="wk-day wk-bake"><span class="wk-name">Sun</span><span class="wk-date"></span>
+            <img class="wk-cookie" src="assets/stickers/chimp-chips-sticker-240.webp" width="240" height="240" alt="" loading="lazy"></li>
         </ol>
-        <p class="cutoff-note">
-          Orders close every <span data-cutoff></span> (Manila time) for that Sunday.
-          Order after that and your cookies go out the <em>following</em> Sunday.
-          We bake <span data-weekly-cap></span> of each flavor per Sunday. Once they're gone, they're gone.
-        </p>
+        <div class="week-notes" aria-hidden="true">
+          <p class="wk-note-cutoff">Orders close 9pm</p>
+          <p class="wk-note-bake">Bake + pickup <span data-config="pickupWindow"></span></p>
+        </div>
+
+        <ul class="week-steps">
+          <li><strong>Order and pay by GCash</strong> any time before <span data-cutoff></span>. Unpaid orders are released after 24 hours.</li>
+          <li><strong>We bake on Sunday</strong>, only <span data-weekly-cap></span> of each flavor. Once they're gone, they're gone.</li>
+          <li><strong>Pick up or send a rider</strong> (Lalamove or Grab), Sunday <span data-config="pickupWindow"></span>.</li>
+        </ul>
+        <p class="week-late">Missed Wednesday? Order anyway and your cookies go out the following Sunday.</p>
       </div>
     </section>
 
@@ -170,6 +188,7 @@
     import {
       orderingSunday, renderBanner, renderBannerError,
       renderMenu, renderBoxes, renderConfigText, renderClosed, stockLabel, clampDescriptions, renderComingSoon,
+      renderWeek, cheapestBoxCookie, peso,
     } from "./js/ui.js";
     import { initCartUI } from "./js/cart-ui.js";
     import { initFlavorSheet } from "./js/flavor-sheet.js";
@@ -312,6 +331,7 @@
       .then((info) => {
         const ordering = orderingSunday(info);
         renderBanner(document.getElementById("order-banner"), ordering);
+        renderWeek(document.getElementById("week"), ordering);   // dates on the Mon-Sun strip
         cart.rememberSunday(ordering.date);   // so checkout can warn if the Sunday changes later
       })
       .catch((err) => { console.error(err); renderBannerError(document.getElementById("order-banner")); });
@@ -337,6 +357,13 @@
         refreshStock();
         renderBoxes(document.getElementById("box-grid"), document.getElementById("box-note"), boxes, flavors);
         refreshBoxes();
+        // "Save in a box: from ₱95 a cookie" once above the menu (it used to repeat on every card)
+        const from = cheapestBoxCookie(boxes);
+        if (from) {
+          const note = document.getElementById("menu-boxnote");
+          note.innerHTML = `Cheaper in a box: <strong>from ${peso(from)} a cookie</strong>. <a href="#boxes">See boxes</a>`;
+          note.hidden = false;
+        }
         cart.syncWithMenu({ flavors, boxes });   // keep the cart in line with today's menu (retired items are removed, with a notice)
         if (availability) {                      // keep the "15 of each flavor" wording in step with the database
           const cap = Math.max(...Object.values(availability).map((a) => a.cap));

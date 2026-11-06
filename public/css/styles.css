@@ -1422,6 +1422,102 @@ h1 { letter-spacing: -0.01em; }
 /* ---- Same flat paper look as the menu (these still had the older shadow and thick border) ---- */
 .flavor-row, .summary { background: var(--paper); border: 1px solid var(--line); box-shadow: none; }
 
+/* ==========================================================================================
+   Menu v2 (Nov 2026): every flavor is a card with a BIG sticker on top, at every size.
+   Phones used to get a text row with a 96px thumbnail; the cookie is what sells, so it leads.
+   Order inside a card: sticker, name, description, kcal + stock tags, price (last line, level with "+ Add").
+   ========================================================================================== */
+.menu-boxnote { margin: -0.6rem 0 1.25rem; font-size: 1rem; }
+.menu-boxnote a { font-weight: 700; }
+.menu-group-title { margin-bottom: 0.6rem; }
+
+/* the list is no longer one rounded container on phones: each card stands on its own */
+.menu-list { display: grid; grid-template-columns: 1fr; gap: 1rem; background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+.flavor-item, .flavor-item:first-child {
+  display: flex; flex-direction: column;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: none; overflow: visible;
+}
+.fi-body { display: flex; flex-direction: column; flex: 1; gap: 0; padding: 0; }
+.fi-photo { order: -1; width: min(220px, 70%); aspect-ratio: 1 / 1; margin: 1.1rem auto 0.1rem; font-size: 4rem; }
+.fi-text { padding: 0.3rem 1.1rem 0.9rem; flex: 1; display: flex; flex-direction: column; }
+.fi-text h3 { font-size: 1.3rem; }
+.fi-desc { font-size: 0.95rem; line-height: 1.45; margin: -0.1rem 0 0.4rem; }
+.fi-extra { margin: 0 0 0.2rem; }
+.fi-price { margin-top: auto; min-height: 48px; display: flex; align-items: center; gap: 0.3rem; padding-right: 108px; }   /* room on the right for the "+ Add" pill */
+.fi-price .price { font-size: 1.35rem; }
+/* "+ Add" sits in the bottom-right corner, level with the price */
+.fi-add, .fi-add[data-add-slot] { position: absolute; right: 1rem; bottom: 0.9rem; margin: 0; align-self: auto; }
+
+/* "295 kcal": a small blue pill that opens the nutrition table */
+.nutri-link { min-height: 36px; padding: 0 12px; border-radius: 999px; background: var(--blue-soft); color: var(--blue-dark); text-decoration: none; font: 800 0.85rem var(--font-body); }
+.nutri-link:active { opacity: 0.7; }
+
+/* the monkey badge rides on the sticker's top-left corner at every size */
+.flavor-badge { position: absolute; top: 0.6rem; left: 0.7rem; z-index: 3; flex-direction: column; margin: 0; transform: rotate(-4deg); }
+.flavor-badge img { width: 40px; height: 40px; }
+.flavor-badge-pick img { width: 44px; height: 44px; }
+.flavor-badge-label { margin: -6px 0 0; padding: 1px 8px; font-size: 0.72rem; }
+
+/* two cards a row on big phones and small tablets, three from 700px (the older 700px rules keep the grid) */
+@media (min-width: 520px) { .menu-list { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 700px) {
+  .fi-photo { width: min(180px, 80%); }
+  .fi-text h3 { font-size: 1.2rem; }
+  .flavor-badge img { width: 36px; height: 36px; }
+  .flavor-badge-pick img { width: 40px; height: 40px; }
+  .flavor-badge-label { font-size: 0.66rem; padding: 1px 6px; }
+}
+
+/* ==========================================================================================
+   How it works = the week strip, on the page's one full blue field.
+   Mon..Sun in a row; Wednesday (orders close) in cookie dough, Sunday (bake + pickup) in cream
+   with a cookie on it; today gets a white ring and a "Today" label. Dates come from renderWeek().
+   ========================================================================================== */
+.week-section { background: var(--blue); color: var(--cream); padding: 2.6rem 0 2.8rem; margin: 1.5rem 0; }
+.week-section h2 { color: #fff; margin-bottom: 0.4rem; }
+.week-lead { margin: 0 0 1.4rem; font-size: 1.1rem; color: var(--cream); max-width: 40ch; }
+.week-range { margin: 0 0 2rem; font-weight: 800; color: #fff; }   /* "This round: Nov 9 to 15" */
+
+.week { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.wk-day {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  padding: 0.55rem 0 0.5rem; border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.10); color: var(--cream);
+}
+.wk-name { font-size: 0.78rem; font-weight: 800; }
+.wk-date { font-family: var(--font-display); font-weight: 700; font-size: 1.45rem; line-height: 1.1; min-height: 1.1em; }
+.wk-cutoff { background: var(--accent); color: var(--ink); }            /* ink on cookie dough: 5.1:1 */
+.wk-bake { background: var(--cream); color: var(--blue-dark); }
+.wk-today { outline: 3px solid #fff; outline-offset: 2px; }
+.wk-today::before {                                                      /* "Today" floats just above the ringed day */
+  content: "Today"; position: absolute; top: -1.55rem; left: 50%; transform: translateX(-50%);
+  font-size: 0.72rem; font-weight: 800; color: #fff; white-space: nowrap;
+}
+.wk-cookie { position: absolute; top: -30px; left: 50%; width: 38px; height: 38px; transform: translateX(-50%) rotate(14deg); filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.25)); pointer-events: none; }   /* sits on top of the Sunday tile, clear of the day name */
+
+/* the two labels sit under their days: "Orders close" centred under Wednesday, "Bake + pickup" under Sunday */
+.week-notes { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-top: 0.5rem; }
+.week-notes p { margin: 0; font-size: 0.82rem; font-weight: 800; line-height: 1.25; color: #fff; }
+.wk-note-cutoff { grid-column: 2 / 5; text-align: center; }
+.wk-note-bake { grid-column: 5 / 8; text-align: right; }
+
+.week-steps { list-style: none; margin: 1.9rem 0 0; padding: 0; display: grid; gap: 0.9rem; }
+.week-steps li { line-height: 1.5; }
+.week-steps strong { color: #fff; }
+.week-late { margin: 1.2rem 0 0; font-size: 0.95rem; color: var(--cream); }
+
+@media (min-width: 700px) {
+  .week-section { padding: 3.5rem 0 3.6rem; }
+  .week { gap: 10px; }
+  .week-notes { gap: 10px; }
+  .wk-day { padding: 0.9rem 0 0.8rem; }
+  .wk-name { font-size: 0.9rem; }
+  .wk-date { font-size: 2.1rem; }
+  .wk-cookie { width: 54px; height: 54px; top: -42px; }
+  .week-notes p { font-size: 0.95rem; }
+  .week-steps { grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+}
+
 /* ---- Bottom bars line up with the page content on wide screens ---- */
 .cart-bar, .builder-bar { padding-left: max(var(--gutter), calc((100% - 960px) / 2 + var(--gutter))); padding-right: max(var(--gutter), calc((100% - 960px) / 2 + var(--gutter))); }
 

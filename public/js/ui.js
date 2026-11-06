@@ -88,6 +88,33 @@ export function renderBanner(el, ordering, { compact = false } = {}) {
   el.innerHTML = compact ? `${lead} <span class="banner-by">· by ${esc(ordering.cutoffLabel)}</span>` : `${lead}<small>${small}</small>`;
 }
 
+// ---- The week strip ("How it works") -------------------------------------------------
+// Fills the Mon-Sun strip with the dates of the ordering week (the 6 days before the ordering
+// Sunday, then the Sunday) and rings today if it's in that week. Read on the Manila clock, so a
+// visitor's phone timezone never shifts it. Without this the strip still shows Mon..Sun.
+export function renderWeek(list, ordering) {
+  if (!list || !ordering) return;
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: CONFIG.timezone }).format(new Date());   // "2026-11-12"
+  const days = list.querySelectorAll(".wk-day");
+  days.forEach((li, i) => {
+    const iso = addDays(ordering.date, i - 6);              // i = 0 is Monday, i = 6 is the Sunday itself
+    li.querySelector(".wk-date").textContent = Number(iso.slice(8, 10));
+    const isToday = iso === today;
+    li.classList.toggle("wk-today", isToday);
+    if (isToday) li.setAttribute("aria-current", "date"); else li.removeAttribute("aria-current");
+  });
+  // "This round: Nov 9 to 15" above the strip, so it's clear which week it shows (Thu-Sun it's next week's)
+  const range = document.getElementById("week-range");
+  if (range) {
+    const md = (iso) => new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+    const mon = addDays(ordering.date, -6), sun = ordering.date;
+    const end = mon.slice(5, 7) === sun.slice(5, 7) ? Number(sun.slice(8, 10)) : md(sun);   // "Nov 9 to 15" / "Nov 30 to Dec 6"
+    range.textContent = `This round: ${md(mon)} to ${end}`;
+    range.hidden = false;
+    list.setAttribute("aria-label", `This round: ${md(mon)} to ${md(sun)}`);
+  }
+}
+
 // Shown when we can't reach the database: ordering by Instagram DM is the fallback
 export function renderBannerError(el) {
   el.innerHTML = `Ordering is closed right now<small>DM us on Instagram ${esc(CONFIG.instagramHandle)} to order</small>`;
@@ -239,19 +266,25 @@ function flavorBadge(flavor) {
 // new flavor lands in the right group by itself once it's switched on. An empty group isn't shown.
 export function renderMenu(container, flavors, boxes = [], availability = {}) {
   const groups = [
-    { title: "Classics", sub: "The everyday favorites.", items: flavors.filter((f) => !(f.surcharge > 0)) },
-    { title: "Specials", sub: "Loaded with the good stuff.", items: flavors.filter((f) => f.surcharge > 0) },
+    { title: "Classics", items: flavors.filter((f) => !(f.surcharge > 0)) },
+    { title: "Specials", items: flavors.filter((f) => f.surcharge > 0) },
   ];
   container.innerHTML = groups
     .filter((g) => g.items.length)
     .map((g) => `
       <div class="menu-group">
         <h3 class="menu-group-title">${esc(g.title)}</h3>
-        <p class="menu-group-sub">${esc(g.sub)}</p>
         <div class="menu-list">${menuItems(g.items, boxes, availability)}</div>
       </div>`)
     .join("");
   clampDescriptions(container);
+}
+
+// The cheapest a cookie gets in a box (box price / cookies, before any Specials add-on), e.g. 95.
+// Shown ONCE above the menu ("save in a box: from ₱95 a cookie") instead of on every card.
+export function cheapestBoxCookie(boxes) {
+  if (!boxes.length) return null;
+  return Math.floor(Math.min(...boxes.map((b) => b.price / b.size)));
 }
 
 // The flavor rows/cards inside one menu group
@@ -261,26 +294,27 @@ function menuItems(flavors, boxes, availability) {
       const info = flavorInfo(f.slug);
       const left = availability[f.slug] ? availability[f.slug].remaining : null;
       const stock = stockLabel(left);
-      const each = boxEachPrice(f, boxes);
-      const inBox = each != null ? `or from ${peso(each)} each in a box` : "";
       const canSingle = f.single_price != null;
       const desc = f.short_description || f.long_description || info.description;
+      // "295 kcal": the calorie number up front, so the nutrition promise is seen, not hunted for
+      const kcal = f.nutrition && f.nutrition.calories != null ? `${f.nutrition.calories} kcal` : "Nutrition";
+      // Card order, top to bottom: big sticker, name, description, nutrition + stock tags, then the price
+      // on the LAST line so it sits level with the "+ Add" pill in the bottom-right corner.
       return `
       <article class="flavor-item" data-slug="${esc(f.slug)}">
         <div class="fi-body" data-open-sheet>
           <div class="fi-text">
             <h3><button type="button" class="card-open" data-open-sheet aria-haspopup="dialog">${esc(f.name)}</button></h3>
             <p class="fi-desc" data-full="${esc(desc)}">${esc(desc)}</p>
+            <p class="fi-extra">
+              ${f.nutrition ? `<button type="button" class="nutri-link" data-open-nutrition aria-haspopup="dialog" aria-label="Nutrition info for ${esc(f.name)}: ${esc(kcal)}">${esc(kcal)}</button>` : ""}
+              <span class="stock sticker${left !== null && left <= 0 ? " stock-out" : ""}" data-stock${stock ? "" : " hidden"}>${stock}</span>
+            </p>
             ${canSingle
               ? `<p class="fi-price"><span class="price">${peso(f.single_price)}</span> <small>each</small></p>`
               : `<p class="fi-price"><span class="price">Box only</span></p>`}
-            <p class="box-each">${esc(inBox)}</p>
-            <p class="fi-extra">
-              <span class="stock sticker${left !== null && left <= 0 ? " stock-out" : ""}" data-stock${stock ? "" : " hidden"}>${stock}</span>
-              ${f.nutrition ? `<button type="button" class="nutri-link" data-open-nutrition aria-haspopup="dialog" aria-label="Nutrition info for ${esc(f.name)}">Nutrition info</button>` : ""}
-            </p>
           </div>
-          <div class="fi-photo">${flavorPhoto(f, "card-img", { lazy: true, sizes: "(min-width: 700px) 180px, 96px" })}</div>
+          <div class="fi-photo">${flavorPhoto(f, "card-img", { lazy: true, sizes: "(min-width: 700px) 180px, 240px" })}</div>
           ${flavorBadge(f)}
         </div>
         ${canSingle ? `
