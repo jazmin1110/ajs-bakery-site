@@ -129,48 +129,32 @@
           <p class="wk-note-bake">Bake + pickup <span data-config="pickupWindow"></span></p>
         </div>
 
+        <!-- The three steps. They also carry what the old FAQ repeated (paying, the 24 hours, sold-out flavors, where pickup is). -->
         <ul class="week-steps">
-          <li><strong>Order and pay by GCash</strong> any time before <span data-cutoff></span>. Unpaid orders are released after 24 hours.</li>
-          <li><strong>We bake on Sunday</strong>, only <span data-weekly-cap></span> of each flavor. Once they're gone, they're gone.</li>
-          <li><strong>Pick up or send a rider</strong> (Lalamove or Grab), Sunday <span data-config="pickupWindow"></span>.</li>
+          <li><strong>Order, then pay by GCash.</strong> After checkout you'll see our QR code. Pay, then send us the reference number. Unpaid orders are released after 24 hours.</li>
+          <li><strong>We bake on Sunday,</strong> only <span data-weekly-cap></span> of each flavor. If one sells out the others are still there, and if everything sells out we open the next Sunday.</li>
+          <li><strong>Pick up or send a rider.</strong> <span data-config="pickupArea"></span></li>
         </ul>
         <p class="week-late">Missed Wednesday? Order anyway and your cookies go out the following Sunday.</p>
-      </div>
-    </section>
 
-    <section id="faq" class="faq">
-      <div class="container">
-        <h2>FAQ</h2>
-        <details>
-          <summary>Pickup or delivery?</summary>
-          <p>Pickup is free, even for one cookie. Delivery works for any order too, even a single cookie. You book your own Lalamove/Grab rider to collect from us on Sunday 3-6pm and pay the fare in the app. The fare is the same whether you send for 1 cookie or 12, so you save the most by ordering more: you split one fare across more cookies. A box is the best deal. We send the pickup address once your payment is confirmed, within Metro Manila for now, and we pack everything so it travels safely.</p>
-        </details>
-        <details>
-          <summary>When do I get my cookies?</summary>
-          <p>Every Sunday, 3-6pm. Order by Wednesday 9pm for that Sunday; later orders go to the next one.</p>
-        </details>
-        <details>
-          <summary>How do I pay?</summary>
-          <p>GCash. After checkout you'll see our QR code. Pay, then enter your GCash reference number so we can match it.</p>
-        </details>
-        <details>
-          <summary>What if I don't pay right away?</summary>
-          <p>Unpaid orders are released after 24 hours so someone else can grab the spot.</p>
-        </details>
-        <details>
-          <summary>How many cookies do you bake?</summary>
-          <p>We bake <span data-weekly-cap></span> of each flavor per Sunday. Once they're gone, they're gone. If a flavor sells out, the other flavors are still available, and if everything sells out we open the next Sunday.</p>
-        </details>
-        <details>
-          <summary>How do I store and reheat my cookies?</summary>
-          <p><strong>Storing:</strong> Keep them in an airtight container at room temperature, away from heat (not near the stove, not in a parked car). Please skip the fridge, it dries them out. Chimp Chips and Coco Loco are best within 4-5 days. Bueno Mucho is best within 2-3 days, because the wafer in the middle goes soft.</p>
-          <p><strong>Reheating (optional):</strong> A quick warm-up makes them taste fresh-baked. Oven or toaster oven: 150-160°C for 3-5 minutes. Air fryer: 150°C for 2-3 minutes. Microwave: 8-10 seconds, no longer, or it turns hard once it cools. Let it rest 1-2 minutes after so the middle can set.</p>
-          <p><strong>Keeping them longer:</strong> Wrap each cookie and freeze for up to 1 month. Thaw at room temperature for 20-30 minutes, then reheat in the oven.</p>
-        </details>
-        <details>
-          <summary>Do you have nutrition info?</summary>
-          <p>Yes. Open any cookie to see its ingredients, allergens, calories, carbs, sugar, fat and protein. Values are estimates calculated from our recipes.</p>
-        </details>
+        <!-- Only the questions the strip and steps above don't already answer -->
+        <div class="week-faq" id="faq">
+          <h3>Good to know</h3>
+          <details>
+            <summary>Pickup or delivery?</summary>
+            <p>Pickup is free, even for one cookie. For delivery, you book your own Lalamove or Grab rider to collect from us on Sunday and pay the fare in the app, within Metro Manila for now. The fare is the same for 1 cookie or 12, so a box is the best deal. We pack everything so it travels safely.</p>
+          </details>
+          <details>
+            <summary>How do I store and reheat my cookies?</summary>
+            <p><strong>Storing:</strong> Keep them in an airtight container at room temperature, away from heat (not near the stove, not in a parked car). Please skip the fridge, it dries them out. Chimp Chips and Coco Loco are best within 4-5 days. Bueno Mucho is best within 2-3 days, because the wafer in the middle goes soft.</p>
+            <p><strong>Reheating (optional):</strong> A quick warm-up makes them taste fresh-baked. Oven or toaster oven: 150-160°C for 3-5 minutes. Air fryer: 150°C for 2-3 minutes. Microwave: 8-10 seconds, no longer, or it turns hard once it cools. Let it rest 1-2 minutes after so the middle can set.</p>
+            <p><strong>Keeping them longer:</strong> Wrap each cookie and freeze for up to 1 month. Thaw at room temperature for 20-30 minutes, then reheat in the oven.</p>
+          </details>
+          <details>
+            <summary>Do you have nutrition info?</summary>
+            <p>Yes. Open any cookie to see its ingredients, allergens, calories, carbs, sugar, fat and protein. Values are estimates calculated from our recipes.</p>
+          </details>
+        </div>
       </div>
     </section>
   </main>
