@@ -1423,49 +1423,54 @@ h1 { letter-spacing: -0.01em; }
 .flavor-row, .summary { background: var(--paper); border: 1px solid var(--line); box-shadow: none; }
 
 /* ==========================================================================================
-   Menu v2 (Nov 2026): every flavor is a card with a BIG sticker on top, at every size.
-   Phones used to get a text row with a 96px thumbnail; the cookie is what sells, so it leads.
-   Order inside a card: sticker, name, description, kcal + stock tags, price (last line, level with "+ Add").
+   Menu v2 (Nov 2026).
+   Phones (under 520px): compact rows, so several flavors fit on one screen: text on the left,
+   a 108px sticker on the right, the price on the last line level with "+ Add".
+   520px and up: every flavor is a card with a big sticker on top (2 a row, then 3 from 700px).
+   Both: the box saving is said once above the menu, and a small "Nutrition" pill opens the sheet.
    ========================================================================================== */
 .menu-boxnote { margin: -0.6rem 0 1.25rem; font-size: 1rem; }
 .menu-boxnote a { font-weight: 700; }
 .menu-group-title { margin-bottom: 0.6rem; }
 
-/* the list is no longer one rounded container on phones: each card stands on its own */
-.menu-list { display: grid; grid-template-columns: 1fr; gap: 1rem; background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
-.flavor-item, .flavor-item:first-child {
-  display: flex; flex-direction: column;
-  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: none; overflow: visible;
-}
-.fi-body { display: flex; flex-direction: column; flex: 1; gap: 0; padding: 0; }
-.fi-photo { order: -1; width: min(220px, 70%); aspect-ratio: 1 / 1; margin: 1.1rem auto 0.1rem; font-size: 4rem; }
-.fi-text { padding: 0.3rem 1.1rem 0.9rem; flex: 1; display: flex; flex-direction: column; }
-.fi-text h3 { font-size: 1.3rem; }
-.fi-desc { font-size: 0.95rem; line-height: 1.45; margin: -0.1rem 0 0.4rem; }
-.fi-extra { margin: 0 0 0.2rem; }
-.fi-price { margin-top: auto; min-height: 48px; display: flex; align-items: center; gap: 0.3rem; padding-right: 108px; }   /* room on the right for the "+ Add" pill */
-.fi-price .price { font-size: 1.35rem; }
-/* "+ Add" sits in the bottom-right corner, level with the price */
-.fi-add, .fi-add[data-add-slot] { position: absolute; right: 1rem; bottom: 0.9rem; margin: 0; align-self: auto; }
-
-/* "295 kcal": a small blue pill that opens the nutrition table */
+/* "Nutrition": a small blue pill that opens the cookie's sheet at the nutrition table */
 .nutri-link { min-height: 36px; padding: 0 12px; border-radius: 999px; background: var(--blue-soft); color: var(--blue-dark); text-decoration: none; font: 800 0.85rem var(--font-body); }
 .nutri-link:active { opacity: 0.7; }
 
-/* the monkey badge rides on the sticker's top-left corner at every size */
-.flavor-badge { position: absolute; top: 0.6rem; left: 0.7rem; z-index: 3; flex-direction: column; margin: 0; transform: rotate(-4deg); }
-.flavor-badge img { width: 40px; height: 40px; }
-.flavor-badge-pick img { width: 44px; height: 44px; }
-.flavor-badge-label { margin: -6px 0 0; padding: 1px 8px; font-size: 0.72rem; }
+/* Phones: the rows from before, a little roomier. The price is the last line, so it sits level with "+ Add". */
+@media (max-width: 519px) {
+  .fi-body { padding: 16px 14px 14px; }
+  .fi-photo { width: 108px; }
+  .fi-extra { margin: 0; }
+  .fi-price { min-height: 48px; display: flex; align-items: center; gap: 0.3rem; margin-top: 0.1rem; }
+  .fi-add { bottom: 14px; }
+}
 
-/* two cards a row on big phones and small tablets, three from 700px (the older 700px rules keep the grid) */
-@media (min-width: 520px) { .menu-list { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 700px) {
-  .fi-photo { width: min(180px, 80%); }
+/* 520px and up: cards with the sticker on top */
+@media (min-width: 520px) {
+  .menu-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+  .flavor-item, .flavor-item:first-child {
+    display: flex; flex-direction: column;
+    background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: none; overflow: visible;
+  }
+  .fi-body { display: flex; flex-direction: column; flex: 1; gap: 0; padding: 0; }
+  .fi-photo { order: -1; width: min(200px, 75%); aspect-ratio: 1 / 1; margin: 1.1rem auto 0.1rem; font-size: 4rem; }
+  .fi-text { padding: 0.3rem 1.1rem 0.9rem; flex: 1; display: flex; flex-direction: column; }
   .fi-text h3 { font-size: 1.2rem; }
+  .fi-desc { font-size: 0.95rem; line-height: 1.45; margin: -0.1rem 0 0.4rem; }
+  .fi-extra { margin: 0 0 0.2rem; }
+  .fi-price { margin-top: auto; min-height: 48px; display: flex; align-items: center; gap: 0.3rem; padding-right: 108px; }   /* room on the right for the "+ Add" pill */
+  .fi-price .price { font-size: 1.3rem; }
+  /* "+ Add" sits in the bottom-right corner, level with the price */
+  .fi-add, .fi-add[data-add-slot] { position: absolute; right: 1rem; bottom: 0.9rem; margin: 0; align-self: auto; }
+  /* the monkey badge rides on the sticker's top-left corner */
+  .flavor-badge { position: absolute; top: 0.6rem; left: 0.7rem; z-index: 3; flex-direction: column; margin: 0; transform: rotate(-4deg); }
   .flavor-badge img { width: 36px; height: 36px; }
   .flavor-badge-pick img { width: 40px; height: 40px; }
-  .flavor-badge-label { font-size: 0.66rem; padding: 1px 6px; }
+  .flavor-badge-label { margin: -6px 0 0; padding: 1px 6px; font-size: 0.66rem; }
+}
+@media (min-width: 700px) {
+  .fi-photo { width: min(180px, 80%); }
 }
 
 /* ==========================================================================================
@@ -1505,6 +1510,24 @@ h1 { letter-spacing: -0.01em; }
 .week-steps li { line-height: 1.5; }
 .week-steps strong { color: #fff; }
 .week-late { margin: 1.2rem 0 0; font-size: 0.95rem; color: var(--cream); }
+
+/* "Good to know": the three questions the steps don't answer, inside the same blue section (it replaces the old FAQ) */
+.week-faq { margin-top: 2.4rem; max-width: 760px; }
+.week-faq h3 { color: #fff; font-size: 1.35rem; margin: 0 0 0.7rem; }
+.week-faq details { background: rgba(255, 255, 255, 0.10); border-radius: var(--radius-sm); padding: 0 1rem; margin-bottom: 0.6rem; }
+.week-faq summary {
+  cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  min-height: 52px; font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; color: #fff;
+}
+.week-faq summary::-webkit-details-marker { display: none; }
+.week-faq summary::after { content: "+"; font-size: 1.5rem; line-height: 1; flex: none; }   /* + closed, minus open */
+.week-faq details[open] summary::after { content: "\2212"; }
+.week-faq details p { margin: 0 0 0.8rem; color: var(--cream); line-height: 1.55; }
+.week-faq details p strong { color: #fff; }
+.week-faq summary:focus-visible { outline: 3px solid #fff; outline-offset: 2px; border-radius: var(--radius-sm); }
+/* The blue section is the last thing in <main>: run it straight into the footer, no cream strip between */
+.week-section:last-child { margin-bottom: 0; }
+main:has(> .week-section:last-child) + .site-footer { margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
 
 @media (min-width: 700px) {
   .week-section { padding: 3.5rem 0 3.6rem; }

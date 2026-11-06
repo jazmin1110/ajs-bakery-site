@@ -296,10 +296,10 @@ function menuItems(flavors, boxes, availability) {
       const stock = stockLabel(left);
       const canSingle = f.single_price != null;
       const desc = f.short_description || f.long_description || info.description;
-      // "295 kcal": the calorie number up front, so the nutrition promise is seen, not hunted for
-      const kcal = f.nutrition && f.nutrition.calories != null ? `${f.nutrition.calories} kcal` : "Nutrition";
-      // Card order, top to bottom: big sticker, name, description, nutrition + stock tags, then the price
-      // on the LAST line so it sits level with the "+ Add" pill in the bottom-right corner.
+      // Order inside a row/card: name, description, "Nutrition" pill + stock tag, then the price on the
+      // LAST line so it sits level with the "+ Add" pill. (The sticker is beside it on phones, on top on cards.)
+      // The pill says "Nutrition", not the calorie number: the numbers are one tap away in the sheet,
+      // but the menu leads with the cookie (mindful eating, never diet framing).
       return `
       <article class="flavor-item" data-slug="${esc(f.slug)}">
         <div class="fi-body" data-open-sheet>
@@ -307,14 +307,14 @@ function menuItems(flavors, boxes, availability) {
             <h3><button type="button" class="card-open" data-open-sheet aria-haspopup="dialog">${esc(f.name)}</button></h3>
             <p class="fi-desc" data-full="${esc(desc)}">${esc(desc)}</p>
             <p class="fi-extra">
-              ${f.nutrition ? `<button type="button" class="nutri-link" data-open-nutrition aria-haspopup="dialog" aria-label="Nutrition info for ${esc(f.name)}: ${esc(kcal)}">${esc(kcal)}</button>` : ""}
+              ${f.nutrition ? `<button type="button" class="nutri-link" data-open-nutrition aria-haspopup="dialog" aria-label="Nutrition info for ${esc(f.name)}">Nutrition</button>` : ""}
               <span class="stock sticker${left !== null && left <= 0 ? " stock-out" : ""}" data-stock${stock ? "" : " hidden"}>${stock}</span>
             </p>
             ${canSingle
               ? `<p class="fi-price"><span class="price">${peso(f.single_price)}</span> <small>each</small></p>`
               : `<p class="fi-price"><span class="price">Box only</span></p>`}
           </div>
-          <div class="fi-photo">${flavorPhoto(f, "card-img", { lazy: true, sizes: "(min-width: 700px) 180px, 240px" })}</div>
+          <div class="fi-photo">${flavorPhoto(f, "card-img", { lazy: true, sizes: "(min-width: 700px) 180px, (min-width: 520px) 200px, 108px" })}</div>
           ${flavorBadge(f)}
         </div>
         ${canSingle ? `
