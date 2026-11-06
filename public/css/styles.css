@@ -1048,6 +1048,11 @@ p, li { max-width: 66ch; }                                                /* com
 .signoff { display: flex; align-items: center; gap: 0.6rem; margin: 1.2rem 0 0; font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; color: var(--ink); }
 .signoff .mascot { width: 56px; height: 56px; margin: 0; }
 .notfound .mascot { width: 120px; height: 120px; }
+/* "Hi, I'm AJ" note on the home page: the monkey beside the text */
+.about-inner { display: flex; align-items: center; gap: 1rem; }
+.about .mascot { width: 88px; height: 88px; margin: 0; flex-shrink: 0; }
+.about h2 { margin-bottom: 0.3rem; }
+.about .section-sub { margin-bottom: 0; }
 
 /* ---- Footer: tighter, badge at 48px, link clear of the cart bar ---- */
 .site-footer { margin-top: 1rem; padding: 1.2rem var(--gutter) calc(1.2rem + env(safe-area-inset-bottom)); border-top-left-radius: var(--r-md); border-top-right-radius: var(--r-md); }
