@@ -25,7 +25,7 @@
 
   <main class="container admin-main">
     <h1 style="margin:0 0 .3rem;font-size:1.6rem">Recipes and costing</h1>
-    <p class="t-sub" style="margin:0 0 .8rem">Quantities are per batch. The production plan and shopping list use these, and prices come from the Stock page.</p>
+    <p class="t-sub" style="margin:0 0 .8rem">What each cookie costs you to make and what you keep. Tap <strong>Edit recipe</strong> to change amounts; the Bake plan's batches and shopping list use them. Prices come from the Stock page.</p>
 
     <div class="form-error" id="message" role="alert" hidden></div>
     <div class="ops-ok ops-flash" id="flash" role="status" hidden></div>
@@ -45,6 +45,7 @@
 
     const $ = (id) => document.getElementById(id);
     let flavors = [], recipes = [], items = [], ingredients = [], costing = [], boxes = [];
+    const openCards = new Set();   // flavors whose "Edit recipe" is open, so it stays open after a save reloads the page
 
     function showMessage(text) {
       $("message").textContent = text || ""; $("message").hidden = !text;
@@ -99,23 +100,32 @@
         return `<tr><th scope="row" class="left">In a box of ${b.size}</th><td>${peso2(each)} each</td><td>${margin(each, perCookie)}</td></tr>`;
       }).join("");
 
+      // The cheapest way a cookie is sold (inside the biggest box) = the lowest profit per cookie
+      const big = boxes[boxes.length - 1];
+      const bigEach = big ? Number(big.price) / big.size + Number(f.surcharge || 0) : null;
+
       return `<section class="t-card" data-flavor="${f.id}">
-        <div class="ops-head"><h2>${esc(f.name)}</h2><span class="tag tag-info">${esc(r.version)} · ${r.yield} per batch</span></div>
+        <h2>${esc(f.name)}</h2>
+        <p class="rc-sub">${r.yield} cookies per batch · recipe version ${esc(r.version)}</p>
 
         ${rows.length ? `
         <div class="ops-stats">
-          <div class="ops-stat"><strong>${peso2(c.batch_cost)}</strong><span>per batch</span></div>
-          <div class="ops-stat"><strong>${peso2(perCookie)}</strong><span>per cookie</span></div>
-          <div class="ops-stat"><strong>${single == null ? "-" : margin(single, perCookie)}</strong><span>profit as a single</span></div>
+          <div class="ops-stat"><strong>${peso2(perCookie)}</strong><span>costs you per cookie</span></div>
+          <div class="ops-stat"><strong>${single == null ? "-" : margin(single, perCookie)}</strong><span>you keep, sold as a single</span></div>
+          <div class="ops-stat"><strong>${bigEach == null ? "-" : margin(bigEach, perCookie)}</strong><span>you keep, in a box of ${big ? big.size : ""}</span></div>
         </div>
+        ${c.assumed_prices > 0 ? `<p class="o-small"><span class="tag tag-warn">estimate</span> ${c.assumed_prices} ingredient${c.assumed_prices === 1 ? " has" : "s have"} a guessed price. Log a purchase on the <a href="inventory.html">Stock page</a> to make it exact.</p>` : ""}`
+        : `<div class="ops-note">No ingredients entered yet, so the Bake plan can't count this flavor's ingredients and there's no cost.
+            ${r.notes ? `<br><span class="o-small">${esc(r.notes)}</span>` : ""}</div>`}
+
+        <details class="o-more rc-edit" data-rc="${f.id}"${openCards.has(f.id) || !rows.length ? " open" : ""}>
+          <summary>Edit recipe (${rows.length} ingredient${rows.length === 1 ? "" : "s"}) and price per box</summary>
+        ${rows.length ? `
         <div class="ops-scroll"><table class="t-table"><tbody>
           ${single == null ? "" : `<tr><th scope="row" class="left">Single cookie</th><td>${peso2(single)}</td><td>${margin(single, perCookie)}</td></tr>`}
           ${boxLines}
         </tbody></table></div>
-        <p class="t-sub">Cost per cookie = ingredients ${peso2(c.ingredient_cost_per_cookie)} + packaging ${peso2(c.packaging_cost_per_cookie)}. Labor, utilities and gift boxes are not included.</p>
-        ${c.assumed_prices > 0 ? `<div class="ops-note">${c.assumed_prices} ingredient${c.assumed_prices === 1 ? " uses" : "s use"} a guessed price, so this cost is an estimate. Set the real prices on the <a href="inventory.html">Stock page</a> (or just log a purchase with the amount you paid).</div>` : ""}`
-        : `<div class="ops-note">No ingredients entered yet, so the production plan can't count this flavor's ingredients and there's no cost.
-            ${r.notes ? `<br><span class="o-small">${esc(r.notes)}</span>` : ""}</div>`}
+        <p class="t-sub">Cost per cookie = ingredients ${peso2(c.ingredient_cost_per_cookie)} + packaging ${peso2(c.packaging_cost_per_cookie)}, ${peso2(c.batch_cost)} per batch. Labor, utilities and gift boxes are not included.</p>` : ""}
 
         <div class="ops-scroll"><table class="t-table t-stack" style="margin-top:.6rem">
           <thead><tr><th class="left">Ingredient</th><th>Per batch</th><th>Cost</th><th></th></tr></thead>
@@ -123,7 +133,7 @@
             ${rows.map((row) => {
               const ing = ingById[row.ingredient_id] || { name: "?", unit: "", cost_per_unit: 0 };
               return `<tr data-item="${row.id}">
-                <th scope="row" class="left">${esc(ing.name)}${ing.price_confirmed === false ? ` <span class="tag tag-warn">est.</span>` : ""}</th>
+                <th scope="row" class="left">${esc(ing.name)}${ing.price_confirmed === false ? ` <span class="tag tag-warn">guessed price</span>` : ""}</th>
                 <td><input type="number" min="0.001" step="any" inputmode="decimal" value="${esc(row.qty_per_batch)}" data-qty aria-label="${esc(ing.name)} per batch"> ${esc(ing.unit)}</td>
                 <td>${peso2(row.qty_per_batch * ing.cost_per_unit)}</td>
                 <td><button type="button" class="btn btn-small btn-ghost" data-act="remove" aria-label="Remove ${esc(ing.name)}">✕</button></td></tr>`;
@@ -146,6 +156,7 @@
             <div class="ops-field wide"><label>Notes</label><input name="notes" maxlength="500" value="${esc(r.notes || "")}"></div>
             <div class="wide"><button type="submit" class="btn btn-small">Save settings</button></div>
           </form>
+        </details>
         </details>
       </section>`;
     }
@@ -182,6 +193,13 @@
         await load();                                   // put the page back to what's really saved
       }
     }
+
+    // Remember which recipes are open ("toggle" doesn't bubble, so listen in the capture phase)
+    $("out").addEventListener("toggle", (e) => {
+      const d = e.target; if (!d.matches?.("[data-rc]")) return;
+      const id = Number(d.dataset.rc);
+      if (d.open) openCards.add(id); else openCards.delete(id);
+    }, true);
 
     // Change a quantity
     $("out").addEventListener("change", (e) => {
