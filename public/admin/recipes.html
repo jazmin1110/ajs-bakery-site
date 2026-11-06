@@ -44,7 +44,7 @@
     renderNav("recipes");
 
     const $ = (id) => document.getElementById(id);
-    let flavors = [], recipes = [], items = [], ingredients = [], costing = [], boxes = [];
+    let flavors = [], recipes = [], items = [], ingredients = [], costing = [], boxes = [], packRules = [];
     const openCards = new Set();   // flavors whose "Edit recipe" is open, so it stays open after a save reloads the page
 
     function showMessage(text) {
@@ -58,13 +58,14 @@
 
     async function load() {
       try {
-        [flavors, recipes, items, ingredients, costing, boxes] = await Promise.all([
+        [flavors, recipes, items, ingredients, costing, boxes, packRules] = await Promise.all([
           select("flavors", "id, slug, name, single_price, surcharge, active", (q) => q.order("id")), // hidden ones = drafts
           select("recipes", "flavor_id, version, yield, dough_freezer_days, notes"),
           select("recipe_items", "id, flavor_id, ingredient_id, qty_per_batch, note", (q) => q.order("id")),
           select("ingredients", "id, name, unit, cost_per_unit, price_confirmed, active", (q) => q.order("name")),
           select("flavor_costing", "*"),
           select("boxes", "size, price, active", (q) => q.eq("active", true).order("size")),
+          select("packaging_rules", "ingredient_id, per, box_size, qty"),
         ]);
         render();
       } catch (err) {
@@ -78,6 +79,15 @@
     function margin(price, cost) {
       const profit = price - cost, pct = price > 0 ? Math.round((profit / price) * 100) : 0;
       return `<span class="${pct >= 50 ? "margin-good" : "margin-thin"}">${peso2(profit)} (${pct}%)</span>`;
+    }
+
+    // Packaging that depends on HOW the cookie is sold (migration 028). Bag + sticker for a single,
+    // the box (+ its sticker) shared by the cookies in a box. Per-order items (thank-you card) aren't
+    // per cookie, so they're counted on the Sales page instead.
+    function packCost(per, size = null) {
+      const cpu = Object.fromEntries(ingredients.filter((i) => i.active).map((i) => [i.id, Number(i.cost_per_unit)]));
+      return packRules.filter((r) => r.per === per && cpu[r.ingredient_id] != null && (per !== "box" || r.box_size == null || r.box_size === size))
+        .reduce((t, r) => t + Number(r.qty) * cpu[r.ingredient_id], 0);
     }
 
     function recipeCard(f) {
@@ -95,9 +105,12 @@
       const single = f.single_price == null ? null : Number(f.single_price);
 
       // What a cookie earns inside a box: box price / cookies, plus the flavor's surcharge (e.g. +P30 Bueno)
+      // Each way of selling carries its own packaging: a single its bag + sticker, a box cookie its share of the box
+      const singleCost = perCookie + packCost("single");
+      const boxCost = (size) => perCookie + packCost("box", size) / size;
       const boxLines = boxes.map((b) => {
         const each = Number(b.price) / b.size + Number(f.surcharge || 0);
-        return `<tr><th scope="row" class="left">In a box of ${b.size}</th><td>${peso2(each)} each</td><td>${margin(each, perCookie)}</td></tr>`;
+        return `<tr><th scope="row" class="left">In a box of ${b.size}</th><td>${peso2(each)} each</td><td>${margin(each, boxCost(b.size))}</td></tr>`;
       }).join("");
 
       // The cheapest way a cookie is sold (inside the biggest box) = the lowest profit per cookie
@@ -111,8 +124,8 @@
         ${rows.length ? `
         <div class="ops-stats">
           <div class="ops-stat"><strong>${peso2(perCookie)}</strong><span>costs you per cookie</span></div>
-          <div class="ops-stat"><strong>${single == null ? "-" : margin(single, perCookie)}</strong><span>you keep, sold as a single</span></div>
-          <div class="ops-stat"><strong>${bigEach == null ? "-" : margin(bigEach, perCookie)}</strong><span>you keep, in a box of ${big ? big.size : ""}</span></div>
+          <div class="ops-stat"><strong>${single == null ? "-" : margin(single, singleCost)}</strong><span>you keep, sold as a single</span></div>
+          <div class="ops-stat"><strong>${bigEach == null ? "-" : margin(bigEach, boxCost(big.size))}</strong><span>you keep, in a box of ${big ? big.size : ""}</span></div>
         </div>
         ${c.assumed_prices > 0 ? `<p class="o-small"><span class="tag tag-warn">estimate</span> ${c.assumed_prices} ingredient${c.assumed_prices === 1 ? " has" : "s have"} a guessed price. Log a purchase on the <a href="inventory.html">Stock page</a> to make it exact.</p>` : ""}`
         : `<div class="ops-note">No ingredients entered yet, so the Bake plan can't count this flavor's ingredients and there's no cost.
@@ -122,10 +135,13 @@
           <summary>Edit recipe (${rows.length} ingredient${rows.length === 1 ? "" : "s"}) and price per box</summary>
         ${rows.length ? `
         <div class="ops-scroll"><table class="t-table"><tbody>
-          ${single == null ? "" : `<tr><th scope="row" class="left">Single cookie</th><td>${peso2(single)}</td><td>${margin(single, perCookie)}</td></tr>`}
+          ${single == null ? "" : `<tr><th scope="row" class="left">Single cookie</th><td>${peso2(single)}</td><td>${margin(single, singleCost)}</td></tr>`}
           ${boxLines}
         </tbody></table></div>
-        <p class="t-sub">Cost per cookie = ingredients ${peso2(c.ingredient_cost_per_cookie)} + packaging ${peso2(c.packaging_cost_per_cookie)}, ${peso2(c.batch_cost)} per batch. Labor, utilities and gift boxes are not included.</p>` : ""}
+        <p class="t-sub">Cost per cookie = ingredients ${peso2(c.ingredient_cost_per_cookie)}${Number(c.packaging_cost_per_cookie) ? ` + packaging on every cookie ${peso2(c.packaging_cost_per_cookie)}` : ""} (${peso2(c.batch_cost)} per batch).
+          A single also uses ${peso2(packCost("single"))} of packaging; ${boxes.map((b) => `a box of ${b.size} ${peso2(packCost("box", b.size))}`).join(", ")} (shared by its cookies).
+          ${packCost("order") ? `Per-order extras (${peso2(packCost("order"))}, e.g. thank-you card) count on the Sales page.` : ""}
+          Labor and utilities are not included. Set what each packaging item is used for on the <a href="inventory.html">Stock</a> page.</p>` : ""}
 
         <div class="ops-scroll"><table class="t-table t-stack" style="margin-top:.6rem">
           <thead><tr><th class="left">Ingredient</th><th>Per batch</th><th>Cost</th><th></th></tr></thead>

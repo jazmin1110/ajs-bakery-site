@@ -159,6 +159,7 @@
       return `
         <div class="money-row"><span>Money in (paid orders)</span><strong>${peso2(t.money_in)}</strong></div>
         <div class="money-row"><span>Cookies baked: ingredients + packaging${t.cookies_baked ? ` <span class="o-small">(${num(t.cookies_baked)} cookies)</span>` : ""}</span>${signed(-t.cookie_cost)}</div>
+        ${Number(t.packing_cost) ? `<div class="money-row"><span>Boxes, bags, stickers, cards <span class="o-small">(orders packed)</span></span>${signed(-t.packing_cost)}</div>` : ""}
         <div class="money-row"><span>Thrown away (stock + dough)</span>${signed(-t.waste)}</div>
         ${Number(t.recount) ? `<div class="money-row"><span>Recount difference <span class="o-small">(${t.recount < 0 ? "missing" : "found"})</span></span>${signed(t.recount)}</div>` : ""}
         <div class="money-row total"><span>Profit${margin !== null ? ` <span class="o-small">(${margin}% of money in)</span>` : ""}</span><strong class="${t.profit < 0 ? "money-neg" : "money-pos"}">${t.profit < 0 ? "−" : ""}${peso2(Math.abs(Math.round(t.profit * 100) / 100))}</strong></div>`;
@@ -166,7 +167,7 @@
 
     function renderMoney(rep) {
       const t = rep.totals;
-      const weeks = rep.weeks.filter((w) => w.money_in || w.cookie_cost || w.waste || w.recount || w.spent);
+      const weeks = rep.weeks.filter((w) => w.money_in || w.cookie_cost || Number(w.packing_cost) || w.waste || w.recount || w.spent);
       const notes = [];
       if (!weeks.length) {
         $("money-out").innerHTML = `<p class="t-sub">Nothing yet. Money in shows up when orders are marked paid; costs show up when you tap "I baked these" on the Bake plan.</p>`;
@@ -178,7 +179,7 @@
       // Nothing sold yet: say that first, and keep the cost lines (e.g. something thrown away) folded away
       if (!(t.money_in > 0)) {
         $("money-out").innerHTML = `<p class="t-sub"><strong>Nothing sold in this period yet.</strong> Money in shows up when orders are marked paid.</p>
-          <details class="o-more"><summary>Costs so far: ${signed(-(t.cookie_cost + t.waste) + Number(t.recount || 0))}</summary>
+          <details class="o-more"><summary>Costs so far: ${signed(-(t.cookie_cost + Number(t.packing_cost || 0) + t.waste) + Number(t.recount || 0))}</summary>
             ${moneyLines(t)}${notes.map((n) => `<div class="ops-note">${n}</div>`).join("")}</details>`;
         return;
       }
@@ -189,9 +190,9 @@
         ${notes.map((n) => `<div class="ops-note">${n}</div>`).join("")}
         <details class="o-more"><summary>Week by week</summary>
           <div class="ops-scroll"><table class="t-table">
-            <thead><tr><th class="left">Sunday</th><th>In</th><th>Cost</th><th>Waste</th><th>Profit</th></tr></thead>
+            <thead><tr><th class="left">Sunday</th><th>In</th><th>Cookies</th><th>Packing</th><th>Waste</th><th>Profit</th></tr></thead>
             <tbody>${weeks.map((w) => `<tr><th scope="row" class="left">${esc(shortDate(w.sunday))}${w.estimated ? " *" : ""}</th>
-              <td>${peso2(w.money_in)}</td><td>${peso2(w.cookie_cost)}</td><td>${peso2(w.waste)}</td><td><strong>${signed(w.profit)}</strong></td></tr>`).join("")}</tbody>
+              <td>${peso2(w.money_in)}</td><td>${peso2(w.cookie_cost)}</td><td>${peso2(w.packing_cost || 0)}</td><td>${peso2(w.waste)}</td><td><strong>${signed(w.profit)}</strong></td></tr>`).join("")}</tbody>
           </table></div>
           ${weeks.some((w) => w.estimated) ? `<p class="o-small">* part of that week's cost is estimated.</p>` : ""}
         </details>`;
@@ -226,9 +227,9 @@
       const m = data.money;
 
       $("out").innerHTML = `
-        ${m && !(m.money_in > 0) && !m.cookie_cost && !m.waste ? `<section class="t-card"><h2>Money for ${esc(shortSunday(sunday))}</h2>
+        ${m && !(m.money_in > 0) && !m.cookie_cost && !m.waste && !Number(m.packing_cost) ? `<section class="t-card"><h2>Money for ${esc(shortSunday(sunday))}</h2>
           <p class="t-sub">Nothing sold for this Sunday yet.</p></section>` : ""}
-        ${m && (m.money_in > 0 || m.cookie_cost || m.waste) ? `<section class="t-card"><h2>Money for ${esc(shortSunday(sunday))}</h2>${moneyLines(m)}
+        ${m && (m.money_in > 0 || m.cookie_cost || m.waste || Number(m.packing_cost)) ? `<section class="t-card"><h2>Money for ${esc(shortSunday(sunday))}</h2>${moneyLines(m)}
           ${m.dough_balls_thrown ? `<p class="o-small">${m.dough_balls_thrown} dough ball${m.dough_balls_thrown === 1 ? "" : "s"} thrown away.</p>` : ""}
           ${m.cookies_baked > m.cookies_sold && m.cookies_sold ? `<p class="o-small">You baked ${m.cookies_baked - m.cookies_sold} more cookie${m.cookies_baked - m.cookies_sold === 1 ? "" : "s"} than you sold (paid). Extras count as cost.</p>` : ""}</section>` : ""}
 

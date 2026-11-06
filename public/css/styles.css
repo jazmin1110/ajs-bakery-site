@@ -1689,3 +1689,11 @@ body.admin .o-main + .o-meta { margin-top: 0.6rem; }   /* breathing room under t
 .st-body { padding: 0 0.8rem 0.8rem 0.8rem; }
 .st-log { margin-top: 0.8rem; }
 @media (max-width: 420px) { .st-line { gap: 0.4rem; } .st-qty { font-size: 0.92rem; } }
+
+/* Stock > Edit: "When is one used?" ticks for packaging (migration 028) */
+.pack-usage { border: 1px solid #E6DCCB; border-radius: var(--r-sm); padding: 0.5rem 0.7rem 0.6rem; margin: 0; }
+.pack-usage[hidden] { display: none; }
+.pack-usage legend { font-weight: 700; color: var(--blue-dark); padding: 0 0.3rem; }
+.pack-boxes { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; margin: 0.3rem 0; }
+.pack-boxes > span { font-weight: 700; font-size: 0.92rem; }
+.pack-boxes .choice { margin: 0; }

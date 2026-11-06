@@ -53,6 +53,8 @@
     let items = [];          // ingredient_stock rows
     let allLots = [];        // every purchase (not removed), newest first
     let log = [];            // recent stock movements
+    let rules = [];          // packaging_rules: how each packaging item is used (migration 028)
+    let boxSizes = [];       // box sizes on sale (3, 6, 12), for the "per box" choices
     let openForm = null;     // { id, kind, lot }  kind: receive | use | count | edit | fix   (id "new" = adding an item)
     let showHidden = false;
     const openItems = new Set();   // items tapped open (their details showing)
@@ -60,7 +62,7 @@
 
     const UNITS = [["g", "grams (g)"], ["ml", "millilitres (ml)"], ["pc", "pieces (pc)"], ["tsp", "teaspoons (tsp)"]];
     const UNIT_NAME = Object.fromEntries(UNITS.map(([u, t]) => [u, t]));
-    const REASON = { received: "bought", used_in_batch: "used in batch", used_manual: "used", count_correction: "stock take", discarded: "thrown away", purchase_fix: "purchase fixed" };
+    const REASON = { received: "bought", used_in_batch: "used in batch", used_manual: "used", count_correction: "stock take", discarded: "thrown away", purchase_fix: "purchase fixed", packed: "packed orders" };
 
     function showMessage(text) {
       $("message").textContent = text || ""; $("message").hidden = !text;
@@ -79,6 +81,10 @@
                  (q) => q.eq("voided", false).order("received_on", { ascending: false }).order("id", { ascending: false }).limit(1000)),
           select("stock_log", "id, ingredient_id, delta, reason, note, created_at",
                  (q) => q.order("created_at", { ascending: false }).limit(15)),
+        ]);
+        [rules, boxSizes] = await Promise.all([
+          select("packaging_rules", "id, ingredient_id, per, box_size, qty"),
+          select("boxes", "size", (q) => q.eq("active", true).order("size")).then((b) => b.map((x) => x.size)),
         ]);
         render();
       } catch (err) {
@@ -175,6 +181,21 @@
       return `${lead} ${peso2(i.pack_price)} for ${esc(fmtQty(size, i.unit))}${extra} · ${peso2(i.cost_per_unit)} per ${esc(i.unit)}`;
     }
 
+    // How a packaging item is used, in words: "1 per single cookie · 1 per box of 12"
+    function rulesText(id) {
+      const mine = rules.filter((r) => r.ingredient_id === id);
+      const q = (r) => num(r.qty);
+      const boxes = mine.filter((r) => r.per === "box");
+      const parts = [];
+      for (const r of mine.filter((r) => r.per === "cookie")) parts.push(`${q(r)} per cookie baked`);
+      for (const r of mine.filter((r) => r.per === "single")) parts.push(`${q(r)} per single cookie`);
+      if (boxes.some((r) => r.box_size == null)) parts.push(`${q(boxes.find((r) => r.box_size == null))} per box`);
+      else if (boxes.length) parts.push(`${q(boxes[0])} per box of ${boxes.map((r) => r.box_size).sort((a, b) => a - b).join(" or ")}`);
+      for (const r of mine.filter((r) => r.per === "order")) parts.push(`${q(r)} per order`);
+      for (const r of mine.filter((r) => r.per === "gift_note")) parts.push(`${q(r)} per box with a gift note`);
+      return parts.join(" · ");
+    }
+
     function itemRow(i) {
       const st = statusOf(i);
       const itemLots = allLots.filter((l) => l.ingredient_id === i.ingredient_id);
@@ -187,7 +208,7 @@
         <div class="st-line">
           <button type="button" class="st-toggle" data-toggle aria-expanded="${open}">
             <span class="st-name">${esc(i.name)}${i.active ? "" : ` <span class="tag tag-info">hidden</span>`}</span>
-            <span class="st-status">${esc(st.text)}${i.price_confirmed ? "" : ` · <span class="st-guess">price guessed</span>`}</span>
+            <span class="st-status">${esc(st.text)}${i.price_confirmed ? "" : ` · <span class="st-guess">price guessed</span>`}${i.category === "packaging" && !rulesText(i.ingredient_id) ? ` · <span class="st-guess">when it's used isn't set</span>` : ""}</span>
           </button>
           <span class="st-qty">${esc(fmtQty(i.on_hand, i.unit))}</span>
           <button type="button" class="btn btn-small no-print" data-open="receive" aria-label="I bought some ${esc(i.name)}">+ Bought</button>
@@ -197,7 +218,10 @@
             ${Number(i.stock_value) > 0 ? ` · worth ${peso2(i.stock_value)}` : ""}
             ${i.supplier ? ` · ${esc(i.supplier)}` : ""}
             ${i.reorder_level > 0 ? ` · buy more below ${esc(fmtQty(i.reorder_level, i.unit))}` : ""}
-            ${i.category === "packaging" && Number(i.per_cookie) > 0 ? ` · ${num(i.per_cookie)} used per cookie baked` : ""}</p>
+</p>
+          ${i.category === "packaging" ? `<p class="o-small" style="margin:0 0 .3rem">${rulesText(i.ingredient_id)
+            ? `<strong>Used:</strong> ${esc(rulesText(i.ingredient_id))}`
+            : `<span class="st-guess"><strong>Not set up yet:</strong> tap Edit and say when it's used, or the shopping list will skip it.</span>`}</p>` : ""}
           <div class="ops-actions no-print" style="margin-top:.3rem">
             <button type="button" class="btn btn-small btn-ghost" data-open="use">Used some</button>
             <button type="button" class="btn btn-small btn-ghost" data-open="count">Recount</button>
@@ -298,6 +322,45 @@
       </form>`;
     }
     // Add (i = null) or edit an item. Unit can't change once an item exists (recipes depend on it).
+    // Packaging only: when is one used? Saved as packaging_rules (one item can have several).
+    // Box sizes: tick all = "any box". The amount stays 1 unless it was already set to more.
+    function usageFields(i) {
+      const mine = i ? rules.filter((r) => r.ingredient_id === i.ingredient_id) : [];
+      const has = (per, size) => mine.some((r) => r.per === per && (per !== "box" || r.box_size == null || r.box_size === size));
+      const tick = (name, on, label, hint = "") => `<label class="choice"><input type="checkbox" name="${name}"${on ? " checked" : ""}><span>${label}${hint ? ` <span class="o-small">(${hint})</span>` : ""}</span></label>`;
+      return `<fieldset class="ops-field wide pack-usage" data-pack-usage${i?.category === "packaging" ? "" : " hidden"}>
+        <legend>When is one used? <span class="o-small">(tick all that apply)</span></legend>
+        ${tick("use_single", has("single"), "1 per single cookie", "loose cookies, not in a box")}
+        <div class="pack-boxes"><span>1 per box:</span>
+          ${boxSizes.map((sz) => tick(`use_box_${sz}`, has("box", sz), `Box of ${sz}`)).join("")}</div>
+        ${tick("use_order", has("order"), "1 per order", "e.g. thank-you card")}
+        ${tick("use_gift_note", has("gift_note"), "1 per box with a gift note", "e.g. gift card")}
+        ${tick("use_cookie", has("cookie"), "1 per cookie baked", "every cookie, boxed or not")}
+        <p class="field-hint">Taken out of stock when you mark an order Ready (per cookie: when you tap "I baked these").</p>
+      </fieldset>`;
+    }
+
+    // Save the ticks as packaging rules: replace this item's rules with what's ticked
+    async function saveUsage(id, f, isPackaging) {
+      const mine = rules.filter((r) => r.ingredient_id === id);
+      const qtyOf = (per, size = null) => mine.find((r) => r.per === per && (r.box_size ?? null) === size)?.qty
+        ?? mine.find((r) => r.per === per)?.qty ?? 1;
+      const want = [];
+      if (isPackaging) {
+        for (const per of ["single", "order", "gift_note", "cookie"]) if (f.has(`use_${per}`)) want.push({ per, box_size: null, qty: qtyOf(per) });
+        const sizes = boxSizes.filter((sz) => f.has(`use_box_${sz}`));
+        if (sizes.length && sizes.length === boxSizes.length) want.push({ per: "box", box_size: null, qty: qtyOf("box") });   // every size = any box
+        else for (const sz of sizes) want.push({ per: "box", box_size: sz, qty: qtyOf("box", sz) });
+      }
+      const sb = getClient();
+      let res = await sb.from("packaging_rules").delete().eq("ingredient_id", id);
+      if (res.error) throw fail(res.error);
+      if (want.length) {
+        res = await sb.from("packaging_rules").insert(want.map((w) => ({ ingredient_id: id, ...w })));
+        if (res.error) throw fail(res.error);
+      }
+    }
+
     function editForm(i) {
       const v = (x) => esc(x ?? "");
       const isNew = !i;
@@ -312,7 +375,7 @@
         <div class="ops-field"><label>Amount in one pack</label><input name="pack_size" type="number" min="0.001" step="any" inputmode="decimal" required value="${v(i?.pack_size ?? 1)}"><p class="field-hint">in the unit above, e.g. 2500 g</p></div>
         <div class="ops-field"><label>Price of one pack (₱)</label><input name="pack_price" type="number" min="0" step="any" inputmode="decimal" required value="${v(i?.pack_price ?? 0)}"><p class="field-hint">Updates by itself when you log a purchase with what you paid.</p></div>
         <div class="ops-field"><label>Reorder when below</label><input name="reorder_level" type="number" min="0" step="any" inputmode="decimal" value="${v(i?.reorder_level ?? 0)}"><p class="field-hint">0 = no alert</p></div>
-        <div class="ops-field"><label>Used per cookie sold</label><input name="per_cookie" type="number" min="0" step="any" inputmode="decimal" value="${v(i?.per_cookie ?? 0)}"><p class="field-hint">packaging only, e.g. 1 bag</p></div>
+${usageFields(i)}
         <div class="ops-field"><label>Supplier</label><input name="supplier" maxlength="120" value="${v(i?.supplier)}"></div>
         <label class="choice wide"><input type="checkbox" name="perishable"${i?.perishable ? " checked" : ""}><span>Has an expiry date (every purchase must have one)</span></label>
         <label class="choice wide"><input type="checkbox" name="price_confirmed"${i && !i.price_confirmed ? "" : " checked"}><span>The price above is the real price</span></label>
@@ -353,7 +416,13 @@
 
     $("add-btn").addEventListener("click", () => { openForm = { id: "new", kind: "edit" }; render(); window.scrollTo({ top: 0, behavior: "smooth" }); });
 
-    $("out").addEventListener("change", (e) => { if (e.target.id === "show-hidden") { showHidden = e.target.checked; render(); } });
+    $("out").addEventListener("change", (e) => {
+      if (e.target.id === "show-hidden") { showHidden = e.target.checked; render(); return; }
+      if (e.target.name === "category") {                         // packaging items get the "when is one used?" ticks
+        const box = e.target.form.querySelector("[data-pack-usage]");
+        if (box) box.hidden = e.target.value !== "packaging";
+      }
+    });
 
     const errText = (err) => err.isNetwork ? "Couldn't reach the server. Nothing was changed." : err.message;
 
@@ -468,15 +537,16 @@
             name: String(f.get("name")).trim(), category: f.get("category"),
             pack_label: String(f.get("pack_label") || "").trim() || null,
             pack_size: num0("pack_size"), pack_price: num0("pack_price"),
-            reorder_level: num0("reorder_level") || 0, per_cookie: num0("per_cookie") || 0,
+            reorder_level: num0("reorder_level") || 0,
             supplier: String(f.get("supplier") || "").trim() || null,
             perishable: f.has("perishable"), price_confirmed: f.has("price_confirmed") && num0("pack_price") > 0,
           };
           if (!row.name) throw new Error("Give the item a name.");
           if (kind === "add") {
             row.unit = f.get("unit");
-            const { error } = await getClient().from("ingredients").insert(row);
+            const { data: added, error } = await getClient().from("ingredients").insert(row).select("id").single();
             if (error) throw error.code === "23505" ? new Error("You already have an item with that name.") : fail(error);
+            await saveUsage(added.id, f, row.category === "packaging");
             flash("Added " + row.name);
           } else {
             row.active = f.has("active");
@@ -487,6 +557,7 @@
             }
             const { error } = await getClient().from("ingredients").update(row).eq("id", id);
             if (error) throw error.code === "23505" ? new Error("You already have an item with that name.") : fail(error);
+            await saveUsage(id, f, row.category === "packaging");
             flash("Saved " + row.name);
           }
         }

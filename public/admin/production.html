@@ -162,7 +162,7 @@
               <button type="button" class="btn btn-small" id="shop-btn">${shopping ? "Close" : "I went shopping"}</button></span>` : ""}</div>
           <p class="t-sub">Buy these first. After buying, tap <strong>I went shopping</strong> to add it all to stock in one go.</p>
           <details class="how"><summary>How this list is worked out</summary>
-            What the batches need (plus one bag per cookie), minus what's in stock and still good on the day, rounded up to whole packs.
+            What the batches need, plus the packaging for this Sunday's orders that aren't packed yet (as set on the Stock page: e.g. a bag and sticker per single, a box per box, a card per order), minus what's in stock and still good on the day, rounded up to whole packs.
             Items with a reorder level are topped up so you always keep that much spare.</details>
           ${toBuy.length && shopping ? shopForm(toBuy) : ""}
           ${shopping && toBuy.length ? "" : toBuy.length ? `<div class="ops-scroll"><table class="t-table">
