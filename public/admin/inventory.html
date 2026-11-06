@@ -100,6 +100,7 @@
       const soon = lots.filter((l) => l.expires_on && daysUntil(l.expires_on) >= 0 && daysUntil(l.expires_on) <= 7);
       const expired = lots.filter((l) => l.expires_on && daysUntil(l.expires_on) < 0);
       const worth = items.filter((i) => i.active).reduce((s, i) => s + Number(i.stock_value || 0), 0);
+      const shelfEmpty = items.some((i) => i.active) && items.filter((i) => i.active).every((i) => !(Number(i.on_hand) > 0));
 
       const alerts = [
         ...low.map((i) => `<span class="tag tag-low">Low</span> ${esc(i.name)}: ${esc(fmtQty(i.on_hand, i.unit))} left (reorder at ${esc(fmtQty(i.reorder_level, i.unit))})`),
@@ -122,7 +123,10 @@
           <div class="ops-stat"><strong>${items.filter((i) => i.active && !i.price_confirmed).length}</strong><span>prices still guessed</span></div>
         </div>
         ${alerts.length ? `<section class="t-card"><h2>Needs attention</h2>${alerts.map((a) => `<p class="o-meta">${a}</p>`).join("")}</section>`
-                        : `<div class="ops-ok">Nothing low and nothing about to expire.</div>`}`}
+          : shelfEmpty ? `<div class="ops-note"><strong>Your shelf is empty in the system</strong>: every item reads 0. Before your first bake, tap
+              <strong>More → Recount</strong> on what you already have at home, and <strong>+ I bought some</strong> after shopping.
+              Until then the Bake plan's shopping list will tell you to buy everything.</div>`
+          : `<div class="ops-ok">Nothing low and nothing about to expire.</div>`}`}
         ${openForm?.id === "new" ? `<section class="t-card"><h2>Add an item</h2>${editForm(null)}</section>` : ""}
         ${groups || `<p class="t-sub">${search ? `Nothing called "${esc(search)}". Tap Add item to add it.` : "No items yet."}</p>`}
         <label class="choice t-toggle no-print" style="margin-top:1rem"><input type="checkbox" id="show-hidden" ${showHidden ? "checked" : ""}><span>Show hidden items</span></label>
@@ -159,6 +163,17 @@
         ${fixing ? fixForm(i, l) : ""}`;
     }
 
+    // "Last paid ₱87 for 1 kg (Ellie unbleached 1kg) · ₱0.09 per g". The brand/label is only added
+    // when it says more than "pack" or "bag".
+    function priceLine(i) {
+      const size = Number(i.pack_size);
+      const label = (i.pack_label || "").trim();
+      const extra = label && !/^(per|pack|packs|bag|box|bottle|jar|can|tub|tray|piece|pc)\b/i.test(label) ? ` (${esc(label)})` : "";
+      const lead = i.price_confirmed ? "Last paid" : "Guessed price:";
+      if (size === 1) return `${lead} ${peso2(i.pack_price)} per ${esc(i.unit)}`;
+      return `${lead} ${peso2(i.pack_price)} for ${esc(fmtQty(size, i.unit))}${extra} · ${peso2(i.cost_per_unit)} per ${esc(i.unit)}`;
+    }
+
     function itemCard(i) {
       const itemLots = allLots.filter((l) => l.ingredient_id === i.ingredient_id);
       const shown = itemLots.filter((l, n) => l.qty_remaining > 0 || n < 6);      // everything with stock, plus the last few
@@ -175,15 +190,21 @@
           ${i.price_confirmed ? "" : `<span class="tag tag-warn">price is a guess</span>`}
           ${i.active ? "" : `<span class="tag tag-info">hidden</span>`}
         </div>
-        <p class="o-small" style="margin:.2rem 0">${Number(i.pack_size) === 1 ? `${peso2(i.pack_price)} per ${esc(i.unit)}` : `${peso2(i.pack_price)} per ${esc(i.pack_label || "pack")} (${peso2(i.cost_per_unit)} per ${esc(i.unit)})`}${i.price_confirmed ? " (latest price)" : ""}
+        <p class="o-small" style="margin:.2rem 0">${priceLine(i)}
           ${Number(i.stock_value) > 0 ? ` · worth ${peso2(i.stock_value)}` : ""}
           ${i.next_expiry ? ` · next expiry ${esc(shortDate(i.next_expiry))}` : ""}${i.supplier ? ` · ${esc(i.supplier)}` : ""}
           ${i.reorder_level > 0 ? ` · reorder at ${esc(fmtQty(i.reorder_level, i.unit))}` : ""}</p>
         <div class="ops-actions no-print">
           <button type="button" class="btn btn-small" data-open="receive">+ I bought some</button>
-          <button type="button" class="btn btn-small btn-ghost" data-open="use">Used some</button>
-          <button type="button" class="btn btn-small btn-ghost" data-open="count">Recount</button>
-          <button type="button" class="btn btn-small btn-ghost" data-open="edit">Edit</button>
+          <!-- The less common jobs, folded away (stays open while one of their forms is open) -->
+          <details class="item-more"${openForm?.id === i.ingredient_id && ["use", "count", "edit", "unit"].includes(openForm.kind) ? " open" : ""}>
+            <summary class="btn btn-small btn-ghost">More</summary>
+            <div class="item-more-btns">
+              <button type="button" class="btn btn-small btn-ghost" data-open="use">Used some</button>
+              <button type="button" class="btn btn-small btn-ghost" data-open="count">Recount</button>
+              <button type="button" class="btn btn-small btn-ghost" data-open="edit">Edit</button>
+            </div>
+          </details>
         </div>
         ${form}
         ${itemLots.length ? `<details class="o-more no-print"${moreOpen ? " open" : ""}><summary>Purchases (${itemLots.length})</summary>
