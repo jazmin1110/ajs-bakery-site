@@ -50,7 +50,7 @@
   <script type="module">
     import {
       requireAdmin, renderNav, setupSundayPicker, selectedSunday, expireStale, loadOrders, loadFlavors,
-      summarize, rpc, currentSunday, peso2, shortDate, num,
+      summarize, rpc, currentSunday, peso2, shortDate, num, shortSunday,
     } from "../js/admin.js";
     import { esc, addDays } from "../js/ui.js";
 
@@ -64,6 +64,7 @@
     // ---- Best sellers ------------------------------------------------------------------
     // Paid orders only. "Sold out" weeks matter: if a flavor hits its cap every week,
     // people wanted more than you baked, so its real demand is hidden by the cap.
+    const FIRST_SUNDAY = "2026-01-04";   // "All time" starts here for both Money and Best sellers (the shop opened in 2026)
     const RANGES = [["4", "Last 4 Sundays"], ["12", "Last 12 Sundays"], ["all", "All time"]];
     let range = "4";
 
@@ -83,7 +84,7 @@
 
     async function loadBest() {
       const now = currentSunday();
-      const from = range === "all" ? "2020-01-05" : addDays(now, -7 * (Number(range) - 1));
+      const from = range === "all" ? FIRST_SUNDAY : addDays(now, -7 * (Number(range) - 1));
       const to = addDays(now, 7 * 8);                       // paid orders already in for the next few weeks count too
       try {
         renderBest(await rpc("admin_sales_report", { p_from: from, p_to: to }));
@@ -143,7 +144,7 @@
 
     async function loadMoney() {
       const now = currentSunday();
-      const from = range === "all" ? "2026-01-04" : addDays(now, -7 * (Number(range) - 1));
+      const from = range === "all" ? FIRST_SUNDAY : addDays(now, -7 * (Number(range) - 1));
       try {
         renderMoney(await rpc("admin_money_report", { p_from: from, p_to: addDays(now, 7 * 8) }));   // paid orders for the next few weeks count too
       } catch (err) {
@@ -174,6 +175,13 @@
       if (t.money_in > 0 && !t.cookie_cost) notes.push(`No cookie costs yet. Costs are counted when you tap <strong>"I baked these"</strong> on the Bake plan, so log your bakes there.`);
       if (t.estimated) notes.push("Some of the cost is estimated: dough made before costs were tracked, or baked with stock that wasn't logged, is priced at today's prices.");
       if (rep.guessed_prices) notes.push(`${rep.guessed_prices} item${rep.guessed_prices === 1 ? " still has a" : "s still have a"} guessed price. Log a purchase with what you paid on the <a href="inventory.html">Stock page</a> to make this exact.`);
+      // Nothing sold yet: say that first, and keep the cost lines (e.g. something thrown away) folded away
+      if (!(t.money_in > 0)) {
+        $("money-out").innerHTML = `<p class="t-sub"><strong>Nothing sold in this period yet.</strong> Money in shows up when orders are marked paid.</p>
+          <details class="o-more"><summary>Costs so far: ${signed(-(t.cookie_cost + t.waste) + Number(t.recount || 0))}</summary>
+            ${moneyLines(t)}${notes.map((n) => `<div class="ops-note">${n}</div>`).join("")}</details>`;
+        return;
+      }
       $("money-out").innerHTML = `
         ${moneyLines(t)}
         <p class="o-small" style="margin-top:.5rem">Spent on stock in this period: <strong>${peso2(t.spent)}</strong>. That's cash out, not cost: anything not baked yet is still on the shelf.
@@ -218,7 +226,9 @@
       const m = data.money;
 
       $("out").innerHTML = `
-        ${m ? `<section class="t-card"><h2>Money for this Sunday</h2>${moneyLines(m)}
+        ${m && !(m.money_in > 0) && !m.cookie_cost && !m.waste ? `<section class="t-card"><h2>Money for ${esc(shortSunday(sunday))}</h2>
+          <p class="t-sub">Nothing sold for this Sunday yet.</p></section>` : ""}
+        ${m && (m.money_in > 0 || m.cookie_cost || m.waste) ? `<section class="t-card"><h2>Money for ${esc(shortSunday(sunday))}</h2>${moneyLines(m)}
           ${m.dough_balls_thrown ? `<p class="o-small">${m.dough_balls_thrown} dough ball${m.dough_balls_thrown === 1 ? "" : "s"} thrown away.</p>` : ""}
           ${m.cookies_baked > m.cookies_sold && m.cookies_sold ? `<p class="o-small">You baked ${m.cookies_baked - m.cookies_sold} more cookie${m.cookies_baked - m.cookies_sold === 1 ? "" : "s"} than you sold (paid). Extras count as cost.</p>` : ""}</section>` : ""}
 
@@ -226,7 +236,7 @@
           <h2>Cookies per flavor</h2>
           <p class="t-sub">Box cookies and singles together. Not-paid-yet orders still hold their cookies until they expire.</p>
           <div class="ops-scroll"><table class="t-table">
-            <thead><tr><th></th><th>Paid</th><th>Not paid yet</th><th>Left of cap</th></tr></thead>
+            <thead><tr><th></th><th>Paid</th><th>Not paid yet</th><th>Left to sell</th></tr></thead>
             <tbody>
               ${flavors.map((f) => {
                 const left = (f.cap ?? 0) - f.paid - f.pending;
