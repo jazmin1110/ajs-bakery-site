@@ -1622,3 +1622,44 @@ body.admin .o-main + .o-meta { margin-top: 0.6rem; }   /* breathing room under t
 .today-bar-num { text-align: right; font-size: 0.88rem; white-space: nowrap; }
 .today-list li { max-width: none; }                                    /* the site-wide 66ch line length is for text, not these rows */
 .today-link { color: var(--blue-dark); font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; padding: 0 0.3rem; }
+
+/* ==========================================================================================
+   Admin clarity pass: Sunday buttons, "More" tab row, compact recipe cards, Stock "More"
+   ========================================================================================== */
+/* "More" sits in the tab row and looks like a tab; it opens a second row under the tabs */
+.admin-more-btn { flex: none; background: none; border: 0; border-bottom: 3px solid transparent; cursor: pointer;
+  font: inherit; font-weight: 700; font-size: 0.97rem; padding: 0.55rem 0.45rem; color: var(--cream); }
+.admin-more-btn::after { content: " ▾"; font-size: 0.75em; }
+.admin-more-btn[aria-expanded="true"]::after { content: " ▴"; }
+.admin-more-btn[aria-current="page"] { border-bottom-color: var(--cream); }
+.admin-more { background: var(--blue-dark); }
+.admin-more .container { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 0.2rem 1.4rem; padding-top: 0.15rem; padding-bottom: 0.15rem; }
+.admin-more a { color: var(--cream); font-weight: 700; font-size: 0.93rem; text-decoration: none; padding: 0.55rem 0.2rem;
+  min-height: 44px; display: inline-flex; align-items: center; border-bottom: 3px solid transparent; }
+.admin-more a[aria-current="page"] { border-bottom-color: var(--cream); }
+@media (min-width: 1100px) { body.admin .admin-more .container { max-width: 1120px; } }
+
+/* The two Sunday buttons (Orders, Bake plan, Sales) */
+.sun-pick { display: flex; gap: 0.5rem; flex: 2 1 280px; }
+.sun-btn { flex: 1; min-height: 52px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0.05rem;
+  padding: 0.35rem 0.75rem; border: 1.5px solid #E6DCCB; border-radius: var(--r-sm); background: #fff; color: var(--ink);
+  font: inherit; text-align: left; cursor: pointer; }
+.sun-btn strong { font-size: 1rem; color: var(--blue-dark); }
+.sun-btn span { font-size: 0.8rem; color: var(--ink-soft); }
+.sun-btn[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); }
+.sun-btn[aria-pressed="true"] strong, .sun-btn[aria-pressed="true"] span { color: #fff; }
+.sun-btn:focus-visible { outline: 3px solid var(--blue-soft); outline-offset: 2px; }
+.toolbar .sun-pick + select { flex: 1 1 150px; min-width: 140px; color: var(--ink-soft); }
+.toolbar .sun-pick + select.is-chosen { border-color: var(--blue); color: var(--blue-dark); font-weight: 700; }
+
+/* Stock: one main button, the rest behind "More" */
+.item-more { display: inline-block; }
+.item-more > summary { list-style: none; cursor: pointer; }
+.item-more > summary::-webkit-details-marker { display: none; }
+.item-more[open] > summary { background: var(--blue-soft); }
+.item-more-btns { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; }
+
+/* Recipes: summary first, the full recipe behind "Edit recipe" */
+.rc-sub { margin: 0 0 0.4rem; font-size: 0.88rem; color: var(--ink-soft); }
+.rc-edit > summary { font-weight: 700; color: var(--blue-dark); }
+.item-more[open] { flex: 1 1 100%; }

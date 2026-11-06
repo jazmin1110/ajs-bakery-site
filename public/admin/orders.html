@@ -54,6 +54,7 @@
     import {
       requireAdmin, renderNav, setupSundayPicker, selectedSunday, expireStale, loadOrders, setStatus,
       formatWhen, timeLeft, singlesPack, rpc, select, loadFlavors, summarize, isLive,
+      currentSunday, getOrderingSunday,
     } from "../js/admin.js";
     import { esc, peso, formatSunday, addDays } from "../js/ui.js";
 
@@ -183,9 +184,11 @@
       } else if (next) {
         main = `<button type="button" class="btn btn-block" data-prep="${next.to}">${esc(next.label)}</button>`;
       } else if (st === "closed") {
-        main = `<div class="o-actions" style="margin:0">
-            <button type="button" class="btn btn-small" data-act="paid">Paid after all? Mark paid</button>
-            <button type="button" class="btn btn-small btn-ghost" data-act="pending">Reopen (24h to pay)</button></div>`;
+          // Folded away: these undo a cancel/expiry, so they shouldn't be the loudest thing on a dead order
+        main = `<details class="o-more"><summary>${status === "expired" ? "Expired" : "Cancelled"} by mistake?</summary>
+          <div class="o-actions" style="margin:.4rem 0 0">
+            <button type="button" class="btn btn-small btn-ghost" data-act="paid">They paid: mark paid</button>
+            <button type="button" class="btn btn-small btn-ghost" data-act="pending">Reopen (24h to pay)</button></div></details>`;
       }
 
       return `
@@ -306,6 +309,12 @@
       const live = orders.filter((o) => !["closed"].includes(stage(o)));
       const paid = live.filter((o) => o.status === "paid").reduce((t, o) => t + Number(o.total), 0);
       const waiting = live.filter((o) => o.status === "pending").reduce((t, o) => t + Number(o.total), 0);
+      // A Sunday that's over: no "left to sell", just how it went (and anything never marked done)
+      if (sunday < currentSunday()) {
+        return `<p class="o-next">This Sunday is over</p>
+          ${todo.length ? `<p class="o-small">Still open: ${esc(todo.join(" · "))}. Mark them done or cancel them.</p>` : ""}
+          <p class="o-small">${plural(live.length, "order", "orders")} went ahead${c.closed ? ` · ${c.closed} cancelled or expired` : ""} · ${peso(paid)} paid</p>`;
+      }
       return `<p class="o-next">${todo.length ? `Next: ${esc(todo[0])}` : c.unpaid ? "Nothing to do yet: waiting on payments" : "All caught up"}</p>
         ${todo.length > 1 ? `<p class="o-small">Then: ${esc(todo.slice(1).join(" · "))}</p>` : ""}
         <p class="o-small">${peso(paid)} paid${waiting ? ` · ${peso(waiting)} not paid yet (${c.unpaid + c.check})` : ""}</p>
@@ -491,7 +500,7 @@
       const o = editing;
       const v = (x) => esc(x || "");
       const on = o ? o.sunday_date : sunday;
-      const sundays = [...sel.options].map((op) => [op.value, op.textContent]);
+      const sundays = [...sel.options].filter((op) => op.value).map((op) => [op.value, op.textContent]);
       if (!sundays.some(([d]) => d === on)) sundays.unshift([on, formatSunday(on)]);   // an order on a Sunday outside the picker
       return `<form class="ops-form" id="ao-form" novalidate>
         <div class="ops-head wide"><h2 style="margin:0">${o ? `Edit ${esc(o.ref_code)}` : "Add an order"}</h2><button type="button" class="link-btn" data-ao-close>Close</button></div>
@@ -703,9 +712,7 @@
     $("list").addEventListener("click", async (e) => {
       const jump = e.target.closest("[data-jump]");
       if (jump) {                                               // "Show Sunday, Oct 25"
-        const sel = $("sunday");
-        if (![...sel.options].some((op) => op.value === jump.dataset.jump)) sel.add(new Option(formatSunday(jump.dataset.jump), jump.dataset.jump));
-        sel.value = jump.dataset.jump; sel.dispatchEvent(new Event("change"));
+        picker.go(jump.dataset.jump);
         return;
       }
       const editBtn = e.target.closest("[data-edit]");
@@ -755,8 +762,18 @@
       }
     });
 
-    setupSundayPicker($("sunday"), (d) => { sunday = d; load(); });
-    load();
+    const picker = setupSundayPicker($("sunday"), (d) => { sunday = d; load(); });
+    const pickedSunday = new URLSearchParams(location.search).has("sunday");
+    load().then(openBusySunday);
+
+    // First visit without a Sunday in the address: if the Sunday being baked has no orders but
+    // the one taking orders does (Thursday to Saturday), open that one instead of an empty page.
+    async function openBusySunday() {
+      if (pickedSunday || sunday !== currentSunday() || orders.some(isLive)) return;
+      const ordering = await getOrderingSunday();
+      if (ordering === sunday) return;
+      try { if ((await loadOrders(ordering)).length) picker.go(ordering); } catch (e) { console.error(e); }
+    }
     // "+ Add order" on the Today page links here with ?add=1: open the form straight away
     if (new URLSearchParams(location.search).has("add")) openAddForm();
   </script>

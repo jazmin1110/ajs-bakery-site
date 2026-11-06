@@ -4,8 +4,8 @@
 // can open these pages' source. The real protection is in the database: every
 // admin function checks is_admin(), and Row Level Security hides the data from
 // everyone else (see supabase/migrations/004_admin_functions.sql).
-import { getClient, isConfigured } from "./supabase.js";
-import { esc, formatSunday, addDays } from "./ui.js";
+import { getClient, isConfigured, fetchSundayInfo } from "./supabase.js";
+import { esc, formatSunday, addDays, orderingSunday } from "./ui.js";
 
 // ---- Login / access ---------------------------------------------------------------
 
@@ -86,25 +86,92 @@ export function selectedSunday() {
   return /^\d{4}-\d{2}-\d{2}$/.test(q || "") ? q : currentSunday();
 }
 
-// Fill a <select> with Sundays (4 weeks back, 8 ahead) and keep the URL in sync
+// The Sunday the WEBSITE is taking orders for. Orders close Wednesday 9pm (Manila), so from
+// Wednesday night on it's already the Sunday after the one being baked. Worked out on this phone
+// first (instant), then checked with the database, which also skips a Sunday that's fully sold out.
+export function orderingSundayGuess(now = new Date()) {
+  const baking = currentSunday(now);
+  const cutoffDay = addDays(baking, -4);                         // the Wednesday before
+  const today = manilaToday(now);
+  const open = today < cutoffDay || (today === cutoffDay && manilaHour(now) < 21);
+  return open ? baking : addDays(baking, 7);
+}
+let orderingPromise = null;
+export function getOrderingSunday() {
+  orderingPromise ??= fetchSundayInfo().then((info) => orderingSunday(info).date).catch(() => orderingSundayGuess());
+  return orderingPromise;
+}
+
+// "Sun Nov 8"
+export function shortSunday(iso) {
+  return formatSunday(iso).replace(/^Sunday, /, "Sun ");
+}
+
+// The Sunday chooser at the top of Orders, Bake plan and Sales.
+// Two big buttons for the Sundays that matter right now (the one you're baking for and the
+// next one), and an "Other Sunday" list for anything older or further ahead.
+// The <select> keeps every date, because the Add order form copies its list.
+// Returns { go(date) } so a page can switch Sunday itself.
 export function setupSundayPicker(select, onChange) {
-  const current = currentSunday();
-  const chosen = selectedSunday();
+  const baking = currentSunday();
+  const next = addDays(baking, 7);
+  let chosen = selectedSunday();
   const dates = [];
-  for (let w = -4; w <= 8; w++) dates.push(addDays(current, w * 7));
+  for (let w = -4; w <= 8; w++) dates.push(addDays(baking, w * 7));
   if (!dates.includes(chosen)) dates.push(chosen);
   dates.sort();
-  select.innerHTML = dates.map((d) =>
-    `<option value="${d}"${d === chosen ? " selected" : ""}>${esc(formatSunday(d))}${sundayTag(d)}</option>`
+  select.innerHTML = `<option value="">Other Sunday...</option>` + dates.map((d) =>
+    `<option value="${d}">${esc(formatSunday(d))}${sundayTag(d)}</option>`
   ).join("");
-  select.addEventListener("change", () => {
+  select.setAttribute("aria-label", "Pick another Sunday");
+
+  // The two buttons go just before the list
+  const group = document.createElement("div");
+  group.className = "sun-pick";
+  group.setAttribute("role", "group");
+  group.setAttribute("aria-label", "Which Sunday");
+  select.before(group);
+  const label = select.parentElement.querySelector(`label[for="${select.id}"]`);
+  if (label) label.hidden = true;                                 // the buttons say it already
+
+  function draw(ordering) {
+    const tag = (d) => d === baking
+      ? (ordering === baking ? "Baking · taking orders" : "Baking now")
+      : (ordering === next ? "Taking orders" : "Next week");
+    group.innerHTML = [baking, next].map((d) =>
+      `<button type="button" class="sun-btn" data-sun="${d}" aria-pressed="${d === chosen}">
+        <strong>${esc(shortSunday(d))}</strong><span>${tag(d)}</span></button>`).join("");
+    select.value = d2opt(chosen);
+    select.classList.toggle("is-chosen", select.value !== "");
+  }
+  const d2opt = (d) => (d === baking || d === next) ? "" : d;
+
+  function go(d) {
+    if (!d) return;
+    chosen = d;
+    if (![...select.options].some((op) => op.value === d)) select.add(new Option(formatSunday(d), d));
     const url = new URL(location.href);
-    url.searchParams.set("sunday", select.value);
+    url.searchParams.set("sunday", d);
     history.replaceState(null, "", url);
     syncNav();
-    onChange(select.value);
+    draw(currentOrdering);
+    onChange(d);
+  }
+
+  let currentOrdering = orderingSundayGuess();
+  draw(currentOrdering);
+  getOrderingSunday().then((d) => { if (d !== currentOrdering) { currentOrdering = d; draw(d); } });
+
+  group.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-sun]");
+    if (b && b.dataset.sun !== chosen) go(b.dataset.sun);
+  });
+  select.addEventListener("change", () => {
+    if (select.value && select.value !== chosen) go(select.value);
+    else draw(currentOrdering);
   });
   syncNav();
+  return { go };
 }
 
 // ---- Nav bar ---------------------------------------------------------------------------
@@ -112,21 +179,35 @@ export function setupSundayPicker(select, onChange) {
 // The pages in the menu. `sunday: true` = the page works on one Sunday, so the
 // chosen Sunday is carried along when you switch to it.
 const NAV_PAGES = [
-  // In the order you use them in a week: orders in, plan + bake, stock, recipes. Sales = best sellers and the numbers per Sunday.
+  // In the order you use them in a week. `more: true` = set-up pages you rarely need, kept under "More".
   { page: "index",      label: "Today",      sunday: false },  // the home page: what needs doing now
   { page: "orders",     label: "Orders",     sunday: true },
   { page: "production", label: "Bake plan",  sunday: true },
-  { page: "menu",       label: "Menu",       sunday: false },  // hide a flavor / mark it sold out (026)
   { page: "inventory",  label: "Stock",      sunday: false },
-  { page: "recipes",    label: "Recipes",    sunday: false },
   { page: "totals",     label: "Sales",      sunday: true },   // best sellers + one Sunday's totals
+  { page: "menu",       label: "Menu: on sale / sold out / hidden", sunday: false, more: true },  // (026)
+  { page: "recipes",    label: "Recipes and costs", sunday: false, more: true },
 ];
 
 export function renderNav(active) {
   const nav = document.getElementById("admin-nav");
-  nav.innerHTML = NAV_PAGES.map((p) =>
-    `<a href="${p.page}.html" data-page="${p.page}"${p.sunday ? ' data-sunday="1"' : ""}${active === p.page ? ' aria-current="page"' : ""}>${p.label}</a>`
-  ).join("");
+  const link = (p) => `<a href="${p.page}.html" data-page="${p.page}"${p.sunday ? ' data-sunday="1"' : ""}${active === p.page ? ' aria-current="page"' : ""}>${p.label}</a>`;
+  const extra = NAV_PAGES.filter((p) => p.more);
+  const onMore = extra.some((p) => p.page === active);
+  nav.innerHTML = NAV_PAGES.filter((p) => !p.more).map(link).join("")
+    + `<button type="button" class="admin-more-btn" id="more-btn" aria-expanded="${onMore}" aria-controls="admin-more"${onMore ? ' aria-current="page"' : ""}>More</button>`;
+
+  // "More" opens a second row under the tabs (not a pop-up menu, so it can't get cut off on a phone)
+  const head = nav.closest(".admin-head");
+  if (!document.getElementById("admin-more")) {
+    head.insertAdjacentHTML("afterend", `<div class="admin-more" id="admin-more"${onMore ? "" : " hidden"}><div class="container">${extra.map(link).join("")}</div></div>`);
+  }
+  document.getElementById("more-btn").addEventListener("click", (e) => {
+    const row = document.getElementById("admin-more");
+    row.hidden = !row.hidden;
+    e.currentTarget.setAttribute("aria-expanded", String(!row.hidden));
+  });
+
   // Log out sits on the logo row (top right) so the menu row only holds the pages
   if (!document.getElementById("logout-btn")) {
     nav.insertAdjacentHTML("beforebegin", `<button type="button" class="link-btn admin-logout" id="logout-btn">Log out</button>`);
@@ -152,7 +233,7 @@ export function renderNav(active) {
 // Keep the chosen Sunday when switching between the Sunday-based pages
 function syncNav() {
   const q = new URLSearchParams(location.search).get("sunday");
-  document.querySelectorAll("#admin-nav a").forEach((a) => {
+  document.querySelectorAll("#admin-nav a, #admin-more a").forEach((a) => {
     a.href = a.dataset.page + ".html" + (q && a.dataset.sunday ? `?sunday=${q}` : "");
   });
 }
