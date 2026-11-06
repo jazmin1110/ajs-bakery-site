@@ -164,9 +164,8 @@
     }
 
     // ---- GCash "Send Money" details (CONFIG.gcash in js/config.js) -----------------------
-    // Shown only when both the number and the name are filled in, so an empty config never
-    // prints "Send to: " with nothing after it.
-    const hasGcash = () => !!(CONFIG.gcash && CONFIG.gcash.number && CONFIG.gcash.name);
+    // Shown only when a number is filled in (the account name line is optional).
+    const hasGcash = () => !!(CONFIG.gcash && CONFIG.gcash.number);
 
     function gcashCardHtml() {
       if (!hasGcash()) return "";
@@ -177,7 +176,7 @@
             <strong class="gcash-number" id="gcash-number">${esc(CONFIG.gcash.number)}</strong>
             <button type="button" class="btn btn-small btn-ghost" id="copy-gcash">Copy number</button>
           </div>
-          <p class="gcash-name">Account name: <strong>${esc(CONFIG.gcash.name)}</strong></p>
+          ${CONFIG.gcash.name ? `<p class="gcash-name">Account name: <strong>${esc(CONFIG.gcash.name)}</strong></p>` : ""}
           <p class="gcash-amount">Amount: <strong class="pay-amount">${esc(peso(order.total))}</strong></p>
         </div>`;
     }

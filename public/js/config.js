@@ -75,9 +75,10 @@ export const CONFIG = {
   // GCash account shown on the payment page next to the QR, for people who pay by "Send Money"
   // (and anyone reading the page on the phone they'll pay from, who can't scan their own screen).
   //   number = the GCash mobile number, as customers should type it (e.g. "0917 798 1234")
-  //   name   = the account name GCash shows them before they confirm, so they can check it matches
-  // The block stays hidden until BOTH are filled in.
-  gcash: { number: "0917 798 8286", name: "Renee Jazmin Ang" },
+  //   name   = optional account name to show. Left empty on purpose: GCash already shows customers
+  //            a masked name (RE**E JA***N A.) on its confirm screen, so the full name stays off the site.
+  // The block stays hidden until a number is filled in.
+  gcash: { number: "0917 798 8286", name: "" },
 
   maxBoxesPerOrder: 3, // cart limit (the checkout step must respect this too)
   // Order minimum (copy only: the database enforces it): 1 cookie, for pickup AND delivery.
