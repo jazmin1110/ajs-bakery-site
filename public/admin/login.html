@@ -57,7 +57,7 @@
       const { data } = await sb.auth.getSession();
       if (!data.session) return;
       const { data: ok } = await sb.rpc("is_admin");
-      if (ok === true) location.replace("orders.html");
+      if (ok === true) location.replace("index.html");
     })();
 
     $("login-form").addEventListener("submit", async (e) => {
@@ -85,7 +85,7 @@
           $("denied").hidden = false;
           return;
         }
-        location.replace("orders.html");
+        location.replace("index.html");
       } catch (err) {
         console.error(err);
         showError("Couldn't reach the server. Check your connection and try again.");

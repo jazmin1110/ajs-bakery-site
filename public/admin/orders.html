@@ -757,6 +757,8 @@
 
     setupSundayPicker($("sunday"), (d) => { sunday = d; load(); });
     load();
+    // "+ Add order" on the Today page links here with ?add=1: open the form straight away
+    if (new URLSearchParams(location.search).has("add")) openAddForm();
   </script>
 </body>
 </html>

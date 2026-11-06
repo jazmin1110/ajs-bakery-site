@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Today | AJ's Bakery admin</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32.png?v=3">
+  <link rel="icon" type="image/png" sizes="64x64" href="../assets/icons/favicon-64.png?v=3">
+  <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png?v=4">
+  <link rel="manifest" href="../site.webmanifest?v=4">
+  <link rel="preload" href="../assets/fonts/baloo-2-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../assets/fonts/nunito-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <meta name="theme-color" content="#2B4C93">
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="admin">
+
+  <header class="site-header no-print">
+    <div class="container admin-head">
+      <a class="logo-link" href="/"><img src="../assets/stickers/logo-badge-new-96.webp" srcset="../assets/stickers/logo-badge-new-96.webp 96w, ../assets/stickers/logo-badge-new-192.webp 192w" sizes="56px" alt="" width="56" height="56"><span>AJ's Admin</span></a>
+      <nav class="admin-nav" id="admin-nav" aria-label="Admin"></nav>
+    </div>
+  </header>
+
+  <main class="container admin-main">
+    <div class="form-error" id="message" role="alert" hidden></div>
+    <div id="out"><p class="loading">Getting today ready...</p></div>
+  </main>
+
+  <script type="module">
+    // TODAY. The page you land on after logging in. It answers "what do I need to do right now?"
+    // It only READS: every number comes from the same database calls the other pages use
+    // (orders, bake plan, stock), and each to-do links to the page where you actually do it.
+    // Two Sundays matter at once:
+    //   baking Sunday   = the next Sunday you hand cookies over (currentSunday() in admin.js)
+    //   ordering Sunday = the one the website is taking orders for right now (the database decides,
+    //                     after Wednesday 9pm it's already the week after)
+    import {
+      requireAdmin, renderNav, currentSunday, expireStale, loadOrders, loadFlavors, rpc, select,
+      summarize, isLive, peso2, daysUntil, fmtQty,
+    } from "../js/admin.js";
+    import { fetchSundayInfo } from "../js/supabase.js";
+    import { esc, peso, formatSunday, orderingSunday, addDays } from "../js/ui.js";
+
+    await requireAdmin();
+    renderNav("index");
+
+    const $ = (id) => document.getElementById(id);
+    const plural = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
+    const short = (iso) => formatSunday(iso).replace(/^Sunday, /, "Sun ");      // "Sun Nov 8"
+
+    // Where an order is, same stages as the Orders page
+    function stage(o) {
+      const s = o.overdue ? "expired" : o.status;
+      if (s === "cancelled" || s === "expired") return "closed";
+      if (s === "pending") return o.gcash_ref ? "check" : "unpaid";
+      return { new: "to_bake", baking: "baking", ready: "ready", out_for_delivery: "ready", completed: "done" }[o.prep_status];
+    }
+    const countStages = (list) => list.reduce((c, o) => { const k = stage(o); c[k] = (c[k] || 0) + 1; return c; }, {});
+
+    // "in 2 days" / "in 5 hours" / "closed"
+    function untilText(when) {
+      const ms = new Date(when) - new Date();
+      if (ms <= 0) return "closed";
+      const h = Math.floor(ms / 3600000);
+      if (h < 1) return `in ${Math.max(1, Math.floor(ms / 60000))} min`;
+      if (h < 24) return `in ${plural(h, "hour")}`;
+      return `in ${plural(Math.floor(h / 24), "day")}`;
+    }
+
+    async function load() {
+      try {
+        try { await expireStale(); } catch (e) { console.error("expire failed", e); }   // so lapsed unpaid orders don't count
+
+        const baking = currentSunday();
+        const raw = await fetchSundayInfo();
+        const info = orderingSunday(raw);
+        info.cutoffAt = raw.ordering_cutoff_at ?? raw.cutoff_at;    // the exact moment, for "closes in 2 days"
+        const ordering = info.date;
+        const lastSunday = addDays(baking, -7);
+
+        // Everything at once; each call is the one its own page already makes
+        const [bakeOrders, orderOrders, lastOrders, flavors, plan, stock, lots, dough] = await Promise.all([
+          loadOrders(baking),
+          ordering === baking ? null : loadOrders(ordering),
+          loadOrders(lastSunday),
+          loadFlavors(),
+          rpc("admin_production_plan", { p_sunday: baking, p_include_pending: true }),
+          select("ingredient_stock", "name, unit, on_hand, reorder_level, is_low, active, price_confirmed"),
+          select("ingredient_lots", "id, ingredient_id, qty_remaining, expires_on", (q) => q.gt("qty_remaining", 0)),
+          select("dough_lots", "flavor_id, balls_left, best_by", (q) => q.gt("balls_left", 0)),
+        ]);
+        render({ baking, ordering, info, bakeOrders, orderOrders: orderOrders || bakeOrders, lastOrders, flavors, plan, stock, lots, dough });
+      } catch (err) {
+        console.error(err);
+        $("out").innerHTML = "";
+        $("message").textContent = err.isNetwork ? "Couldn't reach the server. Check your connection and refresh."
+                                                  : `Couldn't load today: ${err.message}`;
+        $("message").hidden = false;
+      }
+    }
+
+    function render(d) {
+      const { baking, ordering, info, bakeOrders, orderOrders, plan, stock, lots, dough } = d;
+      const sameSunday = ordering === baking;
+      const bake = countStages(bakeOrders);
+      const next = sameSunday ? {} : countStages(orderOrders);
+      const todo = [];   // { tone, text, sub, href }   tone: "need" (amber) | "kitchen" (blue) | "stock" | "info" (grey)
+
+      // 1. Payments to check (both Sundays): customers are waiting on this
+      const checks = (bake.check || 0) + (next.check || 0);
+      if (checks) todo.push({ tone: "need", text: `Check ${plural(checks, "GCash payment")}`,
+        sub: "Customers sent a reference number. Match it in your GCash, then mark paid.",
+        href: `orders.html?sunday=${bake.check ? baking : ordering}` });
+
+      // 2. Shopping for the baking Sunday
+      const toBuy = plan.shopping.filter((s) => s.short > 0);
+      if (toBuy.length) todo.push({ tone: "kitchen", text: `Shopping: ${plural(toBuy.length, "item")}, about ${peso2(Math.round(plan.totals.est_shopping_cost))}`,
+        sub: toBuy.slice(0, 4).map((s) => s.name).join(", ") + (toBuy.length > 4 ? ", ..." : ""),
+        href: `production.html?sunday=${baking}` });
+
+      // 3. Dough to mix, and frozen dough to bake
+      const toMix = plan.flavors.filter((f) => f.to_make > 0 && f.recipe_ready);
+      if (toMix.length) todo.push({ tone: "kitchen", text: `Make dough: ${plural(toMix.reduce((t, f) => t + f.batches, 0), "batch", "batches")}`,
+        sub: toMix.map((f) => `${f.name} × ${f.batches}`).join(" · "), href: `production.html?sunday=${baking}` });
+      const noRecipe = plan.flavors.filter((f) => f.to_make > 0 && !f.recipe_ready);
+      if (noRecipe.length) todo.push({ tone: "need", text: `No recipe yet for ${noRecipe.map((f) => f.name).join(", ")}`,
+        sub: "Ordered, but the bake plan can't work out batches or shopping without it.", href: "recipes.html" });
+      const toBakeCookies = plan.flavors.reduce((t, f) => t + (f.to_make === 0 ? (f.still_to_bake ?? 0) : 0), 0);
+      if (toBakeCookies) todo.push({ tone: "kitchen", text: `Bake ${plural(toBakeCookies, "cookie")} from frozen dough`,
+        sub: `For ${short(baking)}. Tap "I baked these" on the Bake plan after.`, href: `production.html?sunday=${baking}` });
+
+      // 4. Orders moving through the kitchen (baking Sunday)
+      if (bake.ready) todo.push({ tone: "kitchen", text: `Hand over ${plural(bake.ready, "order")}`,
+        sub: "Ready for pickup or the rider.", href: `orders.html?sunday=${baking}` });
+      if (bake.to_bake || bake.baking) todo.push({ tone: "kitchen",
+        text: `${plural((bake.to_bake || 0) + (bake.baking || 0), "paid order")} to bake and pack`,
+        sub: `For ${short(baking)}. The Packing view lists every box.`, href: `orders.html?sunday=${baking}` });
+
+      // 5. Stock and freezer problems
+      const low = stock.filter((i) => i.active && i.is_low);
+      const expired = lots.filter((l) => l.expires_on && daysUntil(l.expires_on) < 0);
+      const soon = lots.filter((l) => l.expires_on && daysUntil(l.expires_on) >= 0 && daysUntil(l.expires_on) <= 7);
+      const oldDough = dough.filter((x) => daysUntil(x.best_by) <= 7);
+      if (expired.length) todo.push({ tone: "need", text: `${plural(expired.length, "purchase")} past expiry`, sub: "Throw it away on the Stock page so costs stay right.", href: "inventory.html" });
+      if (low.length) todo.push({ tone: "stock", text: `Running low: ${low.slice(0, 3).map((i) => i.name).join(", ")}${low.length > 3 ? ` +${low.length - 3} more` : ""}`,
+        sub: low.slice(0, 3).map((i) => `${i.name}: ${fmtQty(i.on_hand, i.unit)} left`).join(" · "), href: "inventory.html" });
+      if (soon.length) todo.push({ tone: "stock", text: `${plural(soon.length, "item")} expiring this week`, sub: "Use these first.", href: "inventory.html" });
+      if (oldDough.length) todo.push({ tone: "stock", text: `Frozen dough near its best-by (${plural(oldDough.reduce((t, x) => t + x.balls_left, 0), "ball")})`,
+        sub: "Bake it soon or throw it away on the Bake plan.", href: `production.html?sunday=${baking}` });
+      const guessed = stock.filter((i) => i.active && !i.price_confirmed).length;
+      if (guessed) todo.push({ tone: "info", text: `${plural(guessed, "price")} still guessed`,
+        sub: "Log a purchase with what you paid, so costs and profit are real.", href: "inventory.html" });
+
+      // 6. Waiting on customers (not a to-do, but good to know)
+      const unpaid = (bake.unpaid || 0) + (next.unpaid || 0);
+      if (unpaid) todo.push({ tone: "info", text: `${plural(unpaid, "order")} waiting for the customer to pay`,
+        sub: "They have 24 hours, then the cookies go back on sale.", href: `orders.html?sunday=${bake.unpaid ? baking : ordering}` });
+
+      $("out").innerHTML = `
+        ${weekStrip(d)}
+        <section class="t-card">
+          <div class="ops-head"><h2 style="margin:0">To do</h2>
+            <a class="btn btn-small" href="orders.html?sunday=${ordering}&add=1">+ Add order</a></div>
+          ${todo.length ? `<ul class="today-list">${todo.map((t) => `
+            <li><a class="today-item today-${t.tone}" href="${t.href}">
+              <span class="today-text"><strong>${esc(t.text)}</strong>${t.sub ? `<span class="o-small">${esc(t.sub)}</span>` : ""}</span>
+              <span class="today-go" aria-hidden="true">›</span></a></li>`).join("")}</ul>`
+          : `<div class="ops-ok">All caught up. Nothing needs you right now.</div>`}
+        </section>
+        ${leftCard(d)}
+        ${numbersCard(d)}`;
+    }
+
+    // Top strip: which Sunday is being baked, which one is taking orders, and when ordering closes
+    function weekStrip({ baking, ordering, info }) {
+      const closes = info.cutoffLong ? `closes ${esc(info.cutoffLong)} (${untilText(info.cutoffAt)})` : "";
+      return `<section class="today-week">
+        ${ordering === baking
+          ? `<p><span class="tag tag-ok">Taking orders</span> for <strong>${esc(formatSunday(ordering))}</strong>${closes ? `, ${closes}` : ""}</p>`
+          : `<p><span class="tag tag-info">Baking</span> for <strong>${esc(formatSunday(baking))}</strong> · orders for it are closed</p>
+             <p><span class="tag tag-ok">Taking orders</span> for <strong>${esc(formatSunday(ordering))}</strong>${closes ? `, ${closes}` : ""}</p>`}
+      </section>`;
+    }
+
+    // Cookies left to sell for the ordering Sunday, one bar per flavor on sale
+    function leftCard({ ordering, orderOrders, flavors }) {
+      const per = summarize(orderOrders, flavors).perFlavor;
+      const rows = flavors.filter((f) => !f.hidden).map((f) => {
+        const cap = f.weekly_cap ?? 0, taken = per[f.slug].paid + per[f.slug].pending, left = cap - taken;
+        const pct = cap ? Math.min(100, Math.round((taken / cap) * 100)) : 0;
+        const note = f.sold_out ? "marked sold out" : left <= 0 ? (left < 0 ? `${-left} over` : "sold out") : `${left} left`;
+        return `<div class="today-bar">
+          <span class="today-bar-name">${esc(f.name)}</span>
+          <span class="today-bar-track" role="img" aria-label="${taken} of ${cap} taken"><span style="width:${pct}%" class="${left <= 0 || f.sold_out ? "is-out" : left <= 3 ? "is-low" : ""}"></span></span>
+          <span class="today-bar-num ${left <= 0 || f.sold_out ? "o-left-out" : left <= 3 ? "o-left-low" : ""}">${note}</span></div>`;
+      }).join("");
+      return `<section class="t-card">
+        <div class="ops-head"><h2 style="margin:0">Left to sell · ${esc(short(ordering))}</h2><a class="today-link" href="menu.html">Menu</a></div>
+        <p class="t-sub">Paid and not-yet-paid orders both hold cookies. Hidden flavors aren't listed.</p>
+        ${rows || `<p class="t-sub">No flavors on sale.</p>`}
+      </section>`;
+    }
+
+    // A few numbers for the baking Sunday, next to last Sunday
+    function numbersCard({ baking, bakeOrders, lastOrders, flavors }) {
+      const sum = (list) => {
+        const live = list.filter(isLive);
+        const s = summarize(list, flavors);
+        return { orders: live.length, cookies: s.paid + s.pending,
+                 paid: live.filter((o) => o.status === "paid").reduce((t, o) => t + Number(o.total), 0),
+                 waiting: live.filter((o) => o.status === "pending").reduce((t, o) => t + Number(o.total), 0) };
+      };
+      // Last Sunday is over, so only paid orders count there
+      const now = sum(bakeOrders), last = sum(lastOrders.filter((o) => o.status === "paid"));
+      const vs = (a, b) => b ? (a > b ? `▲ ${a - b}` : a < b ? `▼ ${b - a}` : "same") : "";
+      return `<section class="t-card">
+        <div class="ops-head"><h2 style="margin:0">${esc(short(baking))} so far</h2><a class="today-link" href="totals.html?sunday=${baking}">Sales</a></div>
+        <div class="ops-stats ops-stats-4">
+          <div class="ops-stat"><strong>${now.orders}</strong><span>orders${last.orders ? ` · ${vs(now.orders, last.orders)} vs last week` : ""}</span></div>
+          <div class="ops-stat"><strong>${now.cookies}</strong><span>cookies${last.cookies ? ` · ${vs(now.cookies, last.cookies)} vs last week` : ""}</span></div>
+          <div class="ops-stat"><strong>${peso(now.paid)}</strong><span>paid</span></div>
+          <div class="ops-stat"><strong>${peso(now.waiting)}</strong><span>not paid yet</span></div>
+        </div>
+        ${last.orders ? `<p class="o-small">Last Sunday: ${plural(last.orders, "order")}, ${plural(last.cookies, "cookie")}, ${peso(last.paid)}.</p>` : ""}
+      </section>`;
+    }
+
+    load();
+  </script>
+</body>
+</html>

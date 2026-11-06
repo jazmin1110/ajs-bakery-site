@@ -113,6 +113,7 @@ export function setupSundayPicker(select, onChange) {
 // chosen Sunday is carried along when you switch to it.
 const NAV_PAGES = [
   // In the order you use them in a week: orders in, plan + bake, stock, recipes. Sales = best sellers and the numbers per Sunday.
+  { page: "index",      label: "Today",      sunday: false },  // the home page: what needs doing now
   { page: "orders",     label: "Orders",     sunday: true },
   { page: "production", label: "Bake plan",  sunday: true },
   { page: "menu",       label: "Menu",       sunday: false },  // hide a flavor / mark it sold out (026)
@@ -236,7 +237,7 @@ export async function loadOrders(sunday) {
 
 export async function loadFlavors() {
   // Menu flavors only (hidden drafts have no cap to show); summarize() still adds any other flavor found in orders
-  const { data, error } = await getClient().from("flavors").select("slug, name, weekly_cap, hidden").eq("active", true).order("id");
+  const { data, error } = await getClient().from("flavors").select("slug, name, weekly_cap, hidden, sold_out").eq("active", true).order("id");
   if (error) throw fail(error);
   return data;
 }

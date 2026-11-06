@@ -1585,3 +1585,33 @@ body.admin .o-main + .o-meta { margin-top: 0.6rem; }   /* breathing room under t
   .t-stack th { grid-column: 1 / -1; }
   .t-stack td:nth-of-type(1) { text-align: left; }
 }
+
+/* ==========================================================================================
+   Admin "Today" page (admin/index.html): week strip, to-do list, cookies-left bars.
+   Same color meanings as the order pills: amber = needs you, blue = kitchen, grey = just so you know.
+   ========================================================================================== */
+.today-week { background: #fff; border: 1px solid #E6DCCB; border-radius: 12px; padding: 0.6rem 0.95rem; margin-bottom: 0.8rem; }
+.today-week p { margin: 0.2rem 0; font-size: 0.95rem; }
+.today-list { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
+.today-item { display: flex; align-items: center; gap: 0.6rem; min-height: 52px; padding: 0.55rem 0.75rem;
+  border: 1px solid #E6DCCB; border-left: 5px solid #CFC5B4; border-radius: 10px; background: #fff;
+  color: var(--ink); text-decoration: none; }
+.today-item:focus-visible { outline: 3px solid var(--blue-soft); border-color: var(--blue); }
+.today-need    { border-left-color: #D99A20; background: #FFFAF0; }   /* amber: needs you */
+.today-kitchen { border-left-color: var(--blue); }                     /* blue: kitchen work */
+.today-stock   { border-left-color: var(--accent); }                   /* dough: stock / freezer */
+.today-info    { border-left-color: #CFC5B4; }                         /* grey: good to know */
+.today-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.today-text strong { color: var(--blue-dark); font-size: 1rem; }
+.today-go { font-size: 1.6rem; line-height: 1; color: var(--blue); flex: none; }
+@media (hover: hover) { .today-item:hover { border-color: var(--blue); } }
+
+.today-bar { display: grid; grid-template-columns: minmax(7rem, 9.5rem) 1fr 5.5rem; align-items: center; gap: 0.6rem; padding: 0.3rem 0; font-size: 0.95rem; }
+.today-bar-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.today-bar-track { height: 10px; border-radius: 999px; background: #F2EEE7; overflow: hidden; }
+.today-bar-track > span { display: block; height: 100%; background: var(--blue); border-radius: 999px; }
+.today-bar-track > span.is-low { background: #D99A20; }
+.today-bar-track > span.is-out { background: #C9574B; }
+.today-bar-num { text-align: right; font-size: 0.88rem; white-space: nowrap; }
+.today-list li { max-width: none; }                                    /* the site-wide 66ch line length is for text, not these rows */
+.today-link { color: var(--blue-dark); font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; padding: 0 0.3rem; }
