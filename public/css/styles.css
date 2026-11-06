@@ -1697,3 +1697,13 @@ body.admin .o-main + .o-meta { margin-top: 0.6rem; }   /* breathing room under t
 .pack-boxes { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; margin: 0.3rem 0; }
 .pack-boxes > span { font-weight: 700; font-size: 0.92rem; }
 .pack-boxes .choice { margin: 0; }
+
+/* Stock > Edit / Add item: tidy rows (3 across on a laptop, 1 on a phone), labels on one line, tops aligned */
+.ops-form.item-form { grid-template-columns: 1fr; align-items: start; gap: 0.55rem 0.8rem; }
+@media (min-width: 560px) { .ops-form.item-form { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.item-form .ops-field label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-form .unit-now { min-height: 44px; }
+.item-form-h { margin: 0.5rem 0 -0.2rem; font-family: var(--font-body); font-size: 0.8rem; font-weight: 800;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); border-top: 1px solid #EFE7DA; padding-top: 0.6rem; }
+.item-form .choice.wide { margin: 0; }
+.st-for { color: var(--blue-dark); font-weight: 700; }

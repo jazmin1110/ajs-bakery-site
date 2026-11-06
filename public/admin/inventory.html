@@ -55,6 +55,8 @@
     let log = [];            // recent stock movements
     let rules = [];          // packaging_rules: how each packaging item is used (migration 028)
     let boxSizes = [];       // box sizes on sale (3, 6, 12), for the "per box" choices
+    let usedIn = {};         // ingredient id -> names of the menu flavors whose recipe uses it
+    let recipeFlavors = 0;   // how many menu flavors have a recipe
     let openForm = null;     // { id, kind, lot }  kind: receive | use | count | edit | fix   (id "new" = adding an item)
     let showHidden = false;
     const openItems = new Set();   // items tapped open (their details showing)
@@ -82,10 +84,18 @@
           select("stock_log", "id, ingredient_id, delta, reason, note, created_at",
                  (q) => q.order("created_at", { ascending: false }).limit(15)),
         ]);
-        [rules, boxSizes] = await Promise.all([
+        let recipeRows, menu;
+        [rules, boxSizes, recipeRows, menu] = await Promise.all([
           select("packaging_rules", "id, ingredient_id, per, box_size, qty"),
           select("boxes", "size", (q) => q.eq("active", true).order("size")).then((b) => b.map((x) => x.size)),
+          select("recipe_items", "ingredient_id, flavor_id"),
+          select("flavors", "id, name", (q) => q.eq("active", true)),
         ]);
+        // Which flavors use each ingredient (menu flavors only, drafts don't count)
+        const nameOf = Object.fromEntries(menu.map((f) => [f.id, f.name]));
+        usedIn = {};
+        for (const r of recipeRows) if (nameOf[r.flavor_id]) (usedIn[r.ingredient_id] ??= new Set()).add(nameOf[r.flavor_id]);
+        recipeFlavors = new Set(recipeRows.filter((r) => nameOf[r.flavor_id]).map((r) => r.flavor_id)).size;
         render();
       } catch (err) {
         console.error(err);
@@ -110,6 +120,17 @@
     }
     const needsYou = (i) => i.active && ["bad", "warn"].includes(statusOf(i).tone);
 
+    // Ingredients sort themselves from the recipes, nothing to tag by hand:
+    //   basics = in at least half the menu's recipes (flour, butter, sugar, eggs...)
+    //   extras = in only a few flavors (Biscoff spread, Kinder Bueno...), shown with which ones
+    //   other  = not in any recipe yet
+    const flavorsUsing = (i) => [...(usedIn[i.ingredient_id] || [])].sort();
+    function kindOf(i) {
+      const n = flavorsUsing(i).length;
+      if (!n) return "other";
+      return recipeFlavors && n >= Math.ceil(recipeFlavors / 2) ? "basic" : "extra";
+    }
+
     function render() {
       const visible = items.filter((i) => (i.active || showHidden) && i.name.toLowerCase().includes(search.toLowerCase()));
       const active = items.filter((i) => i.active);
@@ -131,7 +152,13 @@
             Until then the Bake plan's shopping list will say to buy everything.</div>` : ""}`}
         ${openForm?.id === "new" ? `<section class="t-card"><h2>Add an item</h2>${editForm(null)}</section>` : ""}
         ${group("Needs attention", attention)}
-        ${group(search ? "Found" : "Ingredients", search ? rest : rest.filter((i) => i.category === "ingredient"))}
+        ${search ? group("Found", rest) : `
+          ${group("Basics", rest.filter((i) => i.category === "ingredient" && kindOf(i) === "basic"),
+            `<p class="t-sub" style="margin:-.2rem 0 .5rem">In most of your cookies.</p>`)}
+          ${group("Flavor extras", rest.filter((i) => i.category === "ingredient" && kindOf(i) === "extra")
+              .sort((a, b) => flavorsUsing(a)[0].localeCompare(flavorsUsing(b)[0]) || a.name.localeCompare(b.name)),
+            `<p class="t-sub" style="margin:-.2rem 0 .5rem">Only in some flavors. Each says which.</p>`)}
+          ${group("Not in a recipe yet", rest.filter((i) => i.category === "ingredient" && kindOf(i) === "other"))}`}
         ${search ? "" : group("Packaging", rest.filter((i) => i.category === "packaging"),
             `<p class="t-sub" style="margin:-.2rem 0 .5rem">Bags, boxes, stickers, cards. The Bake plan adds them to the shopping list.</p>`)}
         ${visible.length ? "" : `<p class="t-sub">${search ? `Nothing called "${esc(search)}". Tap Add item to add it.` : "No items yet."}</p>`}
@@ -208,7 +235,7 @@
         <div class="st-line">
           <button type="button" class="st-toggle" data-toggle aria-expanded="${open}">
             <span class="st-name">${esc(i.name)}${i.active ? "" : ` <span class="tag tag-info">hidden</span>`}</span>
-            <span class="st-status">${esc(st.text)}${i.price_confirmed ? "" : ` · <span class="st-guess">price guessed</span>`}${i.category === "packaging" && !rulesText(i.ingredient_id) ? ` · <span class="st-guess">when it's used isn't set</span>` : ""}</span>
+            <span class="st-status">${i.category === "ingredient" && kindOf(i) === "extra" ? `<span class="st-for">For ${esc(flavorsUsing(i).join(", "))}</span> · ` : ""}${esc(st.text)}${i.price_confirmed ? "" : ` · <span class="st-guess">price guessed</span>`}${i.category === "packaging" && !rulesText(i.ingredient_id) ? ` · <span class="st-guess">when it's used isn't set</span>` : ""}</span>
           </button>
           <span class="st-qty">${esc(fmtQty(i.on_hand, i.unit))}</span>
           <button type="button" class="btn btn-small no-print" data-open="receive" aria-label="I bought some ${esc(i.name)}">+ Bought</button>
@@ -364,19 +391,26 @@
     function editForm(i) {
       const v = (x) => esc(x ?? "");
       const isNew = !i;
-      return `<form class="ops-form" data-form="${isNew ? "add" : "edit"}">
+      // Laid out in plain rows: what it is, how you buy it, when to warn you. Labels sit on one line
+      // and hints go under the row, so the boxes line up.
+      return `<form class="ops-form item-form" data-form="${isNew ? "add" : "edit"}">
         <div class="ops-field wide"><label>Name</label><input name="name" maxlength="80" required value="${v(i?.name)}"></div>
         <div class="ops-field"><label>Type</label><select name="category"><option value="ingredient"${i?.category === "packaging" ? "" : " selected"}>Ingredient</option><option value="packaging"${i?.category === "packaging" ? " selected" : ""}>Packaging</option></select></div>
         ${isNew ? `<div class="ops-field"><label>Counted in</label><select name="unit">
           ${UNITS.map(([u, t]) => `<option value="${u}">${t}</option>`).join("")}</select></div>`
           : `<div class="ops-field"><label>Counted in</label><p class="unit-now"><strong>${esc(UNIT_NAME[i.unit] || i.unit)}</strong>
               <button type="button" class="link-btn" data-open="unit">Change</button></p></div>`}
-        <div class="ops-field"><label>How it's sold</label><input name="pack_label" maxlength="40" placeholder="bag 2.5kg" value="${v(i?.pack_label)}"></div>
-        <div class="ops-field"><label>Amount in one pack</label><input name="pack_size" type="number" min="0.001" step="any" inputmode="decimal" required value="${v(i?.pack_size ?? 1)}"><p class="field-hint">in the unit above, e.g. 2500 g</p></div>
-        <div class="ops-field"><label>Price of one pack (₱)</label><input name="pack_price" type="number" min="0" step="any" inputmode="decimal" required value="${v(i?.pack_price ?? 0)}"><p class="field-hint">Updates by itself when you log a purchase with what you paid.</p></div>
-        <div class="ops-field"><label>Reorder when below</label><input name="reorder_level" type="number" min="0" step="any" inputmode="decimal" value="${v(i?.reorder_level ?? 0)}"><p class="field-hint">0 = no alert</p></div>
-${usageFields(i)}
-        <div class="ops-field"><label>Supplier</label><input name="supplier" maxlength="120" value="${v(i?.supplier)}"></div>
+
+        <h4 class="item-form-h wide">How you buy it</h4>
+        <div class="ops-field"><label>Pack name</label><input name="pack_label" maxlength="40" placeholder="e.g. Ellie 1kg bag" value="${v(i?.pack_label)}"></div>
+        <div class="ops-field"><label>Amount in one pack${i ? ` (${esc(i.unit)})` : ""}</label><input name="pack_size" type="number" min="0.001" step="any" inputmode="decimal" required value="${v(i?.pack_size ?? 1)}"></div>
+        <div class="ops-field"><label>Price of one pack (₱)</label><input name="pack_price" type="number" min="0" step="any" inputmode="decimal" required value="${v(i?.pack_price ?? 0)}"></div>
+        <p class="field-hint wide" style="margin-top:-.2rem">Amount is in the unit above (e.g. 1000 for a 1 kg bag counted in grams). The price updates by itself when you log a purchase with what you paid.</p>
+
+        <h4 class="item-form-h wide">Other details</h4>
+        <div class="ops-field"><label>Warn me when below${i ? ` (${esc(i.unit)})` : ""}</label><input name="reorder_level" type="number" min="0" step="any" inputmode="decimal" value="${v(i?.reorder_level ?? 0)}" placeholder="0 = never"></div>
+        <div class="ops-field"><label>Where you buy it</label><input name="supplier" maxlength="120" placeholder="e.g. S&R Shaw" value="${v(i?.supplier)}"></div>
+        ${usageFields(i)}
         <label class="choice wide"><input type="checkbox" name="perishable"${i?.perishable ? " checked" : ""}><span>Has an expiry date (every purchase must have one)</span></label>
         <label class="choice wide"><input type="checkbox" name="price_confirmed"${i && !i.price_confirmed ? "" : " checked"}><span>The price above is the real price</span></label>
         ${isNew ? "" : `<label class="choice wide"><input type="checkbox" name="active"${i.active ? " checked" : ""}><span>Show this item (untick to hide it)</span></label>`}
