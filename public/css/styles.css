@@ -1711,3 +1711,43 @@ body.admin .o-main + .o-meta { margin-top: 0.6rem; }   /* breathing room under t
   letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); border-top: 1px solid #EFE7DA; padding-top: 0.6rem; }
 .item-form .choice.wide { margin: 0; }
 .st-for { color: var(--blue-dark); font-weight: 700; }
+
+
+/* ---------- Box builder: size tabs, cookie tray, pop-up ---------- */
+/* Size tabs: 3 / 6 / 12. The pressed one is filled blue. */
+.size-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0.4rem; margin-bottom: 0.6rem; }
+.size-tab {
+  min-height: 48px; padding: 0.3rem 0.4rem; border-radius: var(--r-md); border: 2px solid var(--cream-dark);
+  background: #fff; color: var(--blue-dark); font-family: var(--font-display); font-size: 0.95rem; font-weight: 600;
+  line-height: 1.15; cursor: pointer; transition: transform 0.1s ease-out;
+}
+.size-tab strong { font-size: 1.2rem; }
+.size-tab small { display: block; font-family: var(--font-body); font-size: 0.8rem; font-weight: 700; color: var(--ink); }
+.size-tab[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: #fff; }
+.size-tab[aria-pressed="true"] small { color: #fff; }
+.size-tab:active { transform: scale(0.96); }
+
+/* The tray sits inside the blue counter box. data-size (set by box.html) picks the grid shape. */
+.tray { display: grid; gap: 0.5rem; margin: 0.5rem auto 0.1rem; justify-content: center; grid-template-columns: repeat(3, minmax(0, 76px)); }
+.tray[data-size="12"] { grid-template-columns: repeat(4, minmax(0, 66px)); }
+@media (min-width: 520px) { .tray[data-size="12"] { grid-template-columns: repeat(6, minmax(0, 76px)); } }
+.tray-slot {
+  display: block; aspect-ratio: 1 / 1; border-radius: 50%; padding: 0; border: 0;
+  background: #fff; box-shadow: inset 0 3px 6px rgba(34, 61, 120, 0.28);   /* an empty dip in the tray */
+}
+.tray-slot.is-filled { background: none; box-shadow: none; cursor: pointer; }
+.tray-cookie { display: block; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 3px 4px rgba(92, 58, 34, 0.25)); }
+.tray-cookie.is-fallback { border-radius: 50%; object-fit: cover; }
+.tray-slot.pop { animation: tray-pop 0.28s cubic-bezier(0.3, 1.5, 0.6, 1); }
+@keyframes tray-pop { from { transform: scale(0.4) rotate(-14deg); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* The "Chimp Chips in. 2 of 6" pop-up, just above the sticky bar */
+.builder-toast {
+  position: fixed; left: 50%; bottom: calc(var(--bar-h, 4.5rem) + 12px); z-index: 60;
+  transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
+  background: var(--ink); color: #fff; font-family: var(--font-display); font-weight: 600; font-size: 0.95rem;
+  padding: 0.4rem 0.9rem; border-radius: 999px; white-space: nowrap; box-shadow: var(--shadow);
+  transition: opacity 0.15s, transform 0.15s;
+}
+.builder-toast.show { opacity: 1; transform: translate(-50%, 0); }
+@media (prefers-reduced-motion: reduce) { .tray-slot.pop { animation: none; } }

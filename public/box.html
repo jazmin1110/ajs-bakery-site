@@ -90,7 +90,7 @@
       // ?size=4 link, gets a friendly message and a way back to all the boxes.
       const asked = new URLSearchParams(location.search).get("size");
       const box = boxes.find((b) => String(b.size) === asked);
-      if (box) startBuilder(box, flavors, stock ? stock.bySlug : null, settings);
+      if (box) startBuilder(box, boxes, flavors, stock ? stock.bySlug : null, settings);
       else showSizePicker(boxes, asked, flavors);
     } catch (err) {
       console.error(err);
@@ -115,10 +115,17 @@
           </div></article>`).join("")}</div></div>`;
     }
 
-    function startBuilder(box, flavors, availability, settings) {
-      document.title = `Build your box of ${box.size} | AJ's Bakery`;
+    function startBuilder(firstBox, boxes, flavors, availability, settings) {
+      let box = firstBox;   // the size being built; the size tabs can change it without leaving the page
       const qty = Object.fromEntries(flavors.map((f) => [f.slug, 0]));
       const chosen = () => Object.values(qty).reduce((a, b) => a + b, 0);
+      // The cookies in the order they were tapped: this is what the tray draws, one per slot.
+      // qty (above) is the same picks counted per flavor; the two always change together.
+      const picks = [];
+      const bySlug = Object.fromEntries(flavors.map((f) => [f.slug, f]));
+      // Each flavor's sticker, made once and reused for every slot it fills
+      const slotPhoto = Object.fromEntries(flavors.map((f) => [f.slug, flavorPhoto(f, "tray-cookie", { width: 240, height: 240, sizes: "72px" })]));
+      let popIndex = -1;    // the slot that just got a cookie (it gets the little "pop")
 
       // How many of this flavor can go in THIS box: what's left this Sunday, minus what's
       // already in the cart (other boxes and single cookies). null availability = unknown, no limit.
@@ -128,15 +135,24 @@
       root.innerHTML = `
         <div class="builder-head">
           <a class="back-link-sm" href="index.html#boxes" aria-label="Back to all boxes">&larr; Boxes</a>
-          <h1>Build your box of ${box.size}</h1>
+          <h1 id="builder-title">Build your box</h1>
         </div>
 
-        <div class="counter" aria-live="polite">
-          <div class="counter-top">
-            <span><strong id="chosen">0</strong> of ${box.size} chosen</span>
-            <small>Pick any mix of flavors. Exactly ${box.size} cookies.</small>
+        <!-- Size tabs: switch between 3 / 6 / 12 without losing the cookies already picked -->
+        <div class="size-tabs" role="group" aria-label="Box size">
+          ${boxes.map((b) => `
+          <button type="button" class="size-tab" data-size="${b.size}" aria-pressed="false">
+            <strong>${b.size}</strong> cookies <small>${peso(b.price)}</small>
+          </button>`).join("")}
+        </div>
+
+        <!-- The tray: one slot per cookie in the box. Slots fill with stickers as flavors are added. -->
+        <div class="counter">
+          <div class="counter-top" aria-live="polite">
+            <span><strong id="chosen">0</strong> of <span id="box-size">${box.size}</span> chosen</span>
+            <small id="tray-hint"></small>
           </div>
-          <div class="progress" aria-hidden="true"><div id="progress-fill"></div></div>
+          <div class="tray" id="tray"></div>
         </div>
         <p class="builder-msg" id="builder-msg" aria-live="polite"></p>
 
@@ -175,7 +191,7 @@
       bar.className = "builder-bar";
       bar.innerHTML = `
         <div class="builder-bar-info">
-          <div><strong id="bar-count">0 of ${box.size}</strong> chosen · <span id="bar-price">${peso(box.price)}</span></div>
+          <div><strong id="bar-count"></strong> chosen · <span id="bar-price"></span></div>
           <small id="price-note"></small>
         </div>
         <button type="button" class="btn" id="add-btn" disabled>Add to cart</button>`;
@@ -183,7 +199,52 @@
       document.body.classList.add("has-builder-bar");
       trackBarHeight(bar);
 
+      // The little "Chimp Chips in. 2 of 6" pop-up above the bar. Visual only: screen readers
+      // already hear the count from the tray heading, so this is hidden from them.
+      document.querySelector(".builder-toast")?.remove();
+      const toast = document.createElement("div");
+      toast.className = "builder-toast";
+      toast.setAttribute("aria-hidden", "true");
+      document.body.append(toast);
+      let toastTimer;
+      function showToast(text) {
+        toast.textContent = text;
+        toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 1600);
+      }
+
       const $ = (id) => document.getElementById(id);
+
+      // Draw the tray: filled slots are buttons (tap to take that cookie out), empty slots are plain circles
+      function drawTray() {
+        const tray = $("tray");
+        tray.dataset.size = box.size;   // the CSS picks the grid shape from this
+        let html = "";
+        for (let i = 0; i < box.size; i++) {
+          const slug = picks[i];
+          html += slug
+            ? `<button type="button" class="tray-slot is-filled${i === popIndex ? " pop" : ""}" data-i="${i}" aria-label="Take ${esc(bySlug[slug].name)} out of the box">${slotPhoto[slug]}</button>`
+            : `<span class="tray-slot" aria-hidden="true"></span>`;
+        }
+        tray.innerHTML = html;
+        popIndex = -1;
+      }
+
+      // Switch to another box size. Picks are kept; going smaller keeps the first ones that fit.
+      function setSize(next) {
+        const dropped = picks.splice(next.size);            // anything past the new size comes out
+        dropped.forEach((slug) => (qty[slug] -= 1));
+        box = next;
+        history.replaceState(null, "", `box.html?size=${box.size}`);   // so a refresh or a shared link keeps this size
+        refresh();
+        if (dropped.length) showToast(`Box of ${box.size}: kept your first ${box.size}`);
+      }
+      root.querySelector(".size-tabs").addEventListener("click", (e) => {
+        const tab = e.target.closest("[data-size]");
+        const next = tab && boxes.find((b) => String(b.size) === tab.dataset.size);
+        if (next && next.size !== box.size) setSize(next);
+      });
 
       // Gift note stays out of the way until asked for
       $("gift-toggle").addEventListener("click", () => {
@@ -203,9 +264,16 @@
         const full = n === box.size;
         const surcharge = cart.priceFor(box.price, items()) - box.price;
 
+        document.title = `Build your box of ${box.size} | AJ's Bakery`;
+        $("builder-title").textContent = `Build your box of ${box.size}`;
+        root.querySelectorAll(".size-tab").forEach((t) => t.setAttribute("aria-pressed", String(t.dataset.size === String(box.size))));
         $("chosen").textContent = n;
+        $("box-size").textContent = box.size;
+        $("tray-hint").textContent = n === 0 ? "Pick any mix of flavors below."
+          : full ? "Box is full. Tap a cookie to swap it out."
+          : "Tap a cookie in the box to take it out.";
         $("bar-count").textContent = `${n} of ${box.size}`;
-        $("progress-fill").style.width = `${(n / box.size) * 100}%`;
+        drawTray();
         $("bar-price").textContent = peso(cart.priceFor(box.price, items()));
         const extras = flavors.filter((f) => f.surcharge > 0 && qty[f.slug] > 0).map((f) => f.name);
         $("price-note").textContent = surcharge > 0 ? `includes ${peso(surcharge)} extra for ${extras.join(" + ")}` : "";
@@ -264,8 +332,31 @@
         const slug = btn.closest(".flavor-row").dataset.slug;
         const next = qty[slug] + Number(btn.dataset.step);
         if (next < 0 || (next > qty[slug] && (chosen() >= box.size || next > limitFor(slug)))) return;
+        if (next > qty[slug]) {
+          picks.push(slug);                 // goes into the next empty slot
+          popIndex = picks.length - 1;
+        } else {
+          picks.splice(picks.lastIndexOf(slug), 1);   // the most recently added one of this flavor comes out
+        }
         qty[slug] = next;
         refresh();
+        if (btn.dataset.step === "1") {
+          const n = picks.length;
+          showToast(n === box.size ? `${bySlug[slug].name} in. Box of ${box.size} is full!` : `${bySlug[slug].name} in. ${n} of ${box.size}`);
+        }
+      });
+
+      // Tapping a cookie in the tray takes that one out
+      $("tray").addEventListener("click", (e) => {
+        const slot = e.target.closest("[data-i]");
+        if (!slot) return;
+        const i = Number(slot.dataset.i);
+        const [slug] = picks.splice(i, 1);
+        qty[slug] -= 1;
+        refresh();
+        // the tray was redrawn, so put keyboard focus back on a cookie (or leave it if the box is empty)
+        const filled = $("tray").querySelectorAll(".is-filled");
+        filled[Math.min(i, filled.length - 1)]?.focus();
       });
 
       $("add-btn").addEventListener("click", () => {
@@ -280,6 +371,7 @@
         fetchAvailability().then((st) => { availability = st.bySlug; refresh(); }).catch((err) => console.error(err));
         // Reset the builder so they can make another box, then show the cart
         flavors.forEach((f) => (qty[f.slug] = 0));
+        picks.length = 0;
         $("gift-note").value = "";
         $("gift-wrap").hidden = true; $("gift-toggle").setAttribute("aria-expanded", "false"); $("gift-toggle").textContent = "+ Add a gift note";
         refresh();
