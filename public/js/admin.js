@@ -182,12 +182,13 @@ const NAV_PAGES = [
   // In the order you use them in a week. `more: true` = set-up pages you rarely need, kept under "More".
   { page: "index",      label: "Today",      sunday: false },  // the home page: what needs doing now
   { page: "orders",     label: "Orders",     sunday: true },
-  { page: "ai",         label: "AI helper",  sunday: false },  // DM to order, GCash check, ask your numbers (Edge Function ai-admin)
   { page: "production", label: "Bake plan",  sunday: true },
   { page: "inventory",  label: "Stock",      sunday: false },
   { page: "totals",     label: "Sales",      sunday: true },   // best sellers + one Sunday's totals
   { page: "menu",       label: "Menu: on sale / sold out / hidden", sunday: false, more: true },  // (026)
   { page: "recipes",    label: "Recipes and costs", sunday: false, more: true },
+  // Under "More": with it in the main row the tabs no longer fit a phone screen and "More" slid off the edge
+  { page: "ai",         label: "AI helper",  sunday: false, more: true },  // DM to order, GCash check, ask your numbers (Edge Function ai-admin)
 ];
 
 export function renderNav(active) {
