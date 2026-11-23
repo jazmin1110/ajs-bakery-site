@@ -374,12 +374,18 @@ export function clampDescriptions(root = document, lines = 3) {
 
 // Boxes: one row per box on phones (name, price, "Save ₱X vs singles", chevron), cards from 700px.
 export function renderBoxes(container, noteEl, boxes, flavors) {
+  // The cookie stickers we have, to draw a little pile on each box so the size is SEEN, not just read.
+  // Decoration only (the flavors are a mix, not what's in the box), so it's hidden from screen readers.
+  const stickers = flavors.map((f) => stickerSrc(f, 240)).filter(Boolean);
+  const pile = (size) => !stickers.length ? "" : `<div class="box-pile" data-count="${size}" aria-hidden="true">${
+    Array.from({ length: size }, (_, i) => `<img src="${esc(stickers[i % stickers.length])}" alt="" width="240" height="240" loading="lazy" onerror="this.remove()">`).join("")}</div>`;
   container.innerHTML = boxes
     .map((b) => {
       const save = boxSavings(b, flavors);
       return `
       <article class="card box-card box-item" data-box-size="${b.size}">
         <div class="card-body">
+          ${pile(b.size)}
           <div class="box-size">Box of ${b.size}</div>
           <div class="bi-meta">
             <span class="price">${peso(b.price)}</span>

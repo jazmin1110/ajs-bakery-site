@@ -41,6 +41,9 @@ export function flavorDetailHtml(flavor, { settings = {} } = {}) {
   const mayContain = list(flavor.may_contain);
   const table = nutritionTable(flavor.nutrition);
   const facts = [["Shelf life", flavor.shelf_life], ["Storage", flavor.storage_tip]].filter(([, v]) => v);
+  // The same numbers as the table further down, as a quick strip under the name (nothing new is calculated)
+  const n = table ? flavor.nutrition : null;
+  const macros = n ? [[n.calories, "kcal"], [g(n.total_carbohydrate_g), "carbs"], [g(n.total_fat_g), "fat"], [g(n.protein_g), "protein"]] : [];
 
   return `
     <div class="sheet-photo">${flavorPhoto(flavor, "sheet-img", { width: 480, height: 480, sizes: "240px" })}</div>
@@ -51,6 +54,8 @@ export function flavorDetailHtml(flavor, { settings = {} } = {}) {
         <span class="stock sticker" data-sheet-stock hidden></span>
       </p>
       <p class="sheet-status" data-sheet-status></p>
+      ${macros.length ? `<ul class="sheet-macros" aria-label="Estimated nutrition per cookie">${macros.map(([v, k]) => `<li><strong>${esc(v)}</strong> ${k}</li>`).join("")}</ul>
+        <p class="sheet-small sheet-macros-note">Estimated per cookie. Full table below.</p>` : ""}
       ${flavor.long_description ? `<p class="sheet-desc">${esc(flavor.long_description)}</p>` : ""}
       ${notes.length ? `<ul class="taste-chips" aria-label="Taste notes">${notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
 
@@ -221,6 +226,10 @@ export function initFlavorSheet({ flavors, getRemaining, getLimit, settings = {}
       addBtn.textContent = result.ok ? "Added ✓" : result.error;
       qty = 1;
       setTimeout(() => { delete addBtn.dataset.busy; refresh(); }, 1600);
+      // Added: show the tick for a moment, then close the sheet so they're back on the menu
+      // (an error, like "only 2 left", stays open so they can read it)
+      const added = current;
+      if (result.ok) setTimeout(() => { if (current === added) close(); }, 700);
     }
   });
 
