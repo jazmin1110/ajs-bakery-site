@@ -70,12 +70,15 @@ export function toolInput(data: ClaudeResponse, name: string): any {
   return block.input;
 }
 
-// Plain text from Claude's reply.
+// Plain text from Claude's reply. Both chat boxes show plain text, so markdown bold
+// (**like this**) and heading marks (# ) are stripped instead of showing up as symbols.
 export function textOf(data: ClaudeResponse): string {
   return (data.content ?? [])
     .filter((c) => c.type === "text")
     .map((c) => c.text)
     .join("\n")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
     .trim();
 }
 

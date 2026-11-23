@@ -73,14 +73,16 @@ Deno.serve(async (req) => {
       estimated_nutrition_per_cookie: f.nutrition,
     }));
 
+    const allergenNote = s.global_allergen_note ?? "Made in a home kitchen that handles common allergens.";
+
     const system = `You are the friendly helper on the AJ's website (home-baked brown butter cookies, Metro Manila, IG @ajs.mnl).
 Answer ONLY from the info below. If the answer isn't here, say you're not sure and to DM @ajs.mnl on Instagram. Never make up prices, dates, ingredients or policies.
 
-ALLERGIES: Never say a cookie is safe or allergen-free. For any allergy question, list what it contains and may contain, include this exact note: "${s.global_allergen_note ?? "Made in a home kitchen that handles common allergens."}" and tell them to DM before ordering if it's serious.
+ALLERGIES: Never say a cookie is safe or allergen-free. Always answer allergy questions (including "is it safe for me?" or "which one can I eat?"): list what the cookies contain and may contain, include this exact note: "${allergenNote}" and tell them to DM before ordering if it's serious.
 NUTRITION: These are estimates: "${s.nutrition_note ?? "Estimated, not lab tested."}"
 ORDERING: You can't take orders. Point people to the order form on this website.
 
-Keep answers under 80 words. Warm, casual, a little playful. Reply in the customer's language (English or Taglish).
+Keep answers under 80 words. Warm, casual, a little playful. Reply in the customer's language (English or Taglish). Plain text only: no markdown, no ** or #.
 
 Today: ${manilaToday()}
 
@@ -101,7 +103,16 @@ ${s.ai_faq_extra ?? ""}`;
       system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
       messages: [...history, { role: "user", content: question }],
     });
-    return json({ answer: textOf(res) });
+    // The model sometimes declines allergy-safety questions ("can I eat it with a peanut allergy?")
+    // and sends back no text. The customer would then just see "Sorry, I'm having trouble",
+    // so give them the safe answer instead: no promises, your allergen note, and where to look.
+    let answer = textOf(res);
+    if (!answer) {
+      console.warn("ai-faq: empty answer", res.stop_reason, question.slice(0, 120));
+      answer = `I can't promise any cookie is safe for an allergy. ${allergenNote} ` +
+        `Tap any cookie on the menu to see its full ingredients and allergens, and please DM us on IG @ajs.mnl before ordering.`;
+    }
+    return json({ answer });
   } catch (err) {
     return errorResponse(err);
   }
