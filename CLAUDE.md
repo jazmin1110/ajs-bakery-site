@@ -97,7 +97,7 @@ Hand-drawn die-cut sticker style, blue anchor. The nav is brand blue with cream 
 
 - **Edge Functions** in `supabase/functions/` (deployed with the Supabase MCP, not Vercel). Model `claude-haiku-5-5`; the key is the Supabase secret `ANTHROPIC_API_KEY`, never in browser code.
   - `ai-admin` (admins only, checks `is_admin()`): `draft_order` (DM text/screenshot to a draft for `admin_create_order`, nothing saved), `check_payment` (reads a GCash screenshot and flags mismatches; never marks paid), `ask` (answers from `admin_sales_report` / `admin_money_report` / `admin_orders` / `admin_production_plan` only, read-only).
-  - `ai-faq` (public): answers only from the menu, boxes, availability and `site_settings.ai_faq_extra`. **Off** until `site_settings.ai_faq_enabled = 'true'`. Always gives the allergen note.
+  - `ai-faq` (public): answers only from the menu, boxes, availability and `site_settings.ai_faq_extra`. Switched by `site_settings.ai_faq_enabled` (`'true'` = shown); **on for customers since Nov 23** (owner's choice). Always gives the allergen note.
 - **Browser:** `admin/ai.html` ("AI helper", under **More** so the main tab row still fits a phone) uses `js/ai-tools.js`; `index.html` lazy-loads `js/faq-widget.js`. Both call the functions with their own fetch (60s / 30s) because the shared client times out at 10s.
 - The AI never does prices or caps: the database still computes and enforces them.
 
