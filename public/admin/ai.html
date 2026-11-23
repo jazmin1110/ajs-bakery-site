@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>AI helper | AJ's Bakery admin</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon-32.png?v=3">
+  <link rel="icon" type="image/png" sizes="64x64" href="../assets/icons/favicon-64.png?v=3">
+  <link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png?v=4">
+  <link rel="manifest" href="../site.webmanifest?v=4">
+  <!-- The two fonts are self-hosted; preloading the Latin files means text is drawn in them from the first paint -->
+  <link rel="preload" href="../assets/fonts/baloo-2-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../assets/fonts/nunito-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <meta name="theme-color" content="#2B4C93">
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="admin">
+
+  <header class="site-header">
+    <div class="container admin-head">
+      <a class="logo-link" href="/"><img src="../assets/stickers/logo-badge-new-96.webp" srcset="../assets/stickers/logo-badge-new-96.webp 96w, ../assets/stickers/logo-badge-new-192.webp 192w" sizes="56px" alt="" width="56" height="56"><span>AJ's Admin</span></a>
+      <nav class="admin-nav" id="admin-nav" aria-label="Admin"></nav>
+    </div>
+  </header>
+
+  <main class="container admin-main">
+    <h1 style="margin:.4rem 0 .2rem">AI helper</h1>
+    <p style="margin:0 0 1rem;color:var(--ink-soft)">Turn a DM into an order, sanity-check a GCash screenshot, or ask about your numbers. Nothing is saved until you tap "Create order".</p>
+    <div id="ai-tools"><p class="loading">Loading...</p></div>
+  </main>
+
+  <script type="module">
+    import { requireAdmin, renderNav } from "../js/admin.js";
+    import { mountAiTools } from "../js/ai-tools.js";
+
+    await requireAdmin();
+    renderNav("ai");
+    mountAiTools(document.getElementById("ai-tools"));
+  </script>
+</body>
+</html>

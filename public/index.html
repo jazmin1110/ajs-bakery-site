@@ -183,6 +183,9 @@
     import * as cart from "./js/cart.js";
 
     renderConfigText();
+    // "Ask us" AI chat bubble (js/faq-widget.js). Loaded on the side so it never slows the menu;
+    // it stays hidden unless site_settings.ai_faq_enabled = 'true'.
+    import("./js/faq-widget.js").then((m) => m.mountFaqWidget()).catch((err) => console.warn("FAQ helper not loaded", err));
     initCartUI();
     renderComingSoon(document.getElementById("coming-soon"), document.getElementById("coming-grid"));   // doesn't need the database
 

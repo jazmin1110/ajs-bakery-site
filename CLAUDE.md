@@ -93,6 +93,14 @@ Hand-drawn die-cut sticker style, blue anchor. The nav is brand blue with cream 
 - **Admin fixes (018):** the Bake plan subtracts cookies already baked for that Sunday (`bake_log`), so it never asks for them twice. `admin_delete_ingredient` deletes only never-used items (anything with purchases is hidden instead). `admin_change_unit(id, unit, factor)` converts every amount (stock, purchases, log, recipes, pack size, reorder level); money stays the same. `admin_update_order` edits details, moves the Sunday and replaces cookies (re-priced, cap checked without counting the order itself); cookies unchanged = sent as null and not re-priced. `admin_set_order_status` takes `p_allow_over_cap`.
 - Test locally: `supabase/tests_ops.sql`, `tests_015.sql`, `tests_016.sql` and `tests_018.sql` (run after tests.sql on a scratch Postgres). Don't write to the live DB without the owner's OK.
 
+## AI helper (Nov 23)
+
+- **Edge Functions** in `supabase/functions/` (deployed with the Supabase MCP, not Vercel). Model `claude-haiku-5-5`; the key is the Supabase secret `ANTHROPIC_API_KEY`, never in browser code.
+  - `ai-admin` (admins only, checks `is_admin()`): `draft_order` (DM text/screenshot to a draft for `admin_create_order`, nothing saved), `check_payment` (reads a GCash screenshot and flags mismatches; never marks paid), `ask` (answers from `admin_sales_report` / `admin_money_report` / `admin_orders` / `admin_production_plan` only, read-only).
+  - `ai-faq` (public): answers only from the menu, boxes, availability and `site_settings.ai_faq_extra`. **Off** until `site_settings.ai_faq_enabled = 'true'`. Always gives the allergen note.
+- **Browser:** `admin/ai.html` ("AI helper" tab) uses `js/ai-tools.js`; `index.html` lazy-loads `js/faq-widget.js`. Both call the functions with their own fetch (60s / 30s) because the shared client times out at 10s.
+- The AI never does prices or caps: the database still computes and enforces them.
+
 ## 5. Layout
 
 **Photo rules.** Every flavor photo is shown in a fixed shape with `object-fit: cover`: 4:3 on menu cards and the detail sheet, 1:1 for builder thumbnails (with explicit `width`/`height` attributes so nothing jumps). `flavors.focus_x` / `focus_y` (0-100, default 50) say which point of the photo stays in the middle of the crop. Photos in `public/assets/flavors/` are at most 1200px wide and about 150KB each (JPEG); keep the untouched originals in `public/assets/originals/` (git-ignored). Cards sit straight: `--card-tilt` in `styles.css` is `0deg` (set it to e.g. `0.6deg` for a deliberate tilt).
