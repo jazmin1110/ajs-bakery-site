@@ -1523,35 +1523,32 @@ h1 { letter-spacing: -0.01em; }
 .week-late { margin: 1.2rem 0 0; font-size: 0.95rem; color: var(--cream); }
 
 /* "Good to know": the three questions the steps don't answer, inside the same blue section (it replaces the old FAQ).
-   A flat list split by thin cream lines (no boxes), each question with a round +/x button.
-   On wider screens the heading sits in the first column and the list in the other two, lining up with the 3 steps above. */
-.week-faq { margin-top: 2.6rem; }
-.week-faq h3 { color: #fff; font-size: 1.35rem; margin: 0 0 0.6rem; }
-.week-faq-list { border-top: 1px solid rgba(247, 235, 213, 0.28); }
-.week-faq details { border-bottom: 1px solid rgba(247, 235, 213, 0.28); }
+   One cream card (the same cream as the Sunday tile), full width so its edges line up with the steps above.
+   Blue questions split by thin lines, each with a round +/x button; answers in chocolate. Flat, no shadow. */
+.week-faq { margin-top: 2.4rem; background: var(--cream); color: var(--ink); border-radius: var(--r-md); padding: 1.3rem 1.2rem 0.4rem; }
+.week-faq h3 { color: var(--blue-dark); font-size: 1.35rem; margin: 0 0 0.5rem; }
+.week-faq details { border-top: 1px solid rgba(43, 76, 147, 0.18); }
 .week-faq summary {
   cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-  min-height: 56px; padding: 0.7rem 0; font-weight: 700; font-size: 1.05rem; color: #fff;
+  min-height: 56px; padding: 0.7rem 0; font-weight: 700; font-size: 1.05rem; color: var(--blue-dark);
 }
 .week-faq summary::-webkit-details-marker { display: none; }
-/* The round button: a cream ring with a "+" drawn in CSS; it turns into an "x" when the answer is open */
+/* The round button: a blue ring with a "+"; it fills blue and turns into an "x" when the answer is open */
 .week-faq summary::after {
-  content: "+"; flex: none; width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--cream);
+  content: "+"; flex: none; width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--blue);
   display: grid; place-items: center; font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; line-height: 1;
-  color: var(--cream); transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+  color: var(--blue); transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
-.week-faq summary:hover::after, .week-faq details[open] summary::after { background: var(--cream); color: var(--blue); }
+.week-faq summary:hover::after, .week-faq details[open] summary::after { background: var(--blue); color: var(--cream); }
 .week-faq details[open] summary::after { transform: rotate(45deg); }
-.week-faq details > :not(summary) { max-width: 62ch; }
-.week-faq details p { margin: 0 0 0.9rem; color: var(--cream); line-height: 1.6; }
+.week-faq details > :not(summary) { max-width: 66ch; }
+.week-faq details p { margin: 0 0 0.9rem; color: var(--ink); line-height: 1.6; }
 .week-faq details p:last-child { margin-bottom: 1.2rem; }
-.week-faq details p strong { color: #fff; }
-.week-faq summary:focus-visible { outline: 3px solid #fff; outline-offset: 2px; border-radius: var(--radius-sm); }
+.week-faq details p strong { color: var(--blue-dark); }
+.week-faq summary:focus-visible { outline: 3px solid var(--blue-dark); outline-offset: 2px; border-radius: var(--radius-sm); }
 @media (prefers-reduced-motion: reduce) { .week-faq summary::after { transition: none; } }
 @media (min-width: 700px) {
-  .week-faq { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 1.5rem; align-items: start; }
-  .week-faq h3 { margin-top: 0.75rem; }
-  .week-faq-list { grid-column: 2 / 4; }
+  .week-faq { padding: 1.7rem 2rem 0.6rem; }
 }
 /* The blue section is the last thing in <main>: run it straight into the footer, no cream strip between */
 .week-section:last-child { margin-bottom: 0; }
