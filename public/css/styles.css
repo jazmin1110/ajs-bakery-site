@@ -1760,7 +1760,7 @@ body.admin .o-main + .o-meta { margin-top: 0.6rem; }   /* breathing room under t
   .hero { padding: 0.7rem 0 0.2rem; }
   .hero .container { grid-template-columns: minmax(0, 1fr) min(30vw, 124px); grid-template-areas: "title title" "text pic" "actions actions"; column-gap: 0.6rem; }
   .hero h1 { font-size: clamp(1.6rem, 7.7vw, 2.1rem); line-height: 1.05; }
-  .hero-sticker { width: min(30vw, 124px); margin: -0.2rem 0 -0.3rem; }
+  .hero-sticker { width: min(30vw, 124px); margin: 0 0 0.9rem; }   /* bottom gap: the tilted sticker must clear the buttons */
   .hero p { font-size: 1rem; margin: 0.3rem 0 0.7rem; }
   #menu { padding-top: 1.2rem; }
   #menu .section-sub { margin-bottom: 0.9rem; }
