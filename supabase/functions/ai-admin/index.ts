@@ -53,6 +53,19 @@ Deno.serve(async (req) => {
   }
 });
 
+// The Sunday that's taking orders now (e.g. "2026-11-29"), or null if it can't be read.
+// Uses current_sunday_info(), the same function the storefront banner uses. (ordering_sunday()
+// is internal: logged-in users aren't allowed to call it, so it always came back empty.)
+async function openSunday(sb: SupabaseClient): Promise<string | null> {
+  const { data, error } = await sb.rpc("current_sunday_info");
+  if (error) {
+    console.error("current_sunday_info failed", error.message);
+    return null;
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  return row?.sunday_date ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // 1) DM → draft order
 // ---------------------------------------------------------------------------
@@ -139,10 +152,10 @@ async function draftOrder(sb: SupabaseClient, body: { text?: string; image?: str
   const text = typeof body.text === "string" ? body.text.trim().slice(0, 4000) : "";
   if (!text && !body.image) throw new HttpError(400, "Paste the DM or add a screenshot.");
 
-  const [{ data: flavors }, { data: boxes }, { data: sunday }] = await Promise.all([
+  const [{ data: flavors }, { data: boxes }, sunday] = await Promise.all([
     sb.from("flavors").select("slug,name,single_price,surcharge,hidden,sold_out").eq("active", true),
     sb.from("boxes").select("size,price").eq("active", true).order("size"),
-    sb.rpc("ordering_sunday"),
+    openSunday(sb),
   ]);
   const fl = (flavors ?? []) as Flavor[];
   const bx = (boxes ?? []) as Box[];
@@ -168,7 +181,7 @@ Rules:
 - Customers use nicknames and Taglish. "choco chip"/"chimp" = choc-chip, "double choco"/"coco loco" = double-choc, "kinder"/"bueno" = kinder-bueno. If a flavor isn't on the menu or is sold out, still list it but add a warning.
 - "Box of 6" etc → a box. Box items must add up exactly to the box size. If they didn't say the mix, split as evenly as the message suggests and add a warning.
 - Cookies not in a box → singles.
-- Orders are for a Sunday. Today is ${manilaToday()}. The next open Sunday is ${sunday ?? "unknown"}. Only fill "sunday" if the customer clearly says which day; otherwise null and add it to missing only if it matters.
+- Orders are for a Sunday. Today is ${manilaToday()}. The next open Sunday is ${sunday ?? "unknown"}. "This Sunday", "Sunday" or no day at all means the next open Sunday: put that date in "sunday" and don't ask the customer about it. Only use a different date if they clearly ask for a later Sunday.
 - fulfillment: pickup or delivery. Delivery needs a full address. Delivery is a rider the customer books (Lalamove/Grab).
 - Never mark anything as paid. If they mention a GCash reference, put the digits in gcash_ref.
 - Don't invent names, phones or addresses.`;
@@ -387,7 +400,7 @@ async function runReport(sb: SupabaseClient, name: string, a: Record<string, unk
 async function ask(sb: SupabaseClient, body: { question?: string }) {
   const question = String(body.question ?? "").trim().slice(0, 1000);
   if (!question) throw new HttpError(400, "Type a question.");
-  const { data: sunday } = await sb.rpc("ordering_sunday");
+  const sunday = await openSunday(sb);
 
   const system = `You are the numbers helper for AJ's, Jazmin's home cookie business in Metro Manila. Orders are for Sundays.
 Today is ${manilaToday()}. The next open Sunday is ${sunday ?? "unknown"}.
