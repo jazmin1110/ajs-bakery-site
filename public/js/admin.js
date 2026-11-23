@@ -182,6 +182,7 @@ const NAV_PAGES = [
   // In the order you use them in a week. `more: true` = set-up pages you rarely need, kept under "More".
   { page: "index",      label: "Today",      sunday: false },  // the home page: what needs doing now
   { page: "orders",     label: "Orders",     sunday: true },
+  { page: "ai",         label: "AI helper",  sunday: false },  // DM to order, GCash check, ask your numbers (Edge Function ai-admin)
   { page: "production", label: "Bake plan",  sunday: true },
   { page: "inventory",  label: "Stock",      sunday: false },
   { page: "totals",     label: "Sales",      sunday: true },   // best sellers + one Sunday's totals
