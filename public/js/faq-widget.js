@@ -14,7 +14,9 @@ import { getClient } from "./supabase.js";
 // so it never sits on the Checkout button.
 const css = `
 .ajfaq-btn{position:fixed;right:18px;bottom:18px;z-index:25;background:var(--blue, #2B4C93);color:#fff;border:0;border-radius:999px;
-  padding:12px 18px;font:600 15px var(--font-body, system-ui),sans-serif;box-shadow:0 6px 20px rgba(43,76,147,.35);cursor:pointer}
+  padding:12px 18px;font:600 15px var(--font-body, system-ui),sans-serif;cursor:pointer;
+  box-shadow:0 0 0 2px var(--cream, #F7EBD5),0 6px 20px rgba(43,76,147,.35)}
+/* the cream ring (first shadow) keeps the blue pill visible when it floats over the blue "How it works" section */
 .ajfaq-box{position:fixed;right:18px;bottom:76px;z-index:25;width:min(360px,calc(100vw - 36px));height:min(480px,70vh);
   background:#fff;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.18);display:none;flex-direction:column;
   font:14px/1.45 var(--font-body, system-ui),sans-serif;color:var(--ink, #5C3A22);overflow:hidden}
