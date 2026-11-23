@@ -8,10 +8,14 @@
 import { CONFIG } from "./config.js";
 import { getClient } from "./supabase.js";
 
+// Stacking: z-index 25 sits above the cart bar (20) but under the cart drawer (30/40) and the
+// cookie detail sheet (60/61), so it never covers them. When the cart bar is showing
+// (body.has-cart-bar), the bubble moves up by the bar's real height (--bar-h, set by ui.js)
+// so it never sits on the Checkout button.
 const css = `
-.ajfaq-btn{position:fixed;right:18px;bottom:18px;z-index:9999;background:var(--blue, #2B4C93);color:#fff;border:0;border-radius:999px;
+.ajfaq-btn{position:fixed;right:18px;bottom:18px;z-index:25;background:var(--blue, #2B4C93);color:#fff;border:0;border-radius:999px;
   padding:12px 18px;font:600 15px var(--font-body, system-ui),sans-serif;box-shadow:0 6px 20px rgba(43,76,147,.35);cursor:pointer}
-.ajfaq-box{position:fixed;right:18px;bottom:76px;z-index:9999;width:min(360px,calc(100vw - 36px));height:min(480px,70vh);
+.ajfaq-box{position:fixed;right:18px;bottom:76px;z-index:25;width:min(360px,calc(100vw - 36px));height:min(480px,70vh);
   background:#fff;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.18);display:none;flex-direction:column;
   font:14px/1.45 var(--font-body, system-ui),sans-serif;color:var(--ink, #5C3A22);overflow:hidden}
 .ajfaq-box.open{display:flex}
@@ -25,6 +29,8 @@ const css = `
 .ajfaq-form input{flex:1;padding:9px 11px;border:1px solid #c9d3ea;border-radius:999px;font:inherit}
 .ajfaq-form button{background:var(--blue, #2B4C93);color:#fff;border:0;border-radius:999px;padding:0 14px;font-weight:600;cursor:pointer}
 .ajfaq-foot{font-size:11px;color:#7a839a;text-align:center;padding:0 10px 8px}
+body.has-cart-bar .ajfaq-btn{bottom:calc(var(--bar-h, 4.5rem) + 12px)}
+body.has-cart-bar .ajfaq-box{bottom:calc(var(--bar-h, 4.5rem) + 70px);height:min(480px,calc(100vh - var(--bar-h, 4.5rem) - 150px))}
 `;
 
 export async function mountFaqWidget({ label = "Ask us 🍪" } = {}) {
